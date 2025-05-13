@@ -83,6 +83,11 @@ const Footer = () => {
   // Handle navigation to music rooms
   const handleJoinLiveMusic = () => {
     navigate('/music-rooms');
+    // Scroll to top when navigating
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   };
 
   return (
@@ -132,7 +137,15 @@ const Footer = () => {
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-0">
               <div className="flex items-center text-sm text-gray-600">
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                <Link to="/music-rooms" className="text-gray-600 hover:text-gray-900">Join Live Music</Link>
+                <Link 
+                  to="/music-rooms" 
+                  className="text-gray-600 hover:text-gray-900"
+                  onClick={() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                >
+                  Join Live Music
+                </Link>
               </div>
 
               <CreateRoomModal />
@@ -227,5 +240,3 @@ const Footer = () => {
 };
 
 export default Footer;
-
- 

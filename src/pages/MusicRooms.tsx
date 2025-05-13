@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
@@ -36,6 +35,7 @@ const MusicRooms = () => {
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<RoomType | null>(null);
   const [loadingRequest, setLoadingRequest] = useState(false);
+  const [loginAlertOpen, setLoginAlertOpen] = useState(false);
   const navigate = useNavigate();
   const { user, loading } = useAuth();
 
@@ -55,7 +55,8 @@ const MusicRooms = () => {
 
   const joinRoom = (room: RoomType) => {
     if (!user) {
-      toast.error("Please log in to join a room.");
+      // Show login alert instead of toast
+      setLoginAlertOpen(true);
       return;
     }
 
@@ -309,6 +310,46 @@ const MusicRooms = () => {
                 ) : (
                   'Send Request'
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Login Alert Dialog */}
+        <Dialog open={loginAlertOpen} onOpenChange={setLoginAlertOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Login Required</DialogTitle>
+              <DialogDescription>
+                You need to be logged in to join a music room. Please log in or create an account.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+              <Button 
+                variant="outline" 
+                onClick={() => setLoginAlertOpen(false)}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  setLoginAlertOpen(false);
+                  navigate('/auth/login');
+                }}
+                className="w-full sm:w-auto"
+              >
+                Log In
+              </Button>
+              <Button 
+                onClick={() => {
+                  setLoginAlertOpen(false);
+                  navigate('/auth/register');
+                }}
+                variant="default"
+                className="w-full sm:w-auto"
+              >
+                Sign Up
               </Button>
             </DialogFooter>
           </DialogContent>
