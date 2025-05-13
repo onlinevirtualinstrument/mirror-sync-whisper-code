@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Settings, User, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 interface UserButtonProps {
   user?: {
@@ -19,8 +20,16 @@ interface UserButtonProps {
   };
 }
 
-export function UserButton({ user }: UserButtonProps) {
-  if (!user) return null;
+export function UserButton({ user: propUser }: UserButtonProps) {
+  // Use the Firebase auth user if prop user is not provided
+  const { user: authUser, logout } = useAuth();
+  const user = propUser || {
+    name: authUser?.displayName || "User",
+    email: authUser?.email || "",
+    image: authUser?.photoURL || ""
+  };
+  
+  if (!authUser && !propUser) return null;
   
   const initials = user.name
     ? user.name
@@ -28,6 +37,10 @@ export function UserButton({ user }: UserButtonProps) {
         .map((n) => n[0])
         .join("")
     : "U";
+
+  const handleLogout = () => {
+    logout();
+  };
 
   return (
     <DropdownMenu>
@@ -64,7 +77,10 @@ export function UserButton({ user }: UserButtonProps) {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="flex items-center cursor-pointer text-destructive">
+        <DropdownMenuItem 
+          className="flex items-center cursor-pointer text-destructive"
+          onClick={handleLogout}
+        >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>

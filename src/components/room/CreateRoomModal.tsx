@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { toast } from '@/components/ui/use-toast';
 import { Globe, Lock } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const CreateRoomModal = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,6 +22,7 @@ const CreateRoomModal = () => {
   const [isPublic, setIsPublic] = useState(true);
   
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
 
   // When the instrument mode changes, update max participants accordingly
   const handleInstrumentModeChange = (newValue: boolean) => {
@@ -33,6 +35,16 @@ const CreateRoomModal = () => {
   };
 
   const createRoom = () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please login to create a music room",
+        variant: "destructive",
+      });
+      setIsOpen(false);
+      return;
+    }
+
     if (!roomName.trim()) {
       toast({
         title: "Room name required",
@@ -41,17 +53,15 @@ const CreateRoomModal = () => {
       });
       return;
     }
-
+    
     setIsCreating(true);
     
     // Generate a unique room ID
     const roomId = Date.now().toString();
 
-    // Generate a user ID for the host if none exists
-    const userId = localStorage.getItem('userId') || `user_${Date.now()}`;
-    if (!localStorage.getItem('userId')) {
-      localStorage.setItem('userId', userId);
-    }
+    // Use the actual user info from Firebase auth
+    const userId = user.uid;
+    const displayName = user.displayName || 'Room Admin';
     
     // Create room data
     const roomData = {
@@ -66,9 +76,9 @@ const CreateRoomModal = () => {
       participants: [
         {
           id: userId,
-          name: 'Room Admin',
+          name: displayName,
           instrument: selectedInstrument,
-          avatar: `https://i.pravatar.cc/150?img=1`,
+          avatar: user.photoURL || `https://i.pravatar.cc/150?img=1`,
           isHost: true,
           status: 'online'
         }
@@ -97,13 +107,26 @@ const CreateRoomModal = () => {
     }, 1000);
   };
 
+  // If user is not logged in, show login prompt on button click
+  const handleCreateRoomClick = () => {
+    if (!user && !loading) {
+      toast({
+        title: "Authentication required",
+        description: "Please login to create a music room",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsOpen(true);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="group p-0" variant="link">
+        <Button className="group p-0" variant="link" onClick={handleCreateRoomClick}>
           <span className="relative hover-scale">
             Create New Room
-            {/* <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span> */}
           </span>
         </Button>
       </DialogTrigger>
@@ -111,7 +134,7 @@ const CreateRoomModal = () => {
         <DialogHeader>
           <DialogTitle>Create a Music Room</DialogTitle>
           <DialogDescription>
-            Start a collaborative music session with friends or other musicians.
+            Set up a virtual room to play music with  friends or others in real-time.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -233,8 +256,9 @@ const CreateRoomModal = () => {
         <DialogFooter>
           <Button 
             type="submit" 
+            
             onClick={createRoom}
-            disabled={isCreating || !roomName.trim()}
+            disabled={isCreating || !roomName.trim() || !user}
           >
             {isCreating ? (
               <span className="flex items-center">

@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { OnboardingTutorial } from "@/components/onboarding/OnboardingTutorial";
 import { lazy, Suspense } from "react";
 import MusicRooms from "./pages/MusicRooms.tsx";
+import Blog from './pages/Blog';
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -110,7 +111,7 @@ const App = () => (
               <Route path="/auth/login" element={<Auth.Login />} />
               <Route path="/auth/register" element={<Auth.Register />} />
               <Route path="/tutorial" element={<Misc.Tutorial />} />
-              <Route path="/blog" element={<Misc.Blog />} />
+              <Route path="/blog/*" element={<Blog />} />
 
               {/* New routes */}
               <Route path="/help" element={<Misc.Help />} />

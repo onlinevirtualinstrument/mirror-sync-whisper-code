@@ -10,6 +10,15 @@
  */
 export const disableRightClick = (): void => {
   document.addEventListener('contextmenu', (e) => {
+    // Allow context menu for authentication processes
+    if (e.target && (
+      e.target.toString().includes('google') || 
+      e.target.toString().includes('facebook') ||
+      window.location.href.includes('auth')
+    )) {
+      return true;
+    }
+    
     e.preventDefault();
     console.log('Right click disabled for security reasons');
     return false;
@@ -70,6 +79,10 @@ export const preventCopyShortcuts = (): void => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return true;
       }
+      // Allow for authentication processes
+      if (window.location.href.includes('auth')) {
+        return true;
+      }
       e.preventDefault();
       console.log('Copy/paste shortcut disabled for security reasons');
       return false;
@@ -87,11 +100,23 @@ export const disableDevToolsShortcuts = (): void => {
       e.key === 'F12' || 
       ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c'))
     ) {
+      // Allow for authentication processes and development
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return true;
+      }
       e.preventDefault();
       console.log('Developer tools shortcut disabled for security reasons');
       return false;
     }
   }, true);
+};
+
+/**
+ * Allow popups from Firebase authentication
+ */
+export const allowFirebasePopups = (): void => {
+  // This is a no-op function but marks that we're explicitly allowing Firebase popups
+  console.info('Firebase authentication popups are allowed');
 };
 
 /**
@@ -117,6 +142,7 @@ const initSecurityFeatures = (): void => {
   preventCopyShortcuts();
   disableDevToolsShortcuts();
   setupCSPReporting();
+  allowFirebasePopups();
   
   // Apply additional security measures using standard CSS properties
   document.body.style.userSelect = 'none';

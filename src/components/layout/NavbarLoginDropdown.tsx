@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { FcGoogle } from 'react-icons/fc';
 import { signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } from 'firebase/auth';
 import { auth } from '../../utils/auth/firebase';
-
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
  export const loginWithGoogle = async () => {
    const googleProvider = new GoogleAuthProvider();
@@ -47,12 +47,22 @@ export const NavbarLoginDropdown = () => {
 return user ? (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
-      <Button variant="ghost" className="flex items-center gap-2 px-4 py-2">
-        <UserCircle className="w-5 h-5" />
-        {user.displayName?.split(" ")[0] || "User"}
-        <ChevronDown className="w-4 h-4" />
-      </Button>
-    </DropdownMenuTrigger>
+        <Button variant="ghost" className="flex items-center gap-2 px-4 py-2">
+          {/* Avatar */}
+          <Avatar className="w-6 h-6">
+            <AvatarImage src={user.photoURL || ""} alt={user.displayName || "User"} />
+            <AvatarFallback>
+              {user.displayName?.[0]?.toUpperCase() || "U"}
+            </AvatarFallback>
+          </Avatar>
+
+          {/* Name */}
+          <span>{user.displayName?.split(" ")[0] || "User"}</span>
+
+          {/* Dropdown Icon */}
+          <ChevronDown className="w-4 h-4" />
+        </Button>
+      </DropdownMenuTrigger>
     <DropdownMenuContent className="w-48">
       <DropdownMenuItem onClick={logout} className="text-red-600 hover:bg-red-100">
         <LogOut className="w-4 h-4 mr-2" />
