@@ -1,0 +1,96 @@
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { LogIn, LogOut, ChevronDown, Facebook, UserCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { FcGoogle } from 'react-icons/fc';
+import { signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } from 'firebase/auth';
+import { auth } from '../../utils/auth/firebase';
+
+
+ export const loginWithGoogle = async () => {
+   const googleProvider = new GoogleAuthProvider();
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const token = credential?.accessToken;
+    const user = result.user;
+
+    console.log("Google login success:", user);
+    return user;
+  } catch (error) {
+    console.error("Google login failed:", error);
+    alert("Google login failed: " + error.message);
+  }
+ };
+ 
+export const loginWithFacebook = async () => {
+   const facebookProvider = new FacebookAuthProvider();
+  try {
+    const result = await signInWithPopup(auth, facebookProvider);
+    const credential = FacebookAuthProvider.credentialFromResult(result);
+    const accessToken = credential?.accessToken;
+    const user = result.user;
+
+    console.log("Facebook login success:", user);
+    return user;
+  } catch (error) {
+    console.error("Facebook login failed:", error);
+    alert("Facebook login failed: " + error.message);
+  }
+};
+
+export const NavbarLoginDropdown = () => {
+  const { user, loading, logout } = useAuth();
+
+  if (loading) return <p>Loading...</p>;
+  
+return user ? (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button variant="ghost" className="flex items-center gap-2 px-4 py-2">
+        <UserCircle className="w-5 h-5" />
+        {user.displayName?.split(" ")[0] || "User"}
+        <ChevronDown className="w-4 h-4" />
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent className="w-48">
+      <DropdownMenuItem onClick={logout} className="text-red-600 hover:bg-red-100">
+        <LogOut className="w-4 h-4 mr-2" />
+        Logout
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
+) : (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button variant="ghost" className="flex items-center gap-1.5 px-4 py-2">
+        <LogIn className="w-4 h-4" />
+        Login
+        <ChevronDown className="w-4 h-4" />
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent sideOffset={8} className="z-50 w-60 space-y-2 p-2">
+      <Button
+        className="w-full justify-start bg-white text-black border border-gray-300 
+                   hover:bg-gray-100 transition-all duration-200 ease-in-out hover:scale-[1.02]"
+        onClick={loginWithGoogle}
+      >
+        <FcGoogle className="w-4 h-4 mr-2" />
+        Sign in with Google
+      </Button>
+
+      <Button
+        className="w-full justify-start bg-[#3b5998] text-white 
+                   hover:bg-[#334f88] transition-all duration-200 ease-in-out hover:scale-[1.02]"
+        onClick={loginWithFacebook}
+      >
+        <Facebook className="w-4 h-4 mr-2" />
+        Sign in with Facebook
+      </Button>
+
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
+
+};
+

@@ -1,0 +1,31 @@
+
+User-agent: *
+Allow: /
+
+# Disallow certain paths
+Disallow: /auth/
+Disallow: /api/
+Disallow: /admin/
+
+# Allow instrument paths explicitly for better SEO
+Allow: /piano
+Allow: /guitar
+Allow: /drums
+Allow: /flute
+Allow: /violin
+Allow: /banjo
+Allow: /harmonica
+Allow: /harp
+Allow: /saxophone
+Allow: /sitar
+Allow: /trumpet
+Allow: /veena
+Allow: /xylophone
+Allow: /timpani
+Allow: /kalimba
+Allow: /marimba
+Allow: /tabla
+Allow: /theremin
+
+# Sitemap location
+Sitemap: https://musicca.lovable.app/sitemap.xml
