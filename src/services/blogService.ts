@@ -1,4 +1,3 @@
-
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, getDoc, query, where, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { auth } from '@/utils/auth/firebase';
 import { db } from '@/utils/blog/firebase-config';
@@ -116,8 +115,26 @@ export const getUserRole = async (userId: string): Promise<UserRole | null> => {
   if (snapshot.empty) {
     return null;
   }
+
+  const docData = snapshot.docs[0]?.data();
+  if (
+    docData &&
+    typeof docData.userId === 'string' &&
+    typeof docData.email === 'string' &&
+    typeof docData.role === 'string' &&
+    typeof docData.createdAt === 'number'
+  ) {
+    return {
+      id: snapshot.docs[0].id,
+      userId: docData.userId,
+      email: docData.email,
+      role: docData.role,
+      displayName: docData.displayName,
+      createdAt: docData.createdAt,
+    } as UserRole;
+  }
   
-  return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as UserRole;
+  return null;
 };
 
 // Set user role (super_admin only)
