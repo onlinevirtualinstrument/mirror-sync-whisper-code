@@ -1,4 +1,3 @@
-
 import { Link } from 'react-router-dom';
 import { 
   Facebook, 
@@ -144,17 +143,12 @@ const Footer = () => {
                   to="/music-rooms" 
                   className={`${mode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-900'}`}
                   onClick={() => {
-<<<<<<< HEAD
-                    window.scrollTo({ top: 50, behavior: 'smooth' });
-=======
                     window.scrollTo({ top: 0, behavior: 'smooth' });
->>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
                   }}
                 >
                   Join Live Music
                 </Link>
               </div>
-
               <CreateRoomModal />
             </div>
           </div>
@@ -181,15 +175,7 @@ const Footer = () => {
               </li>
               <li className="flex items-center gap-2">
                 <Users size={16} className="text-indigo-500" />
-<<<<<<< HEAD
-                <Link to="/music-rooms" 
-                 onClick={() => {
-                    window.scrollTo({ top: 50, behavior: 'smooth' });
-                  }}
-                  className={`${mode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-900'} text-sm`}>Live Music Rooms</Link>
-=======
                 <Link to="/music-rooms" className={`${mode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-900'} text-sm`}>Live Music Rooms</Link>
->>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
               </li>
               <li className="flex items-center gap-2">
                 <FileAudio size={16} className="text-indigo-500" />
@@ -204,11 +190,10 @@ const Footer = () => {
             <p className={`text-sm ${mode === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-3`}>Get updates on new instruments, features and musical tips.</p>
             
             {/* Using the new Newsletter component */}
-           {/* <Newsletter variant="minimal" /> */}
             <SubscribeInFooter />
 
             {/* Sign In/Sign Up Buttons */}
-            {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div className="mt-6 flex items-center text-sm text-gray-600">
                 <Button 
                   // onClick={handleSignIn} 
@@ -230,7 +215,7 @@ const Footer = () => {
                   Sign Up
                 </Button>
               </div>
-            </div> */}
+            </div>
           </div>
         </div>
         
@@ -259,8 +244,4 @@ const Footer = () => {
   );
 };
 
-<<<<<<< HEAD
 export default Footer;
-=======
-export default Footer;
->>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0

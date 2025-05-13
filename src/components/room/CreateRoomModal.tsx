@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -6,17 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-<<<<<<< HEAD
-import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
-import { toast } from '@/components/ui/use-toast';
-import { Globe, Lock } from 'lucide-react';
-=======
 import { Checkbox } from '@/components/ui/checkbox';
 import { PlusCircle, Music } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
->>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
 import { useAuth } from '@/hooks/useAuth';
 
 // Define random avatars
@@ -38,31 +30,6 @@ export default function CreateRoomModal() {
   const [allowDifferentInstruments, setAllowDifferentInstruments] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate();
-<<<<<<< HEAD
-  const { user, loading } = useAuth();
-
-  // When the instrument mode changes, update max participants accordingly
-  const handleInstrumentModeChange = (newValue: boolean) => {
-    setAllowDifferentInstruments(newValue);
-    
-    // If switching to single instrument mode and max participants > 3, adjust it down
-    if (!newValue && maxParticipants > 3) {
-      setMaxParticipants(3);
-    }
-  };
-
-  const createRoom = () => {
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please login to create a music room",
-        variant: "destructive",
-      });
-      setIsOpen(false);
-      return;
-    }
-
-=======
   const { user } = useAuth();
 
   const createRoom = () => {
@@ -70,33 +37,21 @@ export default function CreateRoomModal() {
       toast.error("Please log in to create a room");
       return;
     }
-    
->>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
     if (!roomName.trim()) {
       toast.error("Please enter a room name");
       return;
     }
-    
     setIsCreating(true);
-    
-<<<<<<< HEAD
-    // Generate a unique room ID
-    const roomId = Date.now().toString();
 
-    // Use the actual user info from Firebase auth
-    const userId = user.uid;
-    const displayName = user.displayName || 'Room Admin';
-=======
     // Generate room ID
     const roomId = uuidv4();
->>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
-    
+
     // Get existing rooms or initialize empty array
     const existingRooms = JSON.parse(localStorage.getItem('musicRooms') || '[]');
-    
+
     // Get random avatar for host
     const hostAvatar = user?.photoURL || AVATAR_URLS[Math.floor(Math.random() * AVATAR_URLS.length)];
-    
+
     // Create new room object
     const newRoom = {
       id: roomId,
@@ -108,86 +63,53 @@ export default function CreateRoomModal() {
       createdAt: new Date().toISOString(),
       participants: [
         {
-<<<<<<< HEAD
-          id: userId,
-          name: displayName,
-          instrument: selectedInstrument,
-          avatar: user.photoURL || `https://i.pravatar.cc/150?img=1`,
-=======
           id: 'host',
           name: user?.displayName || 'Room Host',
           instrument,
           avatar: hostAvatar,
->>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
           isHost: true,
           status: 'active'
         }
       ]
     };
-    
+
     // Add new room to existing rooms
     const updatedRooms = [...existingRooms, newRoom];
-    
+
     // Save updated rooms to localStorage
     localStorage.setItem('musicRooms', JSON.stringify(updatedRooms));
-    
+
     // Set host flag in localStorage
     localStorage.setItem(`room_host_${roomId}`, 'true');
-    
+
     setTimeout(() => {
       setIsCreating(false);
       setOpen(false);
       toast.success("Room created successfully!");
-      
+
       // Navigate to room without scrolling
       const scrollPosition = window.scrollY;
       navigate(`/room/${roomId}`);
-      // Restore scroll position if needed
       setTimeout(() => window.scrollTo(0, scrollPosition), 100);
     }, 1000);
-  };
-
-  // If user is not logged in, show login prompt on button click
-  const handleCreateRoomClick = () => {
-    if (!user && !loading) {
-      toast({
-        title: "Authentication required",
-        description: "Please login to create a music room",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsOpen(true);
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-<<<<<<< HEAD
-        <Button className="group p-0" variant="link" onClick={handleCreateRoomClick}>
-          <span className="relative hover-scale">
-            Create New Room
-          </span>
-=======
         <Button variant="outline" size="sm" className="ml-4 h-8 rounded-md px-3 py-1 mt-1">
           <PlusCircle className="mr-2 h-4 w-4" />
           Create Room
->>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create a Music Room</DialogTitle>
           <DialogDescription>
-<<<<<<< HEAD
-            Set up a virtual room to play music with  friends or others in real-time.
-=======
             Set up a virtual room to play music with others in real-time.
->>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="room-name">Room Name</Label>
@@ -260,16 +182,9 @@ export default function CreateRoomModal() {
             Cancel
           </Button>
           <Button 
-<<<<<<< HEAD
-            type="submit" 
-            
-            onClick={createRoom}
-            disabled={isCreating || !roomName.trim() || !user}
-=======
             onClick={createRoom}
             disabled={isCreating || !user}
             className="gap-2"
->>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
           >
             {isCreating ? (
               <>
