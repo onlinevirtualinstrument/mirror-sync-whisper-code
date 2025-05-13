@@ -6,7 +6,11 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+<<<<<<< HEAD
  
+=======
+
+>>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
 // Room auto-close timeout in milliseconds (2 minutes)
 const ROOM_AUTO_CLOSE_TIMEOUT = 2 * 60 * 1000;
 

@@ -1,7 +1,10 @@
+
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { LogIn, LogOut, ChevronDown, Facebook, UserCircle } from "lucide-react";
+import { LogIn, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+<<<<<<< HEAD
 import { FcGoogle } from 'react-icons/fc';
 import { signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } from 'firebase/auth';
 import { auth } from '../../utils/auth/firebase';
@@ -88,19 +91,48 @@ return user ? (
         <FcGoogle className="w-4 h-4 mr-2" />
         Sign in with Google
       </Button>
+=======
+import { UserButton } from "@/components/auth/UserButton";
+import { toast } from "sonner";
 
-      <Button
-        className="w-full justify-start bg-[#3b5998] text-white 
-                   hover:bg-[#334f88] transition-all duration-200 ease-in-out hover:scale-[1.02]"
-        onClick={loginWithFacebook}
-      >
-        <Facebook className="w-4 h-4 mr-2" />
-        Sign in with Facebook
-      </Button>
+export function NavbarLoginDropdown() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const handleSignIn = () => {
+    navigate('/auth/login');
+  };
+>>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
 
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
+  const handleSignUp = () => {
+    navigate('/auth/register');
+  };
 
-};
-
+  return (
+    <div className="flex items-center gap-2">
+      {user ? (
+        <UserButton />
+      ) : (
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={handleSignIn} 
+            variant="outline" 
+            className="rounded-lg"
+            size="sm"
+          >
+            <LogIn className="mr-2 h-4 w-4" />
+            Log in
+          </Button>
+          <Button 
+            onClick={handleSignUp} 
+            className="rounded-lg"
+            size="sm"
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Sign up
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}

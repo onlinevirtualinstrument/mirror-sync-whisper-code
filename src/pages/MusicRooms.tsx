@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
@@ -56,7 +55,10 @@ const MusicRooms = () => {
 
   const joinRoom = (room: RoomType) => {
     if (!user) {
+<<<<<<< HEAD
       // toast.error("Please log in to join a room.");
+=======
+>>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
       // Show login alert instead of toast
       setLoginAlertOpen(true);
       return;
@@ -316,6 +318,10 @@ const MusicRooms = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+<<<<<<< HEAD
+=======
+
+>>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
         {/* Login Alert Dialog */}
         <Dialog open={loginAlertOpen} onOpenChange={setLoginAlertOpen}>
           <DialogContent className="sm:max-w-md">

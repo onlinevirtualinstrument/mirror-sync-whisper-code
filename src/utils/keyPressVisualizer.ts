@@ -10,7 +10,11 @@ interface PlayerKeyPress {
   timestamp: number;
 }
 
+<<<<<<< HEAD
 // Track current key presses 
+=======
+// Track current key presses
+>>>>>>> 16fe0921b7f4fa4b469f25cb7bb087c1a18c33f0
 const activeKeyPresses: Map<string, PlayerKeyPress> = new Map();
 
 // Remove player indicators after a timeout
