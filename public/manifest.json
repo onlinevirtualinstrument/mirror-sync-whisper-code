@@ -1,0 +1,39 @@
+
+{
+  "name": "HarmonyHub - Musical Instruments",
+  "short_name": "HarmonyHub",
+  "description": "Explore the world of musical instruments with interactive sounds and detailed information.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#646cff",
+  "categories": ["music", "education", "entertainment"],
+  "orientation": "any",
+  "scope": "/",
+  "lang": "en-US",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "type": "image/png",
+      "sizes": "1200x630"
+    }
+  ]
+}
