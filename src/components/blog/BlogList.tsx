@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -47,35 +46,34 @@ const BlogList: React.FC = () => {
   }, [user]);
 
   if (loading) {
-    return <div className="container mx-auto px-6 py-10 text-center">Loading blog posts...</div>;
+    return <div className="container mx-auto px-6 py-10 text-center animate-pulse">Loading blog posts...</div>;
   }
 
   return (
     <div className="container mx-auto px-6 py-10">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Blog Posts</h1>
+        <h1 className="text-3xl font-bold text-[#7E69AB] animate-fade-in">Blog Posts</h1>
         {canEdit && (
-          <Button onClick={() => navigate('/blog/new')} className="flex items-center gap-2">
+          <Button onClick={() => navigate('/blog/new')} className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in" >
             <Plus size={16} />
             <span>New Post</span>
           </Button>
         )}
       </div>
-
       {blogPosts.length === 0 ? (
-        <div className="text-center py-12">
-          <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">No blog posts yet</h3>
-          <p className="text-gray-500 dark:text-gray-400">
-            {canEdit
-              ? "Get started by creating your first blog post."
-              : "Check back later for new blog posts."}
+        <div className="text-center py-12 animate-fade-in bg-[#F1F0FB] rounded-lg border border-[#E5DEFF] shadow-inner">
+          <FileText className="mx-auto h-12 w-12 text-[#D6BCFA] mb-4 animate-bounce" />
+          <h3 className="text-xl font-medium text-[#7E69AB] mb-2">No blog posts yet</h3>
+          <p className="text-gray-500">{
+            canEdit
+            ? "Get started by creating your first blog post."
+            : "Check back later for new blog posts."}
           </p>
           {canEdit && (
             <Button 
               onClick={() => navigate('/blog/new')} 
               variant="outline" 
-              className="mt-4"
+              className="mt-4 border-[#9b87f5] text-[#9b87f5] animate-fade-in"
             >
               Create your first post
             </Button>
@@ -83,44 +81,29 @@ const BlogList: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {blogPosts.map((post) => (
-            <Card key={post.id} className="hover:shadow-md transition-shadow">
+          {blogPosts.map((post, idx) => (
+            <Card key={post.id} className="hover:shadow-2xl hover:scale-[1.018] transition-all duration-200 bg-gradient-to-br from-[#F1F0FB] via-white to-[#E5DEFF] border-2 border-[#E5DEFF] animate-fade-in" style={{ animationDelay: `${idx * 70}ms` }}>
               <CardHeader>
-                <CardTitle className="line-clamp-2">
-                  <Link to={`/blog/${post.id}`} className="hover:underline">
-                    {post.title}
-                  </Link>
+                <CardTitle className="line-clamp-2 text-[#1A1F2C]">
+                  <Link to={`/blog/${post.id}`} className="hover:underline story-link">{post.title}</Link>
                 </CardTitle>
                 <CardDescription>
                   <div className="flex items-center gap-2">
                     {post.authorPhotoURL ? (
-                      <img
-                        src={post.authorPhotoURL}
-                        alt={post.authorName}
-                        className="w-5 h-5 rounded-full"
-                      />
+                      <img src={post.authorPhotoURL} alt={post.authorName} className="w-5 h-5 rounded-full border-2 border-[#9b87f5]" />
                     ) : (
-                      <div className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center text-xs">
-                        {post.authorName.charAt(0)}
-                      </div>
+                      <div className="w-5 h-5 rounded-full bg-[#D6BCFA] text-[#7E69AB] flex items-center justify-center text-xs font-bold">{post.authorName.charAt(0)}</div>
                     )}
-                    <span>{post.authorName}</span>
+                    <span className="text-[#7E69AB] text-sm">{post.authorName}</span>
                   </div>
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div 
-                  className="line-clamp-3 text-sm" 
-                  dangerouslySetInnerHTML={{ 
-                    __html: post.content.replace(/<[^>]+>/g, ' ').substring(0, 150) + '...' 
-                  }} 
-                />
+                <div className="line-clamp-3 text-sm text-[#221F26]">{post.content.replace(/<[^>]+>/g, ' ').substring(0, 150) + "..."}</div>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <span className="text-xs text-gray-500">
-                  {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
-                </span>
-                <Button variant="ghost" size="sm" asChild>
+                <span className="text-xs text-[#9b87f5]">{formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}</span>
+                <Button variant="ghost" size="sm" asChild className="text-[#1EAEDB] hover:text-[#7E69AB]">
                   <Link to={`/blog/${post.id}`}>Read more</Link>
                 </Button>
               </CardFooter>

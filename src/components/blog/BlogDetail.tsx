@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -78,8 +77,8 @@ const BlogDetail: React.FC = () => {
   if (!blogPost) {
     return (
       <div className="container mx-auto px-6 py-10 text-center">
-        <h2 className="text-2xl font-bold mb-4">Blog post not found</h2>
-        <Button asChild>
+        <h2 className="text-2xl font-bold mb-4 text-[#7E69AB]">Blog post not found</h2>
+        <Button asChild className="bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white animate-scale-in">
           <Link to="/blog">Back to Blog</Link>
         </Button>
       </div>
@@ -88,51 +87,28 @@ const BlogDetail: React.FC = () => {
 
   return (
     <div className="container mx-auto px-6 py-10">
-      <Button variant="ghost" asChild className="mb-6">
+      <Button variant="ghost" asChild className="mb-6 text-[#7E69AB] animate-fade-in">
         <Link to="/blog" className="flex items-center gap-2">
           <ArrowLeft size={16} />
           <span>Back to all posts</span>
         </Link>
       </Button>
-
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden border-2 border-[#E5DEFF] bg-gradient-to-br from-[#F1F0FB] to-[#FFFFFF] animate-fade-in">
         <div className="p-6">
           <div className="flex justify-between items-start">
-            <h1 className="text-3xl font-bold">{blogPost.title}</h1>
-            
+            <h1 className="text-3xl font-bold text-[#221F26] drop-shadow">{blogPost.title}</h1>
             {canEditPost() && (
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => navigate(`/blog/edit/${blogPost.id}`)}
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  onClick={handleDelete}
-                >
-                  <Trash className="mr-2 h-4 w-4" />
-                  Delete
-                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate(`/blog/edit/${blogPost.id}`)} className="border-[#9b87f5] text-[#9b87f5] animate-scale-in"><Edit className="mr-2 h-4 w-4" />Edit</Button>
+                <Button variant="destructive" size="sm" onClick={handleDelete} className="animate-scale-in"><Trash className="mr-2 h-4 w-4" />Delete</Button>
               </div>
             )}
           </div>
-
-          <div className="flex items-center gap-2 mt-4 text-sm text-gray-500">
+          <div className="flex items-center gap-2 mt-4 text-sm text-[#7E69AB]">
             {blogPost.authorPhotoURL ? (
-              <img
-                src={blogPost.authorPhotoURL}
-                alt={blogPost.authorName}
-                className="w-6 h-6 rounded-full"
-              />
+              <img src={blogPost.authorPhotoURL} alt={blogPost.authorName} className="w-6 h-6 rounded-full border-2 border-[#9b87f5]" />
             ) : (
-              <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs text-gray-700">
-                {blogPost.authorName.charAt(0)}
-              </div>
+              <div className="w-6 h-6 rounded-full bg-[#D6BCFA] flex items-center justify-center text-xs text-[#7E69AB] font-bold">{blogPost.authorName.charAt(0)}</div>
             )}
             <span>{blogPost.authorName}</span>
             <span>•</span>
@@ -144,13 +120,8 @@ const BlogDetail: React.FC = () => {
               </>
             )}
           </div>
-
           <Separator className="my-6" />
-
-          <div 
-            className="prose dark:prose-invert max-w-none" 
-            dangerouslySetInnerHTML={{ __html: blogPost.content }} 
-          />
+          <div className="prose dark:prose-invert max-w-none animate-fade-in" dangerouslySetInnerHTML={{ __html: blogPost.content }} />
         </div>
       </Card>
     </div>

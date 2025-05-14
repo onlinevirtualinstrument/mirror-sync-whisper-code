@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Editor } from '@tinymce/tinymce-react';
 import { Button } from '@/components/ui/button';
@@ -78,15 +77,15 @@ const BlogEditor: React.FC<BlogEditorProps> = ({ mode }) => {
   };
 
   if (initialLoading) {
-    return <div className="container mx-auto px-6 py-10 text-center">Loading...</div>;
+    return <div className="container mx-auto px-6 py-10 text-center animate-pulse">Loading...</div>;
   }
 
   return (
     <div className="container mx-auto px-6 py-10">
-      <Card className="p-6">
+      <Card className="p-6 bg-gradient-to-r from-[#F1F0FB] to-[#D6BCFA] border-2 border-[#E5DEFF] shadow-lg animate-fade-in">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label htmlFor="title" className="text-sm font-medium">
+            <label htmlFor="title" className="text-sm font-medium text-[#7E69AB]">
               Blog Title
             </label>
             <Input
@@ -95,46 +94,35 @@ const BlogEditor: React.FC<BlogEditorProps> = ({ mode }) => {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter blog title"
               required
-              className="w-full"
+              className="w-full border-[#9b87f5] bg-white"
             />
           </div>
-
           <div className="space-y-2">
-            <label htmlFor="content" className="text-sm font-medium">
+            <label htmlFor="content" className="text-sm font-medium text-[#7E69AB]">
               Content
             </label>
             <Editor
               onInit={(evt, editor) => (editorRef.current = editor)}
               initialValue={content}
               init={{
-                height: 500,
-                menubar: true,
+                height: 500, menubar: true,
                 plugins: [
                   'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
                   'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
                   'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
                 ],
-                toolbar: 'undo redo | blocks | ' +
-                  'bold italic forecolor | alignleft aligncenter ' +
-                  'alignright alignjustify | bullist numlist outdent indent | ' +
-                  'removeformat | help',
+                toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
                 content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
               }}
             />
           </div>
-
           <div className="flex justify-end space-x-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/blog')}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : mode === 'create' ? 'Publish Post' : 'Update Post'}
-            </Button>
+            <Button type="button" variant="outline" onClick={() => navigate('/blog')} disabled={loading}
+              className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF] animate-fade-in"
+            >Cancel</Button>
+            <Button type="submit" disabled={loading}
+              className="bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white font-bold animate-scale-in"
+            >{loading ? 'Saving...' : mode === 'create' ? 'Publish Post' : 'Update Post'}</Button>
           </div>
         </form>
       </Card>
