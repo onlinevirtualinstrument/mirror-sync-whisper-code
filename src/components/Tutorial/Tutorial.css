@@ -1,0 +1,129 @@
+
+
+
+/* Custom styles for our instrument tutorial app */
+.glass-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(155, 135, 245, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  }
+  
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+    100% {
+      transform: translateY(0px);
+    }
+  }
+  
+  .glow {
+    box-shadow: 0 0 15px rgba(155, 135, 245, 0.5);
+  }
+  
+  .glow:hover {
+    box-shadow: 0 0 25px rgba(155, 135, 245, 0.8);
+  }
+  
+  /* Subtle gradient animations */
+  .bg-animate {
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+  }
+  
+  @keyframes gradientBG {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  
+  /* Card transition animations */
+  .card-transition {
+    transition: all 0.3s ease-in-out;
+  }
+  
+  .card-transition:hover {
+    transform: translateY(-5px);
+  }
+  
+  /* Image gallery animation effects */
+  .image-gallery-slide {
+    transition: transform 0.5s ease-in-out;
+  }
+  
+  .image-gallery-slide:hover {
+    transform: scale(1.05);
+  }
+  
+  /* Knowledge section animations */
+  .knowledge-enter {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  
+  .knowledge-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 500ms, transform 500ms;
+  }
+  
+  /* Enhanced accordion animations */
+  .accordion-item-enter {
+    max-height: 0;
+    overflow: hidden;
+  }
+  
+  .accordion-item-enter-active {
+    max-height: 1000px;
+    transition: max-height 500ms ease-in-out;
+  }
+  
+  .accordion-item-exit {
+    max-height: 1000px;
+  }
+  
+  .accordion-item-exit-active {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 300ms ease-in-out;
+  }
+  
+  /* Carousel animation enhancements */
+  .carousel-slide-transition {
+    transition: transform 0.5s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  
+  /* Enhanced hover effects for instrument cards */
+  .instrument-card {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  
+  .instrument-card:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Smooth scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Constrained width for tutorials page to leave space for ads */
+  .container.max-w-4xl {
+    width: 100%;
+    max-width: 64rem; /* Changed from 6xl (72rem) to 4xl (56rem) */
+  }

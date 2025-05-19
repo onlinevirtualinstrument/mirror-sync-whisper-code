@@ -1,0 +1,304 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"
+        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
+        xmlns:mobile="http://www.google.com/schemas/sitemap-mobile/1.0"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <!-- Main Pages -->
+  <url>
+    <loc>https://musicca.lovable.app/</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <mobile:mobile/>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/explore</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <mobile:mobile/>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/categories</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <mobile:mobile/>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/tutorial</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/blog</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <news:news>
+      <news:publication>
+        <news:name>Musicca Blog</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2025-05-04</news:publication_date>
+      <news:title>Latest Musical Updates</news:title>
+    </news:news>
+  </url>
+  
+  <!-- Keyboard Instruments -->
+  <url>
+    <loc>https://musicca.lovable.app/piano</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/piano.jpg</image:loc>
+      <image:title>Virtual Piano</image:title>
+    </image:image>
+  </url>
+  
+  <!-- String Instruments -->
+  <url>
+    <loc>https://musicca.lovable.app/guitar</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/guitar.jpg</image:loc>
+      <image:title>Virtual Guitar</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/violin</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/violin.jpg</image:loc>
+      <image:title>Virtual Violin</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/banjo</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/banjo.jpg</image:loc>
+      <image:title>Virtual Banjo</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/harp</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/harp.jpg</image:loc>
+      <image:title>Virtual Harp</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/sitar</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/sitar.jpg</image:loc>
+      <image:title>Virtual Sitar</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/veena</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/veena.jpg</image:loc>
+      <image:title>Virtual Veena</image:title>
+    </image:image>
+  </url>
+  
+  <!-- Wind Instruments -->
+  <url>
+    <loc>https://musicca.lovable.app/flute</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/flute.jpg</image:loc>
+      <image:title>Virtual Flute</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/saxophone</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/saxophone.jpg</image:loc>
+      <image:title>Virtual Saxophone</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/trumpet</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/trumpet.jpg</image:loc>
+      <image:title>Virtual Trumpet</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/harmonica</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/harmonica.jpg</image:loc>
+      <image:title>Virtual Harmonica</image:title>
+    </image:image>
+  </url>
+  
+  <!-- Percussion Instruments -->
+  <url>
+    <loc>https://musicca.lovable.app/drums</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/drums.jpg</image:loc>
+      <image:title>Virtual Drums</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/xylophone</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/xylophone.jpg</image:loc>
+      <image:title>Virtual Xylophone</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/marimba</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/marimba.jpg</image:loc>
+      <image:title>Virtual Marimba</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/kalimba</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/kalimba.jpg</image:loc>
+      <image:title>Virtual Kalimba</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/tabla</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/tabla.jpg</image:loc>
+      <image:title>Virtual Tabla</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/theremin</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/theremin.jpg</image:loc>
+      <image:title>Virtual Theremin</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/timpani</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/timpani.jpg</image:loc>
+      <image:title>Virtual Timpani</image:title>
+    </image:image>
+    <video:video>
+      <video:thumbnail_loc>https://musicca.lovable.app/videos/timpani-thumb.jpg</video:thumbnail_loc>
+      <video:title>How to Play Timpani</video:title>
+      <video:description>Learn how to play timpani with this tutorial video</video:description>
+      <video:content_loc>https://musicca.lovable.app/videos/timpani-tutorial.mp4</video:content_loc>
+    </video:video>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/chordprogression</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/theremin.jpg</image:loc>
+      <image:title>Virtual Chord Progression Player</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/drummachine</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+    <image:image>
+      <image:loc>https://musicca.lovable.app/images/theremin.jpg</image:loc>
+      <image:title>Virtual Drum Machine</image:title>
+    </image:image>
+  </url>
+  
+  <!-- Auth URLs -->
+  <url>
+    <loc>https://musicca.lovable.app/auth/login</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+    <mobile:mobile/>
+  </url>
+  <url>
+    <loc>https://musicca.lovable.app/auth/register</loc>
+    <lastmod>2025-05-04</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+    <mobile:mobile/>
+  </url>
+</urlset>
