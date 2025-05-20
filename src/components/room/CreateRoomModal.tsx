@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -7,10 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { Globe, Lock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { saveRoomToFirestore } from '@/utils/auth/firebase';
+import { saveRoomToFirestore } from '@/utils/firebase';
 import { v4 as uuidv4 } from 'uuid';
 
 const CreateRoomModal = () => {
@@ -21,6 +22,8 @@ const CreateRoomModal = () => {
   const [allowDifferentInstruments, setAllowDifferentInstruments] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState(allowDifferentInstruments ? 7 : 3);
   const [isPublic, setIsPublic] = useState(true);
+  const [autoCloseAfterInactivity, setAutoCloseAfterInactivity] = useState(false);
+  const [inactivityTimeout, setInactivityTimeout] = useState(5);
 
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -70,16 +73,16 @@ const CreateRoomModal = () => {
         id: roomId,
         name: roomName,
         hostInstrument: selectedInstrument,
+        hostId: userId,
         allowDifferentInstruments: allowDifferentInstruments,
         maxParticipants: maxParticipants,
         isPublic: isPublic,
         createdAt: new Date().toISOString(),
-        pendingRequests: [],
-        autoCloseAfterInactivity: false,
-        inactivityTimeout: 5, // default 5 minutes
-        isChatDisabled: false,
-        hostId: userId,
         lastActivity: new Date().toISOString(),
+        pendingRequests: [],
+        autoCloseAfterInactivity: autoCloseAfterInactivity,
+        inactivityTimeout: inactivityTimeout,
+        isChatDisabled: false,
         participants: [
           {
             id: userId,
@@ -87,7 +90,8 @@ const CreateRoomModal = () => {
             instrument: selectedInstrument,
             avatar: user.photoURL || `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70) + 1}`,
             isHost: true,
-            status: 'online'
+            status: 'online',
+            muted: false
           }
         ],
         participantIds: [userId]
@@ -152,7 +156,7 @@ const CreateRoomModal = () => {
         <DialogHeader>
           <DialogTitle>Create a Music Room</DialogTitle>
           <DialogDescription>
-            Set up a virtual room to play music with  friends or others in real-time.
+            Set up a virtual room to play music with friends or others in real-time.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -226,7 +230,7 @@ const CreateRoomModal = () => {
               <p className="text-xs text-muted-foreground">
                 {isPublic
                   ? "Anyone can find and join your room"
-                  : "Only people with approved requests can join"}
+                  : "Only people with approved requests or join code can join"}
               </p>
             </div>
           </div>
@@ -275,11 +279,48 @@ const CreateRoomModal = () => {
               />
             </div>
           </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="auto-close" className="text-right">
+              Auto-Close
+            </Label>
+            <div className="col-span-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">
+                  {autoCloseAfterInactivity ? `After ${inactivityTimeout} min inactivity` : "Disabled"}
+                </span>
+                <Switch
+                  id="auto-close"
+                  checked={autoCloseAfterInactivity}
+                  onCheckedChange={setAutoCloseAfterInactivity}
+                />
+              </div>
+              {autoCloseAfterInactivity && (
+                <div className="pt-2">
+                  <Slider
+                    min={1}
+                    max={60}
+                    step={1}
+                    value={[inactivityTimeout]}
+                    onValueChange={(value) => setInactivityTimeout(value[0])}
+                  />
+                  <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                    <span>1 min</span>
+                    <span>60 min</span>
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {autoCloseAfterInactivity
+                  ? "Room will automatically close when inactive"
+                  : "Room will remain open until you close it"}
+              </p>
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button
             type="submit"
-
             onClick={createRoom}
             disabled={isCreating || !roomName.trim() || !user}
           >
