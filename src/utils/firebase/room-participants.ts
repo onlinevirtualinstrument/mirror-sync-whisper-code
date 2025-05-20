@@ -1,4 +1,3 @@
-
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { toast } from '@/hooks/use-toast';
 import { db } from './config';
@@ -354,14 +353,18 @@ export const handleJoinRequest = async (roomId: string, userId: string, approve:
 };
 
 // Request to join a private room
-export const requestToJoinRoom = async (roomId: string, userId: string): Promise<void> => {
+export const requestToJoinRoom = async (
+  roomId: string, 
+  userId: string,
+  hasCorrectCode: boolean = false
+): Promise<boolean> => {
   try {
     const roomRef = doc(db, "musicRooms", roomId);
     const roomSnap = await getDoc(roomRef);
     
     if (!roomSnap.exists()) {
       toast({ description: "Room no longer exists." });
-      return;
+      return false;
     }
     
     const roomData = roomSnap.data();
@@ -369,24 +372,33 @@ export const requestToJoinRoom = async (roomId: string, userId: string): Promise
     // Check if already a participant
     if (roomData.participantIds.includes(userId)) {
       toast({ description: "You're already in this room." });
-      return;
+      return true; // Already a participant counts as success
+    }
+    
+    // If hasCorrectCode is true, add the user directly to the room
+    if (hasCorrectCode) {
+      // For private rooms with correct code, add user immediately
+      return await addUserToRoom(roomId, { uid: userId, joinCode: roomData.joinCode });
     }
     
     // Check if already in pending requests
-    if (roomData.pendingRequests.includes(userId)) {
+    if (roomData.pendingRequests && roomData.pendingRequests.includes(userId)) {
       toast({ description: "Your request is already pending." });
-      return;
+      return false;
     }
     
+    // Add to pending requests
     await updateDoc(roomRef, {
       pendingRequests: arrayUnion(userId),
       lastActivity: new Date().toISOString()
     });
     
     toast({ description: "Join request sent. Waiting for approval." });
+    return true;
   } catch (error) {
     console.error("Error requesting to join room:", error);
     toast({ description: "Failed to send join request." });
+    return false;
   }
 };
 

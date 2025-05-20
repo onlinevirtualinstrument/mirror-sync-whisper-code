@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from '@/components/ui/alert-dialog';
 import { Lock } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 const JoinPrivateRoom: React.FC = () => {
   const { room, isParticipant, requestJoin } = useRoom();
@@ -15,8 +16,32 @@ const JoinPrivateRoom: React.FC = () => {
 
   const handleJoinRequest = async () => {
     setIsRequesting(true);
-    await requestJoin(joinCode);
-    setIsRequesting(false);
+    try {
+      await requestJoin(joinCode);
+    } catch (error) {
+      console.error("Error requesting to join:", error);
+      toast({ 
+        variant: "destructive",
+        description: "Failed to send join request. Please try again." 
+      });
+    } finally {
+      setIsRequesting(false);
+    }
+  };
+
+  const handleRequestWithoutCode = async () => {
+    setIsRequesting(true);
+    try {
+      await requestJoin();
+    } catch (error) {
+      console.error("Error requesting to join:", error);
+      toast({ 
+        variant: "destructive",
+        description: "Failed to send join request. Please try again." 
+      });
+    } finally {
+      setIsRequesting(false);
+    }
   };
 
   return (
@@ -27,7 +52,7 @@ const JoinPrivateRoom: React.FC = () => {
             <Lock className="h-5 w-5 mr-2" /> Private Room
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This room requires a join code or admin approval.
+            This room requires a join code or host approval.
           </AlertDialogDescription>
         </AlertDialogHeader>
         
@@ -56,10 +81,10 @@ const JoinPrivateRoom: React.FC = () => {
           <Button
             variant="outline"
             className="sm:flex-1"
-            onClick={() => requestJoin()}
+            onClick={handleRequestWithoutCode}
             disabled={isRequesting}
           >
-            Request to Join
+            {isRequesting ? 'Sending...' : 'Request to Join'}
           </Button>
           <Button
             className="sm:flex-1"

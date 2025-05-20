@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -66,6 +66,8 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [privateMessages, setPrivateMessages] = useState<any[]>([]);
   const [privateMessagingUser, setPrivateMessagingUser] = useState<string | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [wasRemoved, setWasRemoved] = useState<boolean>(false);
+  const [roomClosed, setRoomClosed] = useState<boolean>(false);
 
   // Fetch room data and set up listeners
   useEffect(() => {
@@ -87,6 +89,19 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsubscribeRoom = listenToRoomData(
       roomId,
       (roomData) => {
+        console.log("Room data updated:", roomData);
+        
+        if (!roomData) {
+          // Room was deleted or doesn't exist
+          setRoomClosed(true);
+          toast({
+            title: "Room Closed",
+            description: "This room has been closed by the host",
+          });
+          navigate('/music-rooms');
+          return;
+        }
+        
         setRoom(roomData);
         setIsLoading(false);
         
@@ -94,6 +109,18 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (user) {
           const participants = roomData.participants || [];
           const participantInfo = participants.find((p: any) => p.id === user.uid);
+          
+          // User was previously a participant but now is not - they were removed
+          if (isParticipant && !participantInfo && !wasRemoved) {
+            setWasRemoved(true);
+            toast({
+              title: "Removed from Room",
+              description: "You have been removed from this room by the host",
+              variant: "destructive"
+            });
+            navigate('/music-rooms');
+            return;
+          }
           
           if (participantInfo) {
             setIsParticipant(true);
@@ -123,6 +150,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error("Room data error:", error);
         setError("Failed to load room data. The room may have been closed.");
         setIsLoading(false);
+        navigate('/music-rooms');
       }
     );
 
@@ -148,7 +176,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       unsubscribeRoom();
       unsubscribeChat();
     };
-  }, [roomId, user]);
+  }, [roomId, user, navigate, isParticipant, wasRemoved]);
 
   // Set up private messaging if a user is selected
   useEffect(() => {
@@ -254,7 +282,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       await removeUserFromRoom(roomId, user.uid);
-      navigate('/'); // Redirect to home
+      navigate('/music-rooms'); // Redirect to home
       toast({ description: "You have left the room" });
     } catch (error) {
       console.error("Error leaving room:", error);
@@ -263,18 +291,18 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Close the room (host only)
-  const closeRoom = async () => {
+  const closeRoom = useCallback(async () => {
     if (!roomId || !user || !isHost) return;
     
     try {
       await deleteRoomFromFirestore(roomId);
-      navigate('/'); // Redirect to home
+      navigate('/music-rooms'); // Redirect to home
       toast({ description: "Room has been closed" });
     } catch (error) {
       console.error("Error closing room:", error);
       toast({ description: "Failed to close room" });
     }
-  };
+  }, [roomId, user, isHost, navigate]);
 
   // Switch instrument
   const switchInstrument = async (instrument: string) => {
@@ -282,6 +310,13 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       await updateUserInstrument(roomId, user.uid, instrument);
+      // Update local UI immediately for responsiveness
+      if (userInfo) {
+        setUserInfo({
+          ...userInfo,
+          instrument
+        });
+      }
     } catch (error) {
       console.error("Error switching instrument:", error);
       toast({ description: "Failed to switch instrument" });
@@ -294,6 +329,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       await toggleUserMute(roomId, userId, mute);
+      toast({ 
+        description: mute ? 
+          "User has been muted" : 
+          "User has been unmuted" 
+      });
     } catch (error) {
       console.error("Error toggling mute:", error);
       toast({ description: "Failed to update user mute status" });
@@ -319,6 +359,17 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       await toggleRoomChat(roomId, disabled);
+      // Update local state immediately for UI responsiveness
+      setRoom(prev => ({
+        ...prev,
+        isChatDisabled: disabled
+      }));
+      
+      toast({ 
+        description: disabled ? 
+          "Chat has been disabled for all users" : 
+          "Chat has been enabled for all users" 
+      });
     } catch (error) {
       console.error("Error toggling chat:", error);
       toast({ description: "Failed to update chat settings" });
@@ -355,6 +406,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       await handleJoinRequest(roomId, userId, approve);
+      toast({ 
+        description: approve ? 
+          "User has been approved to join" : 
+          "User's request has been denied" 
+      });
     } catch (error) {
       console.error("Error handling join request:", error);
       toast({ description: "Failed to process join request" });
@@ -380,15 +436,14 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       if (code && room && !room.isPublic) {
         if (room.joinCode === code) {
-          const joinSuccess = await requestToJoinRoom(roomId, user.uid);
-          if (joinSuccess) {
-            toast({ description: "Join request sent with correct code" });
-          }
+          await requestToJoinRoom(roomId, user.uid, true); // Pass true to auto-approve with correct code
+          toast({ description: "Join request sent with correct code" });
         } else {
           toast({ description: "Incorrect join code" });
         }
       } else {
         await requestToJoinRoom(roomId, user.uid);
+        toast({ description: "Join request sent to room host" });
       }
     } catch (error) {
       console.error("Error requesting to join:", error);

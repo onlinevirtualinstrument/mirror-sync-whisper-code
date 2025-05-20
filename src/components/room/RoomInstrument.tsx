@@ -1,15 +1,28 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useRoom } from './RoomContext';
 import SimpleInstrument from './SimpleInstrument';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import RoomSettings from './RoomSettings';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const RoomInstrument: React.FC = () => {
   const { room, userInfo, isHost, switchInstrument } = useRoom();
   
-  if (!room || !userInfo) return null;
+  if (!room || !userInfo) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Loading instrument or connecting to room...
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   const instruments = [
     'piano',
@@ -33,17 +46,17 @@ const RoomInstrument: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b flex items-center justify-between">
+      <div className="p-2 border-b flex items-center justify-between bg-muted/30">
         <div className="flex-1">
           <div className="flex items-center justify-between space-x-2">
             <div className="space-y-1">
-              <Label htmlFor="instrument">Your Instrument</Label>
+              <Label htmlFor="instrument" className="text-xs">Instrument</Label>
               <Select
                 value={userInfo.instrument}
                 onValueChange={handleInstrumentChange}
                 disabled={!room.allowDifferentInstruments && !isHost}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px] h-8 text-sm">
                   <SelectValue placeholder="Select instrument" />
                 </SelectTrigger>
                 <SelectContent>
@@ -72,7 +85,7 @@ const RoomInstrument: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <SimpleInstrument instrumentType={userInfo.instrument} />
+        <SimpleInstrument instrument={userInfo.instrument} />
       </div>
     </div>
   );

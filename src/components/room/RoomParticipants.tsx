@@ -41,12 +41,14 @@ const RoomParticipants: React.FC = () => {
   };
 
   return (
-    <div className="p-4 border-l bg-background/80">
-      <h2 className="text-lg font-semibold mb-4 flex items-center">
-        <User size={18} className="mr-2" /> Participants ({room.participants.length})
-      </h2>
+    <div className="h-full overflow-y-auto">
+      <div className="p-2 bg-background border-b">
+        <h2 className="text-sm font-semibold flex items-center">
+          <User size={16} className="mr-1" /> Participants
+        </h2>
+      </div>
       
-      <div className="space-y-4">
+      <div className="p-1 space-y-1">
         {room.participants.map((participant: any) => {
           const isCurrentUser = userInfo?.id === participant.id;
           const unreadCount = unreadCounts[participant.id] || 0;
@@ -54,35 +56,33 @@ const RoomParticipants: React.FC = () => {
           return (
             <div 
               key={participant.id} 
-              className={`flex items-center justify-between p-2 rounded ${
+              className={`flex items-center justify-between p-2 rounded text-sm ${
                 isCurrentUser ? 'bg-primary/10' : ''
               }`}
             >
-              <div className="flex items-center space-x-3">
-                <Avatar>
+              <div className="flex items-center space-x-2 overflow-hidden">
+                <Avatar className="h-6 w-6">
                   <AvatarImage src={participant.avatar} />
                   <AvatarFallback>{getInitials(participant.name)}</AvatarFallback>
                 </Avatar>
                 
-                <div>
+                <div className="overflow-hidden">
                   <div className="flex items-center">
-                    <div className="font-medium">{participant.name}</div>
+                    <div className="font-medium truncate max-w-[80px]">{participant.name}</div>
                     {participant.isHost && (
-                      <Badge className="ml-2" variant="outline">Host</Badge>
+                      <Badge className="ml-1" variant="outline">Host</Badge>
                     )}
                     {participant.muted && (
-                      <Badge className="ml-2 bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100" variant="outline">
-                        <VolumeX size={12} className="mr-1" /> Muted
-                      </Badge>
+                      <VolumeX size={14} className="ml-1 text-red-500" />
                     )}
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-xs text-muted-foreground truncate">
                     {participant.instrument}
                   </div>
                 </div>
               </div>
               
-              <div className="flex space-x-1">
+              <div className="flex space-x-1 ml-1">
                 {!isCurrentUser && (
                   <TooltipProvider>
                     <Tooltip>
@@ -90,10 +90,10 @@ const RoomParticipants: React.FC = () => {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8"
+                          className="h-6 w-6"
                           onClick={() => setPrivateMessagingUser(participant.id)}
                         >
-                          <MessageSquare size={16} />
+                          <MessageSquare size={14} />
                           {unreadCount > 0 && (
                             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
                               {unreadCount}
@@ -101,7 +101,7 @@ const RoomParticipants: React.FC = () => {
                           )}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent side="left">
                         <p>Private message</p>
                       </TooltipContent>
                     </Tooltip>
@@ -114,32 +114,33 @@ const RoomParticipants: React.FC = () => {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <DropdownMenuTrigger asChild>
-                            <Button size="icon" variant="ghost" className="h-8 w-8">
-                              <Settings size={16} />
+                            <Button size="icon" variant="ghost" className="h-6 w-6">
+                              <Settings size={14} />
                             </Button>
                           </DropdownMenuTrigger>
                         </TooltipTrigger>
-                        <TooltipContent>
+                        <TooltipContent side="left">
                           <p>Manage participant</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                     
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-40">
                       <DropdownMenuItem 
                         onClick={() => muteUser(participant.id, !participant.muted)}
+                        className="cursor-pointer"
                       >
                         {participant.muted ? (
-                          <><Volume size={16} className="mr-2" /> Unmute user</>
+                          <><Volume size={14} className="mr-2" /> Unmute user</>
                         ) : (
-                          <><VolumeX size={16} className="mr-2" /> Mute user</>
+                          <><VolumeX size={14} className="mr-2" /> Mute user</>
                         )}
                       </DropdownMenuItem>
                       <DropdownMenuItem 
-                        className="text-destructive"
+                        className="text-destructive cursor-pointer"
                         onClick={() => removeUser(participant.id)}
                       >
-                        <X size={16} className="mr-2" /> Remove from room
+                        <X size={14} className="mr-2" /> Remove user
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

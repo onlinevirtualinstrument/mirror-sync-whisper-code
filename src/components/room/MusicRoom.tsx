@@ -41,26 +41,32 @@ const MusicRoom: React.FC = () => {
 
   return (
     <RoomProvider>
-      <div className="flex flex-col h-screen">
+      <div className="flex flex-col h-screen overflow-hidden">
+        {/* Header section with controls */}
         <RoomHeader />
+        
+        {/* Join requests visible only to host when there are pending requests */}
         <JoinRequests />
         
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-            <div className="flex-1 md:w-3/4 h-full md:order-1">
-              <RoomInstrument />
-            </div>
-            
-            <div className="w-full md:w-1/4 h-64 md:h-full border-t md:border-t-0 md:border-l md:order-2">
-              <RoomChat />
-            </div>
+        {/* Main content area: instrument, chat and participants */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Instrument takes full width for better usability */}
+          <div className="flex-grow overflow-hidden">
+            <RoomInstrument />
           </div>
           
-          <div className="hidden lg:block lg:w-64">
-            <RoomParticipants />
+          {/* Footer section with chat and participants */}
+          <div className="h-72 md:h-64 border-t flex">
+            <div className="w-3/4 border-r">
+              <RoomChat />
+            </div>
+            <div className="w-1/4">
+              <RoomParticipants />
+            </div>
           </div>
         </div>
         
+        {/* Modals and overlays */}
         <PrivateMessaging />
         <JoinPrivateRoom />
       </div>

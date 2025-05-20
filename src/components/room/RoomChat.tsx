@@ -22,7 +22,7 @@ const RoomChat: React.FC = () => {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim()) {
+    if (message.trim() && (!room.isChatDisabled || isHost)) {
       sendMessage(message);
       setMessage('');
     }
@@ -52,9 +52,9 @@ const RoomChat: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 bg-background border-b">
-        <h2 className="text-lg font-semibold flex items-center">
-          <MessageSquare size={18} className="mr-2" /> Room Chat
+      <div className="p-2 bg-background border-b">
+        <h2 className="text-sm font-semibold flex items-center">
+          <MessageSquare size={16} className="mr-2" /> Room Chat
         </h2>
       </div>
 
@@ -70,7 +70,7 @@ const RoomChat: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-2 space-y-2">
             {messages.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
                 No messages yet. Start the conversation!
@@ -85,27 +85,27 @@ const RoomChat: React.FC = () => {
                     className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
                   >
                     <div className={`flex max-w-[80%] ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <Avatar className={`h-8 w-8 ${isCurrentUser ? 'ml-2' : 'mr-2'}`}>
+                      <Avatar className={`h-6 w-6 ${isCurrentUser ? 'ml-1' : 'mr-1'}`}>
                         <AvatarImage src={msg.senderAvatar} />
                         <AvatarFallback>{getInitials(msg.senderName)}</AvatarFallback>
                       </Avatar>
                       
                       <div className={`
-                        rounded-lg p-3 
+                        rounded-lg p-2 text-sm
                         ${isCurrentUser 
                           ? 'bg-primary text-primary-foreground' 
                           : 'bg-muted'
                         }
                       `}>
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="font-medium text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-xs">
                             {isCurrentUser ? 'You' : msg.senderName}
                           </span>
                           <span className="text-xs opacity-70 ml-2">
                             {formatTime(msg.timestamp)}
                           </span>
                         </div>
-                        <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                        <p className="whitespace-pre-wrap">{msg.text}</p>
                       </div>
                     </div>
                   </div>
@@ -115,16 +115,22 @@ const RoomChat: React.FC = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSendMessage} className="p-3 border-t">
-            <div className="flex gap-2">
+          <form onSubmit={handleSendMessage} className="p-2 border-t">
+            <div className="flex gap-1">
               <Input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Type your message..."
-                className="flex-1"
+                disabled={room.isChatDisabled && !isHost}
+                className="flex-1 text-sm h-8"
               />
-              <Button type="submit" size="icon">
-                <Send size={18} />
+              <Button 
+                type="submit" 
+                size="icon" 
+                disabled={room.isChatDisabled && !isHost}
+                className="h-8 w-8"
+              >
+                <Send size={14} />
               </Button>
             </div>
           </form>
