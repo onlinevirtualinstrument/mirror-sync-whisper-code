@@ -46,7 +46,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { saveChatMessage, deleteRoomChat, saveRoomToFirestore, deleteRoomFromFirestore, listenToLiveRooms } from "@/utils/auth/firebase";
 import { auth, db } from '@/utils/auth/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, updateDoc, deleteDoc, collection, onSnapshot, QueryDocumentSnapshot, Timestamp, query, orderBy } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, collection, onSnapshot, QueryDocumentSnapshot, getDoc, Timestamp, query, orderBy } from 'firebase/firestore';
 // Importing Instrument components
 import PianoComponent from '@/components/instruments/piano/Piano';
 import SimpleInstrument from '@/components/room/SimpleInstrument';
@@ -396,6 +396,23 @@ const MusicRoom = () => {
   const { mode } = useTheme();
 
   useEffect(() => {
+  if (!auth.currentUser) {
+    toast({
+      title: "Login required",
+      description: "Please login to continue",
+      variant: "destructive"
+    });
+    navigate('/music-rooms');
+  }
+}, []);
+
+useEffect(() => {
+  if (!roomId) return;
+  const isHost = localStorage.getItem(`room_host_${roomId}`) === 'true';
+  setIsAdmin(isHost);
+}, [roomId]);
+
+  useEffect(() => {
     if (!roomId) return;
 
     const unsub = onSnapshot(doc(db, "musicRooms", roomId), (docSnap) => {
@@ -469,10 +486,8 @@ const MusicRoom = () => {
       const inactivityTime = currentTime - lastActivityTime;
 
       // Check if room has been inactive for 5 minutes (300000ms)
-      if (inactivityTime >= 300000) {
-        if (participants.length <= 1 || !isRoomActive) {
-          destroyRoom();
-        }
+      if (inactivityTime >= 300000 && isAdmin) {
+        destroyRoom();
       }
     };
 
@@ -491,52 +506,54 @@ const MusicRoom = () => {
     setLastActivityTime(Date.now());
   };
 
+
+
   useEffect(() => {
-    // Set document title
-    document.title = `Music Room | HarmonyHub`;
+    if (!roomId) return;
+    const fetchRoom = async () => {
+      try {
+        const roomRef = doc(db, "musicRooms", roomId);
+        const snap = await getDoc(roomRef);
+        if (!snap.exists()) {
+          setRoomNotFound(true);
+          toast({
+            title: "Room not found",
+            description: "The room you're trying to join doesn't exist or has been closed.",
+            variant: "destructive",
+          });
+          return;
+        }
 
-    // Try to get room data from localStorage
-    const rooms = JSON.parse(localStorage.getItem('musicRooms') || '[]');
-    const room = rooms.find((r: any) => r.id === roomId);
+        const data = snap.data();
+        setRoomDetails(data);
+        setParticipants(data.participants || []);
 
-    if (room) {
-      saveRoomToFirestore(room);
-      setRoomDetails(room);
-      setParticipants(room.participants || []);
+        // initialize settings
+        setRoomSettings({
+          allowDifferentInstruments: data.allowDifferentInstruments || false,
+          maxParticipants: data.maxParticipants || (data.allowDifferentInstruments ? 7 : 3),
+          hostInstrument: data.hostInstrument || 'piano',
+          isPublic: data.isPublic !== false,
+        });
 
-      // Set room settings
-      setRoomSettings({
-        allowDifferentInstruments: room.allowDifferentInstruments || false,
-        maxParticipants: room.maxParticipants || (room.allowDifferentInstruments ? 7 : 3),
-        hostInstrument: room.hostInstrument || 'piano',
-        isPublic: room.isPublic !== false,
-      });
-
-      // Add welcome message
-      setMessages([
-        {
-          id: '1',
-          type: 'system',
-          message: `Welcome to ${room.name}!`,
+        // optional: seed welcome message
+        setMessages([{
+          id: "init",
+          type: "system",
+          message: `Welcome to ${data.name}!`,
           timestamp: new Date().toISOString(),
-        },
-      ]);
-
-      // Check if user is the host (localStorage marks the host)
-      const isLocalHost = localStorage.getItem(`room_host_${roomId}`) === 'true';
-
-      if (isLocalHost) {
-        setIsAdmin(true);
+        }]);
+      } catch (err) {
+        console.error("Error fetching room:", err);
+        toast({
+          description: "Failed to load room. Check your network and try again.",
+          variant: "destructive",
+        });
+        setRoomNotFound(true);
       }
-    } else {
-      setRoomNotFound(true);
+    };
 
-      toast({
-        title: "Room not found",
-        description: "The room you're trying to join doesn't exist or has been closed.",
-        variant: "destructive",
-      });
-    }
+    fetchRoom();
   }, [roomId]);
 
 
@@ -588,52 +605,40 @@ const MusicRoom = () => {
 
 
   // Function to remove a user from the room (admin only)
-  const removeUser = async (userId: string) => {
-    if (!isAdmin) {
-      toast({
-        title: "Permission denied",
-        description: "Only room admins can remove users",
-        variant: "destructive",
-      });
-      return;
-    }
+ const removeUser = async (userIdToRemove: string) => {
+  if (!isAdmin || !roomId) return;
 
-    const userToRemove = participants.find(p => p.id === userId);
-    if (!userToRemove) return;
+  try {
+    const updatedParticipants = participants.filter(p => p.id !== userIdToRemove);
+    const updatedIds = updatedParticipants.map(p => p.id);
 
-    // Don't allow removing yourself (the admin)
-    if (userToRemove.isHost) {
-      toast({
-        title: "Cannot remove admin",
-        description: "You cannot remove yourself as the room admin",
-        variant: "destructive",
-      });
-      return;
-    }
+    await updateDoc(doc(db, 'musicRooms', roomId), {
+      participants: updatedParticipants,
+      participantIds: updatedIds
+    });
 
-    if (!window.confirm("Are you sure you want to remove this user?")) return;
+    console.log(`User ${userIdToRemove} removed from room ${roomId}`);
 
-    // Firebase: remove from Firestore
-    await deleteDoc(doc(db, "rooms", roomId, "participants", userId));
-
-    // Frontend: update participants state
-    setParticipants(prev => prev.filter(p => p.id !== userId));
-
-    // System message
     addMessage({
       type: 'system',
-      message: `${userToRemove.name} has been removed from the room by the admin`
+      message: `A user was removed from the room.`,
     });
 
-    // Toast
     toast({
-      title: "User removed",
-      description: `${userToRemove.name} has been removed from the room`,
+      title: 'User Removed',
+      description: 'The selected participant has been removed from the room.',
     });
 
-    // Update localStorage
-    updateRoomParticipants(participants.filter(p => p.id !== userId));
-  };
+  } catch (error) {
+    console.error('Error removing user from room:', error);
+
+    toast({
+      title: 'Failed to remove user',
+      description: 'An error occurred while removing the user. Please try again.',
+      variant: 'destructive'
+    });
+  }
+};
 
 
   // Function to toggle user chat ability
@@ -695,50 +700,39 @@ const MusicRoom = () => {
   };
 
   // Function to update room instrument (admin only)
-  const changeRoomInstrument = (newInstrument: string) => {
-    if (!isAdmin) {
-      toast({
-        title: "Permission denied",
-        description: "Only room admins can change the room instrument",
-        variant: "destructive",
-      });
-      return;
-    }
+const changeRoomInstrument = async (newInstrument: string) => {
+  if (!isAdmin || !roomId) return;
 
-    const oldInstrument = roomDetails?.hostInstrument || 'piano';
+  try {
+    const roomRef = doc(db, 'musicRooms', roomId);
 
-    // Update room details
-    setRoomDetails(prev => ({
-      ...prev,
-      hostInstrument: newInstrument
-    }));
+    await updateDoc(roomRef, {
+      hostInstrument: newInstrument,
+      participants: !roomSettings.allowDifferentInstruments
+        ? participants.map(p => ({ ...p, instrument: newInstrument }))
+        : participants,
+    });
 
-    // Update room settings
-    setRoomSettings(prev => ({
-      ...prev,
-      hostInstrument: newInstrument
-    }));
+    toast({
+      title: 'Instrument Changed',
+      description: `Room instrument changed to ${newInstrument}.`,
+    });
 
-    // If we don't allow different instruments, update all participants
-    if (!roomSettings.allowDifferentInstruments) {
-      setParticipants(prev => prev.map(p => ({
-        ...p,
-        instrument: newInstrument
-      })));
-    }
-
-    // Add system message
     addMessage({
       type: 'system',
-      message: `Room instrument changed from ${oldInstrument} to ${newInstrument} by admin`
+      message: `Instrument changed to ${newInstrument}`,
     });
 
-    // Update the room in localStorage
-    updateRoomSettings({
-      ...roomSettings,
-      hostInstrument: newInstrument
+  } catch (error) {
+    console.error("Failed to change instrument:", error);
+    toast({
+      title: 'Instrument Change Failed',
+      description: 'Something went wrong while updating the instrument.',
+      variant: 'destructive',
     });
-  };
+  }
+};
+
 
   // Function to update room settings
   const updateRoomSettings = (newSettings: RoomSettings) => {
@@ -820,35 +814,31 @@ const MusicRoom = () => {
   };
 
   // Function to destroy the room
-  const destroyRoom = async () => {
-    try {
-      // Remove from localStorage
-      const rooms = JSON.parse(localStorage.getItem('musicRooms') || '[]');
-      const updatedRooms = rooms.filter((r: any) => r.id !== roomId);
+const destroyRoom = async () => {
+  if (!roomId || !isAdmin) return;
 
-      localStorage.setItem('musicRooms', JSON.stringify(updatedRooms));
-      localStorage.removeItem(`room_host_${roomId}`);
-
-      // ✅ Delete chat from Firestore
-      await deleteRoomChat(roomId!);
-      await deleteRoomFromFirestore(roomId!);
+  try {
+    const activeUsers = participants.filter(p => p.isActive !== false);
+    if (activeUsers.length === 0) {
+      await deleteRoomChat(roomId);
+      await deleteRoomFromFirestore(roomId);
 
       toast({
-        title: "Room closed",
-        description: "The music room and its chat have been deleted.",
+        title: 'Room Closed',
+        description: 'Room auto-closed due to inactivity.',
       });
 
-      navigate('/');
-    } catch (error) {
-      console.error("Error closing room:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete chat from Firebase.",
-        variant: "destructive"
-      });
+      navigate('/music-rooms');
     }
-  };
-
+  } catch (error) {
+    console.error('Error auto-closing room:', error);
+    toast({
+      title: 'Failed to close room',
+      description: 'An error occurred while closing the room.',
+      variant: 'destructive'
+    });
+  }
+};
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -981,18 +971,18 @@ const MusicRoom = () => {
   };
 
 
-  const handleEnterAsAdmin = () => {
-    // Mark current user as admin in localStorage
-    localStorage.setItem(`room_host_${roomId}`, 'true');
-    setIsAdmin(true);
-    setUserName('Room Admin');
-    setShowNameInput(false);
+const handleEnterAsAdmin = () => {
+  localStorage.setItem(`room_host_${roomId}`, 'true');
+  setIsAdmin(true);
+  setUserName('Room Admin');
+  setShowNameInput(false);
+console.log("isAdmin:", isAdmin);
+  toast({
+    title: "Admin Mode",
+    description: "You've entered the room as admin",
+  });
+};
 
-    toast({
-      title: "Admin Mode",
-      description: "You've entered the room as admin",
-    });
-  };
 
   const handleAddEmoji = (emoji: string) => {
     if (!userName) {
@@ -1179,6 +1169,13 @@ const MusicRoom = () => {
                 )}
               </div>
               <div className="flex items-center gap-2">
+                <Link
+                        to="/music-rooms"
+                        onClick={() => window.scrollTo({ top: 50, behavior: 'smooth' })}
+                        className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-500 transition"
+                      > <Button variant="outline" >
+                        Join other room</Button>
+                      </Link>
                 <Button variant="outline" size="sm" onClick={handleShareRoom} className="group">
                   <Share2 size={16} className="mr-1 group-hover:scale-110 transition-transform" />
                   Share
@@ -1713,6 +1710,7 @@ const MusicRoom = () => {
             </motion.div>
           </div>
         </motion.div>
+
       </div>
 
       <style>{`

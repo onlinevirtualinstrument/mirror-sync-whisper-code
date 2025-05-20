@@ -11,6 +11,8 @@ import { Slider } from '@/components/ui/slider';
 import { toast } from '@/components/ui/use-toast';
 import { Globe, Lock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { saveRoomToFirestore } from '@/utils/auth/firebase';
+import { v4 as uuidv4 } from 'uuid';
 
 const CreateRoomModal = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -34,7 +36,7 @@ const CreateRoomModal = () => {
     }
   };
 
-  const createRoom = () => {
+  const createRoom = async () => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -57,7 +59,7 @@ const CreateRoomModal = () => {
     setIsCreating(true);
 
     // Generate a unique room ID
-    const roomId = Date.now().toString();
+    const roomId = uuidv4();
 
     // Use the actual user info from Firebase auth
     const userId = user.uid;
@@ -78,7 +80,7 @@ const CreateRoomModal = () => {
           id: userId,
           name: displayName,
           instrument: selectedInstrument,
-          avatar: user.photoURL || `https://i.pravatar.cc/150?img=1`,
+          avatar: user.photoURL || `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70) + 1}`,
           isHost: true,
           status: 'online'
         }
@@ -86,11 +88,20 @@ const CreateRoomModal = () => {
     };
 
     // Save to localStorage
-    const existingRooms = JSON.parse(localStorage.getItem('musicRooms') || '[]');
-    localStorage.setItem('musicRooms', JSON.stringify([...existingRooms, roomData]));
+    // const existingRooms = JSON.parse(localStorage.getItem('musicRooms') || '[]');
+    // localStorage.setItem('musicRooms', JSON.stringify([...existingRooms, roomData]));
 
     // Mark the current user as the host for this room
-    localStorage.setItem(`room_host_${roomId}`, 'true');
+    //localStorage.setItem(`room_host_${roomId}`, 'true');
+
+    const roomDataWithMeta = {
+      ...roomData,
+      hostId: userId,
+      isChatDisabled: false,
+      participantIds: [userId],
+    };
+
+    await saveRoomToFirestore(roomDataWithMeta);
 
     // Simulate delay for better UX
     setTimeout(() => {

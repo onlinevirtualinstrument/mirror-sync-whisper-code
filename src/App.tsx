@@ -9,6 +9,7 @@ import { OnboardingTutorial } from "@/components/onboarding/OnboardingTutorial";
 import { lazy, Suspense } from "react";
 import MusicRooms from "./components/room/MusicRooms.tsx";
 import Blog from './pages/Blog';
+import RoomTemplates from './components/room/RoomTemplates';
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -125,6 +126,7 @@ const App = () => (
               <Route path="/contact" element={<Misc.Contact />} />
               <Route path="/room/:roomId" element={<Misc.MusicRoom />} />
               <Route path="/music-rooms" element={<MusicRooms />} />
+              <Route path="/music-room-templates" element={<RoomTemplates />} />
 
               {/* Instrument Routes */}
               <Route path="/piano" element={<KeyboardInstruments.Piano />} />

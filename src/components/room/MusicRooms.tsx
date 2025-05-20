@@ -5,13 +5,19 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Globe, Lock, Users, Music, ArrowRight, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import CreateRoomModal from '@/components/room/CreateRoomModal';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
-import { listenToLiveRooms, saveRoomToFirestore } from "@/utils/auth/firebase";
-
+import { auth, db } from '@/utils/auth/firebase';
+import { doc, updateDoc, deleteDoc, collection, onSnapshot, QueryDocumentSnapshot, getDoc, Timestamp, query, orderBy } from 'firebase/firestore';
+import {
+  listenToLiveRooms,
+  saveRoomToFirestore,
+  addUserToRoom,
+  isUserRoomParticipant
+} from "@/utils/auth/firebase";
 
 interface RoomType {
   id: string;
@@ -22,6 +28,7 @@ interface RoomType {
   isPublic: boolean;
   createdAt: string;
   pendingRequests?: string[];
+  participantIds?: string[];
   participants: Array<{
     id: string;
     name: string;
@@ -39,6 +46,7 @@ const MusicRooms = () => {
   const [selectedRoom, setSelectedRoom] = useState<RoomType | null>(null);
   const [loadingRequest, setLoadingRequest] = useState(false);
   const [loginAlertOpen, setLoginAlertOpen] = useState(false);
+  const [joiningRoom, setJoiningRoom] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user, loading } = useAuth();
 
@@ -49,54 +57,73 @@ const MusicRooms = () => {
   useEffect(() => {
     const unsubscribe = listenToLiveRooms(
       (liveRooms) => setRooms(liveRooms),
-      () => toast.error("Unable to fetch live rooms.")
+      () =>
+        toast({
+          description: "Unable to fetch live rooms.",
+          variant: "destructive"
+        })
     );
     return () => unsubscribe();
   }, []);
 
 
-  const joinRoom = (room: RoomType) => {
-    if (!user) {
-      // toast.error("Please log in to join a room.");
-      // Show login alert instead of toast
-      setLoginAlertOpen(true);
-      return;
-    }
+  const joinRoom = async (room: any) => {
+    if (!user || !room.id) return;
 
+    const isHost = room.hostId === user.uid;
+    const isParticipant = (room.participantIds || []).includes(user.uid);
 
-    if ((room.participants?.length || 0) >= (room.maxParticipants || 0)) {
-      toast.error("This room is full. Please try another room.");
-      return;
-    }
+    if (room.isPublic || isHost || isParticipant) {
+      try {
+        const roomRef = doc(db, "musicRooms", room.id);
+        const updatedParticipants = room.participants || [];
 
+        const alreadyIn = updatedParticipants.some(p => p.id === user.uid);
 
-    // For public rooms or if user is the host, join directly
-    const isHost = localStorage.getItem(`room_host_${room.id}`) === 'true';
+        if (!alreadyIn) {
+          updatedParticipants.push({
+            id: user.uid,
+            name: user.displayName || "Guest",
+            instrument: room.hostInstrument || "piano",
+            avatar: user.photoURL || `https://i.pravatar.cc/150?u=${user.uid}`,
+            isHost: false,
+            status: 'online'
+          });
+        }
 
-    if (room.isPublic || isHost) {
-      navigate(`/room/${room.id}`);
+        const updatedIds = [...new Set([...(room.participantIds || []), user.uid])];
 
-    } else {
-      // For private rooms, check if already approved or show request dialog
-      const userId = user.uid;
+        await updateDoc(roomRef, {
+          participants: updatedParticipants,
+          participantIds: updatedIds
+        });
 
-      // Check if request already pending
-      const isPending = room.pendingRequests?.includes(userId);
+        toast({
+          title: "Joined Room",
+          description: `You've joined ${room.name}`,
+        });
 
-      // Check if already approved (if user data exists in room participants)
-      const isApproved = room.participants.some(p => p.id === userId);
+        console.log(`User ${user.uid} joined room ${room.id}`);
 
-      if (isApproved) {
         navigate(`/room/${room.id}`);
 
-      } else if (isPending) {
-        toast.info("Your request to join this room is pending approval from the host.");
-      } else {
-        setSelectedRoom(room);
-        setRequestDialogOpen(true);
+      } catch (error) {
+        console.error("Failed to join room:", error);
+        toast({
+          title: "Join Failed",
+          description: "Could not join the room. Please try again.",
+          variant: "destructive"
+        });
       }
+    } else {
+      toast({
+        title: "Access Denied",
+        description: "This is a private room and you don't have access.",
+        variant: "destructive"
+      });
     }
   };
+
 
   const requestToJoinRoom = async () => {
     if (!selectedRoom || !user) return;
@@ -110,19 +137,28 @@ const MusicRooms = () => {
         pendingRequests: [...(selectedRoom.pendingRequests || []), userId],
       };
 
-      await saveRoomToFirestore(updatedRoom);
+      try {
+        await saveRoomToFirestore(updatedRoom);
+      } catch (error) {
+        toast({ title: 'Error', description: error.message });
+      }
 
-      toast.success("Request to join room sent to the host.");
+      toast({
+        description: "Request to join room sent to the host.",
+        variant: "default"
+      })
       setRequestDialogOpen(false);
       setSelectedRoom(null);
     } catch (error) {
       console.error("🔥 Failed to send join request:", error);
-      toast.error("Failed to send request. Please try again.");
+      toast({
+        description: "Failed to send request. Please try again.",
+        variant: "default"
+      })
     } finally {
       setLoadingRequest(false);
     }
   };
-
 
   const filteredRooms = activeTab === 'all'
     ? rooms
@@ -151,6 +187,13 @@ const MusicRooms = () => {
             </p>
           </div>
           <div className="flex items-center">
+            <Button
+              variant="link"
+              onClick={() => navigate("/music-room-templates")}
+              className="flex items-center mr-2"
+            >
+              <span>Room templates</span>
+            </Button>
             <CreateRoomModal />
           </div>
         </div>
@@ -158,9 +201,9 @@ const MusicRooms = () => {
         <div className="mb-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
-              <TabsTrigger value="all">All Rooms</TabsTrigger>
-              <TabsTrigger value="public">Public Rooms</TabsTrigger>
-              <TabsTrigger value="private">Private Rooms</TabsTrigger>
+              <TabsTrigger value="all" className="hover:bg-primary/10 transition-colors">All Rooms</TabsTrigger>
+              <TabsTrigger value="public" className="hover:bg-primary/10 transition-colors">Public Rooms</TabsTrigger>
+              <TabsTrigger value="private" className="hover:bg-primary/10 transition-colors">Private Rooms</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -184,6 +227,7 @@ const MusicRooms = () => {
               // Find the host participant
               const hostParticipant = (room.participants || []).find(p => p.isHost);
               const hostName = hostParticipant?.name || 'Room Admin';
+              const isJoining = joiningRoom === room.id;
 
               return (
                 <div
@@ -212,7 +256,6 @@ const MusicRooms = () => {
                             ? format(new Date(room.createdAt), 'MMM d, h:mm a')
                             : 'Date unknown'}
                       </div>
-
                     </div>
 
                     <h3 className="text-lg font-semibold mb-2 line-clamp-1">{room.name}</h3>
@@ -242,7 +285,7 @@ const MusicRooms = () => {
                       {(room.participants || []).map((participant, index) => (
                         <div
                           key={`${participant.id}-${index}`}
-                          className="h-8 w-8 rounded-full border-2 border-background overflow-hidden"
+                          className="h-8 w-8 rounded-full border-2 border-background overflow-hidden hover:scale-110 transition-transform"
                           title={participant.name}
                         >
                           <img
@@ -256,11 +299,16 @@ const MusicRooms = () => {
 
                     <Button
                       onClick={() => joinRoom(room)}
-                      className="w-full group"
+                      className="w-full group hover:scale-[1.02] transition-transform"
                       variant={room.isPublic ? "default" : "outline"}
-                      disabled={!user || (room.participants?.length || 0) >= (room.maxParticipants || 0)}
+                      disabled={!user || (room.participants?.length || 0) >= (room.maxParticipants || 0) || isJoining}
                     >
-                      {!user ? (
+                      {isJoining ? (
+                        <span className="flex items-center">
+                          <span className="animate-spin mr-2 h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+                          Joining...
+                        </span>
+                      ) : !user ? (
                         'Login to Join'
                       ) : (room.participants?.length || 0) >= (room.maxParticipants || 0) ? (
                         'Room Full'
@@ -285,7 +333,7 @@ const MusicRooms = () => {
 
         {/* Join Request Dialog */}
         <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md animate-fade-in">
             <DialogHeader>
               <DialogTitle>Request to Join Private Room</DialogTitle>
               <DialogDescription>
@@ -303,12 +351,14 @@ const MusicRooms = () => {
                 variant="secondary"
                 onClick={() => setRequestDialogOpen(false)}
                 disabled={loadingRequest}
+                className="hover:bg-muted/80 transition-colors"
               >
                 Cancel
               </Button>
               <Button
                 onClick={requestToJoinRoom}
                 disabled={loadingRequest || !user}
+                className="hover:bg-primary/90 transition-colors"
               >
                 {loadingRequest ? (
                   <span className="flex items-center">
@@ -322,9 +372,10 @@ const MusicRooms = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
         {/* Login Alert Dialog */}
         <Dialog open={loginAlertOpen} onOpenChange={setLoginAlertOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md animate-scale-in">
             <DialogHeader>
               <DialogTitle>Login Required</DialogTitle>
               <DialogDescription>
@@ -335,7 +386,7 @@ const MusicRooms = () => {
               <Button
                 variant="outline"
                 onClick={() => setLoginAlertOpen(false)}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto hover:bg-muted/80 transition-colors"
               >
                 Cancel
               </Button>
@@ -344,7 +395,7 @@ const MusicRooms = () => {
                   setLoginAlertOpen(false);
                   navigate('/auth/login');
                 }}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto hover:bg-primary/90 transition-colors"
               >
                 Log In
               </Button>
@@ -354,7 +405,7 @@ const MusicRooms = () => {
                   navigate('/auth/register');
                 }}
                 variant="default"
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto hover:bg-primary/90 transition-colors"
               >
                 Sign Up
               </Button>

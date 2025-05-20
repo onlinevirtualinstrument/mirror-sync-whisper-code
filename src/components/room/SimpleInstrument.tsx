@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { useSitarAudio } from '@/components/instruments/sitar/Sitar1/SitarAudio';
 import { lazy, Suspense } from "react";
 
 
@@ -8,7 +7,7 @@ import { lazy, Suspense } from "react";
 const AllInstruments: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {
   Piano: lazy(() => import("@/pages/Piano")),
 
-  Guitar: lazy(() => import("@/components/instruments/guitar/Index")),
+  Guitar: lazy(() => import("@/components/instruments/guitar/VirtualGuitarComponent")),
   Violin: lazy(() => import("@/components/instruments/violin/violin2/Violin")),  
   Veena: lazy(() => import("@/components/instruments/veena/Veena1/Veena")),
 
@@ -40,19 +39,11 @@ interface SimpleInstrumentProps {
 const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({ type }) => {
   const InstrumentComponent = getInstrumentComponent(type);
   const [isPlaying, setIsPlaying] = useState<{ [key: string]: boolean }>({});
-  const sitarAudio = type === 'sitar' ? useSitarAudio() : null;
 
   const handlePlayNote = (note: string) => {
     setIsPlaying(prev => ({ ...prev, [note]: true }));
 
-    // Optional: call specific audio function if applicable
-    if (type === 'sitar' && sitarAudio) {
-      const stringIndex = parseInt(note);
-      if (!isNaN(stringIndex) && stringIndex >= 1 && stringIndex <= 7) {
-        sitarAudio.playString((stringIndex - 1).toString());
-      }
-    }
-
+ 
     setTimeout(() => {
       setIsPlaying(prev => ({ ...prev, [note]: false }));
     }, 500);
