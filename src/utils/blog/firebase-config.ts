@@ -1,15 +1,25 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { Timestamp, getFirestore,orderBy, collection, addDoc, deleteDoc, query, where, doc, setDoc, getDocs, onSnapshot, serverTimestamp, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
-import { app, db, auth, listenToRoomData } from '../auth/firebase';
 
+import { initializeApp } from "firebase/app";
+import { getAuth, onAuthStateChanged, User } from "firebase/auth";
+import { Timestamp, getFirestore, orderBy, collection, addDoc, deleteDoc, query, where, doc, setDoc, getDocs, onSnapshot, serverTimestamp, getDoc, updateDoc, arrayUnion, arrayRemove, QueryDocumentSnapshot } from "firebase/firestore";
+import { app, db, auth, listenToRoomData, saveRoomToFirestore, addUserToRoom, isUserRoomParticipant, saveChatMessage, deleteRoomChat, deleteRoomFromFirestore, sendPrivateMessage, getPrivateMessages, markMessageAsRead } from '../auth/firebase';
 
 export { 
   app, 
   db, 
   auth,
   listenToRoomData,
-  // Export additional Firebase utilities for use in blog components
+  saveRoomToFirestore,
+  addUserToRoom,
+  isUserRoomParticipant,
+  saveChatMessage,
+  deleteRoomChat,
+  deleteRoomFromFirestore,
+  // Add private messaging exports
+  sendPrivateMessage,
+  getPrivateMessages,
+  markMessageAsRead,
+  // Export additional Firebase utilities for use in components
   getDoc,
   getDocs,
   collection,
@@ -24,5 +34,10 @@ export {
   arrayUnion,
   arrayRemove,
   onSnapshot,
-  orderBy
+  orderBy,
+  onAuthStateChanged,
+  // Types
+  QueryDocumentSnapshot,
+  User,
+  Timestamp
 };

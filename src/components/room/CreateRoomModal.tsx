@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -65,57 +64,65 @@ const CreateRoomModal = () => {
     const userId = user.uid;
     const displayName = user.displayName || 'Room Admin';
 
-    // Create room data
-    const roomData = {
-      id: roomId,
-      name: roomName,
-      hostInstrument: selectedInstrument,
-      allowDifferentInstruments: allowDifferentInstruments,
-      maxParticipants: maxParticipants,
-      isPublic: isPublic,
-      createdAt: new Date().toISOString(),
-      pendingRequests: [],
-      participants: [
-        {
-          id: userId,
-          name: displayName,
-          instrument: selectedInstrument,
-          avatar: user.photoURL || `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70) + 1}`,
-          isHost: true,
-          status: 'online'
-        }
-      ]
-    };
+    try {
+      // Create room data
+      const roomData = {
+        id: roomId,
+        name: roomName,
+        hostInstrument: selectedInstrument,
+        allowDifferentInstruments: allowDifferentInstruments,
+        maxParticipants: maxParticipants,
+        isPublic: isPublic,
+        createdAt: new Date().toISOString(),
+        pendingRequests: [],
+        autoCloseAfterInactivity: false,
+        inactivityTimeout: 5, // default 5 minutes
+        isChatDisabled: false,
+        hostId: userId,
+        lastActivity: new Date().toISOString(),
+        participants: [
+          {
+            id: userId,
+            name: displayName,
+            instrument: selectedInstrument,
+            avatar: user.photoURL || `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70) + 1}`,
+            isHost: true,
+            status: 'online'
+          }
+        ],
+        participantIds: [userId]
+      };
 
-    // Save to localStorage
-    // const existingRooms = JSON.parse(localStorage.getItem('musicRooms') || '[]');
-    // localStorage.setItem('musicRooms', JSON.stringify([...existingRooms, roomData]));
+      // If private room, create a join code
+      if (!isPublic) {
+        roomData.joinCode = Math.floor(100000 + Math.random() * 900000).toString();
+      }
 
-    // Mark the current user as the host for this room
-    //localStorage.setItem(`room_host_${roomId}`, 'true');
+      await saveRoomToFirestore(roomData);
 
-    const roomDataWithMeta = {
-      ...roomData,
-      hostId: userId,
-      isChatDisabled: false,
-      participantIds: [userId],
-    };
+      // Simulate delay for better UX
+      setTimeout(() => {
+        setIsCreating(false);
+        setIsOpen(false);
 
-    await saveRoomToFirestore(roomDataWithMeta);
+        toast({
+          title: "Room created!",
+          description: `Your music room "${roomName}" is ready`,
+        });
 
-    // Simulate delay for better UX
-    setTimeout(() => {
+        // Navigate to the room
+        navigate(`/room/${roomId}`);
+      }, 1000);
+    } catch (error) {
+      console.error("Room creation error:", error);
       setIsCreating(false);
-      setIsOpen(false);
-
+      
       toast({
-        title: "Room created!",
-        description: `Your music room "${roomName}" is ready`,
+        title: "Error creating room",
+        description: "There was a problem creating your music room. Please try again.",
+        variant: "destructive",
       });
-
-      // Navigate to the room
-      navigate(`/room/${roomId}`);
-    }, 1000);
+    }
   };
 
   // If user is not logged in, show login prompt on button click
