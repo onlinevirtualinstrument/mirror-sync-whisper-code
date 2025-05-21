@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRoom } from './RoomContext';
 import SimpleInstrument from './SimpleInstrument';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,9 +7,31 @@ import { Label } from '@/components/ui/label';
 import RoomSettings from './RoomSettings';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import AudioContextManager from '@/utils/music/AudioContextManager';
 
 const RoomInstrument: React.FC = () => {
-  const { room, userInfo, isHost, switchInstrument } = useRoom();
+  const { room, userInfo, isHost, switchInstrument, receiveNotePlay } = useRoom();
+  
+  // Initialize audio context when component mounts
+  useEffect(() => {
+    // Initialize AudioContext on user interaction to handle autoplay policies
+    const initializeAudio = () => {
+      const audioManager = AudioContextManager.getInstance();
+      audioManager.getAudioContext(); // Initialize the audio context
+    };
+    
+    // Add event listeners for user interaction
+    const interactionEvents = ['mousedown', 'touchstart', 'keydown'];
+    interactionEvents.forEach(event => {
+      window.addEventListener(event, initializeAudio, { once: true });
+    });
+    
+    return () => {
+      interactionEvents.forEach(event => {
+        window.removeEventListener(event, initializeAudio);
+      });
+    };
+  }, []);
   
   if (!room || !userInfo) {
     return (
@@ -37,7 +59,8 @@ const RoomInstrument: React.FC = () => {
     'violin',
     'xylophone',
     'kalimba',
-    'marimba'
+    'marimba',
+    'theremin'
   ];
 
   const handleInstrumentChange = (value: string) => {
@@ -85,7 +108,7 @@ const RoomInstrument: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <SimpleInstrument instrument={userInfo.instrument} />
+        <SimpleInstrument instrument={userInfo.instrument} isCollaborative={true} roomId={room.id} />
       </div>
     </div>
   );

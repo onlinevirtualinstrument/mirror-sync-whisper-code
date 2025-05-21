@@ -1,4 +1,3 @@
-
 import { collection, addDoc, deleteDoc, query, where, onSnapshot, serverTimestamp, getDoc, updateDoc, doc, getDocs, arrayUnion, arrayRemove } from "firebase/firestore";
 import { toast } from '@/hooks/use-toast';
 import { db } from './config';
@@ -120,6 +119,85 @@ export const listenToRoomChat = (
       if (onError) onError(error);
     }
   );
+};
+
+// Broadcast note play events for collaborative music
+export const broadcastNotePlayToRoom = async (roomId: string, noteData: any): Promise<string | null> => {
+  try {
+    // Add the note event to the notePlays subcollection
+    const noteRef = await addDoc(collection(db, "musicRooms", roomId, "notePlays"), {
+      ...noteData,
+      timestamp: serverTimestamp()
+    });
+    
+    // Clean up old note events (keep the collection small)
+    cleanupOldNoteEvents(roomId);
+    
+    return noteRef.id;
+  } catch (error) {
+    console.error("Error broadcasting note:", error);
+    return null;
+  }
+};
+
+// Listen for note play events in a room
+export const listenForNotePlayEvents = (
+  roomId: string,
+  onNote: (noteData: any) => void
+) => {
+  // Listen to the most recent 20 notes only
+  const notesQuery = query(
+    collection(db, "musicRooms", roomId, "notePlays"),
+    // Add any filtering if needed
+  );
+  
+  return onSnapshot(
+    notesQuery,
+    (snapshot) => {
+      snapshot.docChanges().forEach(change => {
+        // Only process newly added notes
+        if (change.type === 'added') {
+          const noteData = {
+            id: change.doc.id,
+            ...change.doc.data()
+          };
+          onNote(noteData);
+        }
+      });
+    },
+    (error) => {
+      console.error("Error listening for notes:", error);
+    }
+  );
+};
+
+// Clean up old note events to keep the collection manageable
+const cleanupOldNoteEvents = async (roomId: string): Promise<void> => {
+  try {
+    const notesRef = collection(db, "musicRooms", roomId, "notePlays");
+    const snapshot = await getDocs(notesRef);
+    
+    // If there are more than 100 note events, delete the oldest ones
+    if (snapshot.size > 100) {
+      // Sort by timestamp
+      const notesByTime = snapshot.docs
+        .map(doc => ({ id: doc.id, data: doc.data() }))
+        .sort((a, b) => {
+          const timeA = a.data.timestamp?.toDate?.() || new Date(a.data.timestamp || 0);
+          const timeB = b.data.timestamp?.toDate?.() || new Date(b.data.timestamp || 0);
+          return timeA.getTime() - timeB.getTime();
+        });
+      
+      // Delete the oldest (leaving the most recent 50)
+      const toDelete = notesByTime.slice(0, notesByTime.length - 50);
+      
+      for (const note of toDelete) {
+        await deleteDoc(doc(db, "musicRooms", roomId, "notePlays", note.id));
+      }
+    }
+  } catch (error) {
+    console.error("Error cleaning up old notes:", error);
+  }
 };
 
 // Get unread message count for private messaging

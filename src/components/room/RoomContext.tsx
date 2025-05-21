@@ -20,8 +20,19 @@ import {
   getPrivateMessages,
   sendPrivateMessage,
   markMessageAsRead,
-  listenForUnreadMessages
+  listenForUnreadMessages,
+  broadcastNotePlayToRoom,
+  listenForNotePlayEvents
 } from '@/utils/firebase';
+
+interface NotePlayData {
+  note: string;
+  octave: number;
+  instrument: string;
+  timestamp: number;
+  userId: string;
+  userName: string;
+}
 
 type RoomContextType = {
   room: any;
@@ -47,6 +58,9 @@ type RoomContextType = {
   sendPrivateMsg: (receiverId: string, message: string) => Promise<void>;
   setPrivateMessagingUser: (userId: string | null) => void;
   requestJoin: (code?: string) => Promise<void>;
+  broadcastNotePlay: (noteData: NotePlayData) => void;
+  listenForRemoteNotes: (callback: (noteData: NotePlayData) => void) => () => void;
+  receiveNotePlay: (noteData: NotePlayData) => void;
 };
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -68,6 +82,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [wasRemoved, setWasRemoved] = useState<boolean>(false);
   const [roomClosed, setRoomClosed] = useState<boolean>(false);
+  const [noteCallbacks] = useState<((noteData: NotePlayData) => void)[]>([]);
 
   // Fetch room data and set up listeners
   useEffect(() => {
@@ -172,11 +187,18 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
+    // Set up listener for collaborative music notes
+    const unsubscribeNotes = listenForNotePlayEvents(roomId, (noteData) => {
+      // Notify all registered callbacks when a note is received
+      noteCallbacks.forEach(callback => callback(noteData));
+    });
+
     return () => {
       unsubscribeRoom();
       unsubscribeChat();
+      if (unsubscribeNotes) unsubscribeNotes();
     };
-  }, [roomId, user, navigate, isParticipant, wasRemoved]);
+  }, [roomId, user, navigate, isParticipant, wasRemoved, noteCallbacks]);
 
   // Set up private messaging if a user is selected
   useEffect(() => {
@@ -450,6 +472,35 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast({ description: "Failed to send join request" });
     }
   };
+
+  // Broadcast a note play event to the room
+  const broadcastNotePlay = (noteData: NotePlayData) => {
+    if (!roomId || !userInfo) return;
+    
+    broadcastNotePlayToRoom(roomId, {
+      ...noteData,
+      userId: userInfo.id,
+      userName: userInfo.name
+    });
+  };
+  
+  // Listen for note play events from other users
+  const listenForRemoteNotes = (callback: (noteData: NotePlayData) => void) => {
+    noteCallbacks.push(callback);
+    
+    return () => {
+      const index = noteCallbacks.indexOf(callback);
+      if (index !== -1) {
+        noteCallbacks.splice(index, 1);
+      }
+    };
+  };
+  
+  // Receive and process a note play event
+  const receiveNotePlay = (noteData: NotePlayData) => {
+    // Notify all registered callbacks
+    noteCallbacks.forEach(callback => callback(noteData));
+  };
   
   const value = {
     room,
@@ -474,7 +525,10 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     respondToJoinRequest,
     sendPrivateMsg,
     setPrivateMessagingUser,
-    requestJoin
+    requestJoin,
+    broadcastNotePlay,
+    listenForRemoteNotes,
+    receiveNotePlay
   };
 
   return (
