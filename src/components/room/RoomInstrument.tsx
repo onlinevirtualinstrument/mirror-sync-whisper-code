@@ -9,7 +9,7 @@ import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const RoomInstrument: React.FC = () => {
-  const { room, userInfo, isHost, switchInstrument } = useRoom();
+  const { room, userInfo, isHost, switchInstrument, remotePlaying } = useRoom();
   
   // if (!room || !userInfo) return null;
   if (!room || !userInfo) {
@@ -85,6 +85,12 @@ const RoomInstrument: React.FC = () => {
           )}
         </div>
       </div> */}
+
+{remotePlaying && remotePlaying.userId !== userInfo.id && (
+            <div className="text-xs text-purple-600 animate-pulse mt-1">
+              {remotePlaying.userName} is playing {remotePlaying.instrument}
+            </div>
+          )}
 
       {/* <div className="flex-1 overflow-hidden"> */}
         <SimpleInstrument type={userInfo.instrument} />

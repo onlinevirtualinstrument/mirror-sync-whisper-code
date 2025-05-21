@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { lazy, Suspense } from "react";
-
+import { useRoom } from './RoomContext';
 
 // Instrument Pages - grouped by instrument type for better code splitting
 const AllInstruments: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {
@@ -39,15 +39,39 @@ interface SimpleInstrumentProps {
 const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({ type }) => {
   const InstrumentComponent = getInstrumentComponent(type);
   const [isPlaying, setIsPlaying] = useState<{ [key: string]: boolean }>({});
+  const { broadcastInstrumentNote, room, userInfo, remotePlaying } = useRoom();
 
   const handlePlayNote = (note: string) => {
+    // Local state update for visual feedback
     setIsPlaying(prev => ({ ...prev, [note]: true }));
-
- 
+    
+    // Broadcast the note to other users in the room
+    if (room && userInfo) {
+      broadcastInstrumentNote({
+        note,
+        instrument: type,
+        userId: userInfo.id,
+        userName: userInfo.displayName || 'Anonymous'
+      });
+    }
+    
+    // Reset local visual feedback after a delay
     setTimeout(() => {
       setIsPlaying(prev => ({ ...prev, [note]: false }));
     }, 500);
   };
+
+  // Listen for remote notes being played by other users
+  useEffect(() => {
+    if (remotePlaying && remotePlaying.instrument === type) {
+      // Update local state to show visual feedback for remote notes
+      setIsPlaying(prev => ({ ...prev, [remotePlaying.note]: true }));
+      
+      setTimeout(() => {
+        setIsPlaying(prev => ({ ...prev, [remotePlaying.note]: false }));
+      }, 500);
+    }
+  }, [remotePlaying, type]);
 
   return (
     <div className="flex flex-col items-center w-full">
@@ -57,19 +81,17 @@ const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({ type }) => {
 
       {InstrumentComponent ? (
         <Suspense fallback={<div>Loading {type}...</div>}> 
-          <InstrumentComponent onPlayNote={handlePlayNote} />
+          <InstrumentComponent 
+            onPlayNote={handlePlayNote} 
+            isPlaying={isPlaying}
+            remoteNotes={remotePlaying?.instrument === type ? remotePlaying : null}
+          />
         </Suspense>
       ) : (
         <p className="text-red-500">Instrument "{type}" not found.</p>
       )}
-
-      {/* <p className="text-sm text-gray-500 max-w-xs text-center">
-        This is a simplified representation. In a full implementation, this would connect to the actual instrument interface.
-      </p> */}
     </div>
   );
 };
 
-
 export default SimpleInstrument;
-

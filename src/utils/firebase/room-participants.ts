@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { toast } from '@/hooks/use-toast';
 import { db } from './config';
 
@@ -402,6 +402,54 @@ export const requestToJoinRoom = async (
   }
 };
 
+
 // Import needed for completion of function imported and used in room-participants.ts
 import { deleteRoomFromFirestore } from './rooms';
 import { collection, getDocs } from 'firebase/firestore';
+
+
+// Handle broadcasting and receiving instrument notes
+export const broadcastNote = async (roomId: string, note: any): Promise<void> => {
+  try {
+    const notesRef = doc(collection(db, 'rooms', roomId, 'notes'), Date.now().toString());
+    await setDoc(notesRef, {
+      ...note,
+      timestamp: new Date().toISOString()
+    });
+
+    // Notes older than 5 seconds will be automatically deleted by a Firestore TTL rule
+    // or you can implement a cleanup function here
+  } catch (error) {
+    console.error('Error broadcasting note:', error);
+    throw error;
+  }
+};
+
+export const listenToInstrumentNotes = (
+  roomId: string,
+  onNote: (note: any) => void,
+  onError: (error: any) => void
+): (() => void) => {
+  const notesRef = collection(db, 'rooms', roomId, 'notes');
+  
+  const unsubscribe = onSnapshot(
+    notesRef,
+    (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          // New note added
+          const noteData = change.doc.data();
+          onNote(noteData);
+          
+          // Clean up old notes to prevent memory issues
+          setTimeout(() => {
+            deleteDoc(change.doc.ref).catch(console.error);
+          }, 5000);
+        }
+      });
+    },
+    onError
+  );
+  
+  return unsubscribe;
+};

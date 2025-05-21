@@ -62,6 +62,20 @@ export const playInstrumentNote = (
       case 'violin':
         waveType = 'sine';
         break;
+      case 'flute':
+        waveType = 'sine';
+        break;
+      case 'saxophone':
+        waveType = 'sawtooth';
+        break;
+      case 'trumpet':
+        waveType = 'square';
+        break;
+      case 'drums':
+        waveType = 'triangle';
+        // For percussion instruments, we might use noise instead of tones
+        // But for simplicity, we're using simple oscillators
+        break;
       default:
         waveType = 'sine';
     }
@@ -115,6 +129,10 @@ export const getInstrumentType = (instrumentId: string): string => {
     'drums': 'percussion',
     'xylophone': 'percussion',
     'marimba': 'percussion',
+    'kalimba': 'percussion',
+    'drummachine': 'electronic',
+    'chordprogression': 'keyboard',
+    'veena': 'string',
   };
   
   return instrumentTypes[instrumentId] || 'other';
@@ -140,4 +158,29 @@ export const registerInstrument = (instrument: Omit<InstrumentConfig, 'id'>): st
     console.error('Error registering instrument:', error);
     return '';
   }
+};
+
+/**
+ * Parse a note string in format "note:octave" (e.g. "C:4")
+ * @param noteString The note string to parse
+ * @returns An object with note name and octave number
+ */
+export const parseNoteString = (noteString: string): { note: string; octave: number } => {
+  const [note, octaveStr] = noteString.split(':');
+  const octave = parseInt(octaveStr || '4', 10);
+  
+  return {
+    note: note || 'A',
+    octave: isNaN(octave) ? 4 : octave
+  };
+};
+
+/**
+ * Format a note and octave into a note string
+ * @param note The note name
+ * @param octave The octave number
+ * @returns A note string in format "note:octave"
+ */
+export const formatNoteString = (note: string, octave: number): string => {
+  return `${note}:${octave}`;
 };

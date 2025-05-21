@@ -20,8 +20,19 @@ import {
   getPrivateMessages,
   sendPrivateMessage,
   markMessageAsRead,
-  listenForUnreadMessages
+  listenForUnreadMessages,
+  broadcastNote,
+  listenToInstrumentNotes
 } from '@/utils/firebase';
+import { playInstrumentNote } from '@/utils/instruments/instrumentUtils';
+
+interface InstrumentNote {
+  note: string;
+  instrument: string;
+  userId: string;
+  userName: string;
+  timestamp?: string;
+}
 
 type RoomContextType = {
   room: any;
@@ -34,6 +45,7 @@ type RoomContextType = {
   privateMessages: any[];
   privateMessagingUser: string | null;
   unreadCounts: Record<string, number>;
+  remotePlaying: InstrumentNote | null;
   sendMessage: (message: string) => Promise<void>;
   leaveRoom: () => Promise<void>;
   closeRoom: () => Promise<void>;
@@ -47,6 +59,7 @@ type RoomContextType = {
   sendPrivateMsg: (receiverId: string, message: string) => Promise<void>;
   setPrivateMessagingUser: (userId: string | null) => void;
   requestJoin: (code?: string) => Promise<void>;
+  broadcastInstrumentNote: (note: InstrumentNote) => Promise<void>;
 };
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -68,6 +81,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [wasRemoved, setWasRemoved] = useState<boolean>(false);
   const [roomClosed, setRoomClosed] = useState<boolean>(false);
+  const [remotePlaying, setRemotePlaying] = useState<InstrumentNote | null>(null);
 
   // Fetch room data and set up listeners
   useEffect(() => {
@@ -172,9 +186,40 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
+    // Listen for instrument notes being played
+    const unsubscribeNotes = listenToInstrumentNotes(
+      roomId,
+      (noteData: InstrumentNote) => {
+        // Only process notes from other users
+        if (noteData && noteData.userId !== user.uid) {
+          setRemotePlaying(noteData);
+          
+          // Play the note using the audio utilities
+          try {
+            // This will play the sound on this client
+            const [note, octave] = noteData.note.split(':');
+            if (note && octave) {
+              playInstrumentNote(
+                noteData.instrument,
+                note,
+                parseInt(octave),
+                500
+              );
+            }
+          } catch (error) {
+            console.error("Error playing remote note:", error);
+          }
+        }
+      },
+      (error) => {
+        console.error("Instrument notes error:", error);
+      }
+    );
+
     return () => {
       unsubscribeRoom();
       unsubscribeChat();
+      unsubscribeNotes();
     };
   }, [roomId, user, navigate, isParticipant, wasRemoved]);
 
@@ -240,6 +285,27 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       unsubscribers.forEach(unsub => unsub());
     };
   }, [roomId, user, room]);
+
+  // Broadcast instrument notes to other participants
+  const broadcastInstrumentNote = async (note: InstrumentNote): Promise<void> => {
+    if (!roomId || !user) return;
+    
+    try {
+      await broadcastNote(roomId, {
+        ...note,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Update room's last activity timestamp
+      if (room) {
+        updateRoomSettings(roomId, {
+          lastActivity: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.error("Error broadcasting note:", error);
+    }
+  };
 
   // Send a chat message
   const sendMessage = async (message: string) => {
@@ -462,6 +528,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     privateMessages,
     privateMessagingUser,
     unreadCounts,
+    remotePlaying,
     sendMessage,
     leaveRoom,
     closeRoom,
@@ -474,7 +541,8 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     respondToJoinRequest,
     sendPrivateMsg,
     setPrivateMessagingUser,
-    requestJoin
+    requestJoin,
+    broadcastInstrumentNote
   };
 
   return (
