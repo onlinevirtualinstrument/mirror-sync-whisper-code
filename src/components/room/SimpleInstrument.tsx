@@ -22,14 +22,7 @@ const AllInstruments: Record<string, React.LazyExoticComponent<React.ComponentTy
 
   DrumMachine: lazy(() => import("@/components/instruments/drum-machine/DrumMachine")),
   ChordProgression: lazy(() => import("@/components/instruments/chord-Progression/ChordProgressionPlayer")),
-};
-
-type InstrumentType = 'piano' | 'guitar' | 'drummachine' | 'chordprogression' | 'drums' | 'flute' | 'violin' | 'veena' | 'Saxophone' | 'Trumpet' |'Xylophone' | 'kalimba' | 'marimba';
-
-
-const getInstrumentComponent = (type: string) => {
-  const key = Object.keys(AllInstruments).find(k => k.toLowerCase().startsWith(type.toLowerCase()));
-  return key ? AllInstruments[key] : null;
+  Sitar: lazy(() => import("@/components/instruments/sitar/Sitar1/Sitar")),
 };
 
 interface SimpleInstrumentProps {
@@ -37,11 +30,17 @@ interface SimpleInstrumentProps {
 }
 
 const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({ type }) => {
-  const InstrumentComponent = getInstrumentComponent(type);
   const [isPlaying, setIsPlaying] = useState<{ [key: string]: boolean }>({});
   const { broadcastInstrumentNote, room, userInfo, remotePlaying } = useRoom();
 
+  const InstrumentComponent = getInstrumentComponent(type);
+
   const handlePlayNote = (note: string) => {
+    if (!note || typeof note !== 'string') {
+      console.error('Invalid note received:', note);
+      return;
+    }
+    
     // Local state update for visual feedback
     setIsPlaying(prev => ({ ...prev, [note]: true }));
     
@@ -51,7 +50,7 @@ const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({ type }) => {
         note,
         instrument: type,
         userId: userInfo.id,
-        userName: userInfo.displayName || 'Anonymous'
+        userName: userInfo.displayName || userInfo.name || 'Anonymous'
       });
     }
     
@@ -63,7 +62,7 @@ const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({ type }) => {
 
   // Listen for remote notes being played by other users
   useEffect(() => {
-    if (remotePlaying && remotePlaying.instrument === type) {
+    if (remotePlaying && remotePlaying.instrument === type && remotePlaying.note) {
       // Update local state to show visual feedback for remote notes
       setIsPlaying(prev => ({ ...prev, [remotePlaying.note]: true }));
       
@@ -72,6 +71,14 @@ const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({ type }) => {
       }, 500);
     }
   }, [remotePlaying, type]);
+
+  const getInstrumentComponent = (instrumentType: string) => {
+    const key = Object.keys(AllInstruments).find(k => 
+      k.toLowerCase() === instrumentType.toLowerCase() || 
+      k.toLowerCase().startsWith(instrumentType.toLowerCase())
+    );
+    return key ? AllInstruments[key] : null;
+  };
 
   return (
     <div className="flex flex-col items-center w-full">

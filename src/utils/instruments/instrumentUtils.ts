@@ -1,4 +1,3 @@
-
 import audioPlayer from '@/utils/music/audioPlayer';
 
 export interface InstrumentConfig {
@@ -46,13 +45,18 @@ export const playInstrumentNote = (
   duration = 1000
 ): void => {
   try {
+    if (!note) {
+      console.warn('No note specified for playback');
+      return;
+    }
+    
     // Calculate the frequency for this note
     const baseFrequency = getNoteFrequency(note, octave);
     
     // Different instruments might have different wave types or processing
     let waveType: OscillatorType = 'sine';
     
-    switch (instrument) {
+    switch (instrument.toLowerCase()) {
       case 'piano':
         waveType = 'sine';
         break;
@@ -76,6 +80,21 @@ export const playInstrumentNote = (
         // For percussion instruments, we might use noise instead of tones
         // But for simplicity, we're using simple oscillators
         break;
+      case 'sitar':
+        waveType = 'triangle';
+        break;
+      case 'veena':
+        waveType = 'triangle';
+        break;
+      case 'xylophone':
+        waveType = 'sine';
+        break;
+      case 'kalimba':
+        waveType = 'sine';
+        break;
+      case 'marimba':
+        waveType = 'sine';
+        break;
       default:
         waveType = 'sine';
     }
@@ -94,6 +113,13 @@ export const playInstrumentNote = (
  * @returns The frequency in Hz
  */
 export const getNoteFrequency = (note: string, octave: number): number => {
+  // Extract note name if it's in format "note:octave"
+  if (note.includes(':')) {
+    const parts = note.split(':');
+    note = parts[0];
+    octave = parseInt(parts[1], 10);
+  }
+  
   const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   const baseFreq = 440; // A4 frequency
   const A4OctavePosition = 4;
