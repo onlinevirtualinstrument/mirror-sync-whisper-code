@@ -20,7 +20,7 @@ import {
   listenToInstrumentNotes as listenToParticipantInstrumentNotes
 } from './room-participants';
 
-// Re-export under unique names to avoid collisions
+// Re-export room-participants functions under unique names to avoid collisions
 export {
   isUserRoomParticipant,
   addUserToRoom,
@@ -38,10 +38,10 @@ export {
   listenToParticipantInstrumentNotes as listenToInstrumentNotes
 };
 
-// Export all from room-participants that don't conflict
-export * from './room-participants';
-export * from './rooms';
+// Export all from room-settings
 export * from './room-settings';
+// Export all from rooms
+export * from './rooms';
 
 // Import and export Firebase Firestore functions needed
 import { doc, onSnapshot, getFirestore } from 'firebase/firestore';
