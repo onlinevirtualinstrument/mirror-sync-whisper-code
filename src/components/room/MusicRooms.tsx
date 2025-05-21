@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
@@ -10,14 +9,15 @@ import CreateRoomModal from '@/components/room/CreateRoomModal';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
-import { auth, db } from '@/utils/auth/firebase';
+import { auth } from '@/utils/firebase/config';
+import { db } from '@/utils/firebase/index';
 import { doc, updateDoc, deleteDoc, collection, onSnapshot, QueryDocumentSnapshot, getDoc, Timestamp, query, orderBy } from 'firebase/firestore';
 import {
   listenToLiveRooms,
   saveRoomToFirestore,
   addUserToRoom,
   isUserRoomParticipant
-} from "@/utils/auth/firebase";
+} from "@/utils/firebase/index";
 
 interface RoomType {
   id: string;
@@ -65,7 +65,6 @@ const MusicRooms = () => {
     );
     return () => unsubscribe();
   }, []);
-
 
   const joinRoom = async (room: any) => {
     if (!user || !room.id) return;
@@ -123,7 +122,6 @@ const MusicRooms = () => {
       });
     }
   };
-
 
   const requestToJoinRoom = async () => {
     if (!selectedRoom || !user) return;
