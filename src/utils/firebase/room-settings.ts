@@ -1,6 +1,7 @@
 
-import { getFirestore, doc, updateDoc } from 'firebase/firestore';
+import { getFirestore, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { app } from './config';
+import { user } from './index';
 
 const db = getFirestore(app);
 
@@ -87,13 +88,13 @@ export const handleJoinRequest = async (
       // You'd typically need to get user data from users collection first
       // For simplicity, we'll just add user ID
       await updateDoc(roomRef, {
-        participants: [...user.participants, { id: userId, joinedAt: new Date().toISOString() }],
+        participants: [...(user.participants || []), { id: userId, joinedAt: new Date().toISOString() }],
         lastUpdated: new Date().toISOString()
       });
     } else {
       // Remove from join requests
       await updateDoc(roomRef, {
-        joinRequests: user.joinRequests.filter((req: any) => req.userId !== userId),
+        joinRequests: (user.joinRequests || []).filter((req: any) => req.userId !== userId),
         lastUpdated: new Date().toISOString()
       });
     }
@@ -121,7 +122,7 @@ export const requestToJoinRoom = async (
       // Add user directly to participants if auto-approved
       // You'd typically need to get user data from users collection first
       await updateDoc(roomRef, {
-        participants: [...user.participants, { 
+        participants: [...(user.participants || []), { 
           id: userId, 
           joinedAt: new Date().toISOString(),
           isHost: false,
@@ -132,7 +133,7 @@ export const requestToJoinRoom = async (
     } else {
       // Add to join requests
       await updateDoc(roomRef, {
-        joinRequests: [...user.joinRequests, { 
+        joinRequests: [...(user.joinRequests || []), { 
           userId, 
           requestedAt: new Date().toISOString() 
         }],

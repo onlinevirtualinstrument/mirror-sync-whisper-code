@@ -25,6 +25,15 @@ const AllInstruments: Record<string, React.LazyExoticComponent<React.ComponentTy
   Sitar: lazy(() => import("@/components/instruments/sitar/Sitar1/Sitar")),
 };
 
+// Helper function to get the instrument component
+const getInstrumentComponent = (instrumentType: string) => {
+  const key = Object.keys(AllInstruments).find(k => 
+    k.toLowerCase() === instrumentType.toLowerCase() || 
+    k.toLowerCase().startsWith(instrumentType.toLowerCase())
+  );
+  return key ? AllInstruments[key] : null;
+};
+
 interface SimpleInstrumentProps {
   type: string;
 }
@@ -71,14 +80,6 @@ const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({ type }) => {
       }, 500);
     }
   }, [remotePlaying, type]);
-
-  const getInstrumentComponent = (instrumentType: string) => {
-    const key = Object.keys(AllInstruments).find(k => 
-      k.toLowerCase() === instrumentType.toLowerCase() || 
-      k.toLowerCase().startsWith(instrumentType.toLowerCase())
-    );
-    return key ? AllInstruments[key] : null;
-  };
 
   return (
     <div className="flex flex-col items-center w-full">

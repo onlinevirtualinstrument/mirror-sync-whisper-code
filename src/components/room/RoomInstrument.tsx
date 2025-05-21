@@ -21,9 +21,13 @@ const RoomInstrument: React.FC = () => {
     );
   }
 
+  const showRemotePlaying = remotePlaying && 
+                           remotePlaying.userId !== userInfo.id && 
+                           remotePlaying.userName;
+
   return (
     <div className="flex flex-col h-full">
-      {remotePlaying && remotePlaying.userId !== userInfo.id && remotePlaying.userName && (
+      {showRemotePlaying && (
         <div className="text-xs text-purple-600 animate-pulse mt-1">
           {remotePlaying.userName} is playing {remotePlaying.instrument}
         </div>

@@ -1,3 +1,4 @@
+
 import audioPlayer from '@/utils/music/audioPlayer';
 
 export interface InstrumentConfig {
@@ -9,6 +10,13 @@ export interface InstrumentConfig {
   soundPath?: string;
   keyMapping?: Record<string, { note: string; octave: number }>;
   frequencies?: Record<string, number>;
+}
+
+export interface InstrumentNote {
+  note: string;
+  instrument: string;
+  userId: string;
+  userName: string;
 }
 
 /**
