@@ -69,7 +69,7 @@ const CreateRoomModal = () => {
 
     try {
       // Create room data
-      const roomData = {
+      const roomData: any = {
         id: roomId,
         name: roomName,
         hostInstrument: selectedInstrument,

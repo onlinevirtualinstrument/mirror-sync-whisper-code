@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRoom } from './RoomContext';
 import SimpleInstrument from './SimpleInstrument';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,48 +7,28 @@ import { Label } from '@/components/ui/label';
 import RoomSettings from './RoomSettings';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import AudioContextManager from '@/utils/music/AudioContextManager';
 
 const RoomInstrument: React.FC = () => {
-  const { room, userInfo, isHost, switchInstrument, receiveNotePlay } = useRoom();
+  const { room, userInfo, isHost, switchInstrument } = useRoom();
   
-  // Initialize audio context when component mounts
-  useEffect(() => {
-    // Initialize AudioContext on user interaction to handle autoplay policies
-    const initializeAudio = () => {
-      const audioManager = AudioContextManager.getInstance();
-      audioManager.getAudioContext(); // Initialize the audio context
-    };
-    
-    // Add event listeners for user interaction
-    const interactionEvents = ['mousedown', 'touchstart', 'keydown'];
-    interactionEvents.forEach(event => {
-      window.addEventListener(event, initializeAudio, { once: true });
-    });
-    
-    return () => {
-      interactionEvents.forEach(event => {
-        window.removeEventListener(event, initializeAudio);
-      });
-    };
-  }, []);
-  
+  // if (!room || !userInfo) return null;
   if (!room || !userInfo) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Loading instrument or connecting to room...
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  return (
+    <div className="flex items-center justify-center h-full">
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Loading instrument or connecting to room...
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+}
+
 
   const instruments = [
     'piano',
-    'guitar',
+    'guitar', 
     'drummachine',
     'chordprogression',
     'drums',
@@ -59,8 +39,7 @@ const RoomInstrument: React.FC = () => {
     'violin',
     'xylophone',
     'kalimba',
-    'marimba',
-    'theremin'
+    'marimba'
   ];
 
   const handleInstrumentChange = (value: string) => {
@@ -69,17 +48,17 @@ const RoomInstrument: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-2 border-b flex items-center justify-between bg-muted/30">
+      {/* <div className="p-4 border-b flex items-center justify-between">
         <div className="flex-1">
           <div className="flex items-center justify-between space-x-2">
             <div className="space-y-1">
-              <Label htmlFor="instrument" className="text-xs">Instrument</Label>
+              <Label htmlFor="instrument">Your Instrument</Label>
               <Select
                 value={userInfo.instrument}
                 onValueChange={handleInstrumentChange}
                 disabled={!room.allowDifferentInstruments && !isHost}
               >
-                <SelectTrigger className="w-[180px] h-8 text-sm">
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Select instrument" />
                 </SelectTrigger>
                 <SelectContent>
@@ -105,11 +84,11 @@ const RoomInstrument: React.FC = () => {
             </p>
           )}
         </div>
-      </div>
+      </div> */}
 
-      <div className="flex-1 overflow-hidden">
-        <SimpleInstrument instrument={userInfo.instrument} isCollaborative={true} roomId={room.id} />
-      </div>
+      {/* <div className="flex-1 overflow-hidden"> */}
+        <SimpleInstrument type={userInfo.instrument} />
+      {/* </div> */}
     </div>
   );
 };

@@ -44,7 +44,7 @@ const RoomParticipants: React.FC = () => {
     <div className="h-full overflow-y-auto">
       <div className="p-2 bg-background border-b">
         <h2 className="text-sm font-semibold flex items-center">
-          <User size={16} className="mr-1" /> Participants
+          <User size={16} className="mr-2" /> Participants ({room.participants.length})
         </h2>
       </div>
       
@@ -73,7 +73,12 @@ const RoomParticipants: React.FC = () => {
                       <Badge className="ml-1" variant="outline">Host</Badge>
                     )}
                     {participant.muted && (
-                      <VolumeX size={14} className="ml-1 text-red-500" />
+                      
+                      <Badge className="ml-2 bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100" variant="outline">
+
+                        <VolumeX size={14} className="ml-1 text-red-500" /> Muted
+
+                      </Badge>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground truncate">

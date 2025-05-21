@@ -45,10 +45,7 @@ const RoomChat: React.FC = () => {
     setShowEmojiPicker(false);
   };
   
-  const addMusicEffect = (effect: string) => {
-    const effectMessage = `*${effect}*`;
-    setMessage(prev => prev + ' ' + effectMessage);
-  };
+
 
   const addSpecialMessage = (type: string) => {
     const messages: Record<string, string> = {
@@ -269,33 +266,6 @@ const RoomChat: React.FC = () => {
                           {emoji}
                         </button>
                       ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button 
-                      type="button" 
-                      size="icon" 
-                      variant="ghost" 
-                      className="h-8 w-8" 
-                      disabled={room.isChatDisabled && !isHost}
-                    >
-                      <Music size={16} />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64 p-2">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground mb-2">Music Effects</p>
-                      <div className="grid grid-cols-2 gap-1">
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => addMusicEffect("Solo")}>Solo</Button>
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => addMusicEffect("Crescendo")}>Crescendo</Button>
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => addMusicEffect("Staccato")}>Staccato</Button>
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => addMusicEffect("Legato")}>Legato</Button>
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => addMusicEffect("Fermata")}>Fermata</Button>
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => addMusicEffect("Tremolo")}>Tremolo</Button>
-                      </div>
                     </div>
                   </PopoverContent>
                 </Popover>

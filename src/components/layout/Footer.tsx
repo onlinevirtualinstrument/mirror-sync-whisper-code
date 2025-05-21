@@ -128,10 +128,11 @@ const Footer = () => {
       >
         Join Live Music
       </Link>
+       </div>
       <div className="text-sm text-gray-600 dark:text-gray-400">
         <CreateRoomModal />
       </div>
-    </div>
+   
   </div>
 
   {/* Quick Links */}

@@ -356,38 +356,8 @@ const PianoPage = () => {
         <link rel="canonical" href="/" />
       </Helmet>
       
-      <AppLayout>
-      <div className="mt-4 min-h-screen flex flex-col items-center justify-center  overflow-x-hidden bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 border-8 border-purple-500/20 border-double rounded-2xl ">
-        <div className="w-full max-w-screen-xl mx-auto space-y-8">
-          {/* <Button variant="outline" className="hover:bg-gray-200 mt-4 ml-4" onClick={() => navigate("/")}>
-            Back to Home
-          </Button> */}
-          <header className="text-center  mt-6 md:mb-12">
-            <div className="inline-block mb-2 px-3 py-1 bg-black/5 dark:bg-white/10 rounded-full text-xs font-medium animate-fade-in">
-              Virtual Piano Experience
-            </div>
-            
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-3 animate-fade-in flex items-center justify-center gap-2" style={{ animationDelay: '0.1s' }}>
-            Piano<span className="bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent">Studio</span>
-              <Piano className="h-8 w-8 md:h-10 md:w-10 lg:h-12 lg:w-12 ml-2 text-purple-500 animate-[string-vibration_2s_ease-in-out_infinite]" />
-            </h1>
-                
-
-      
-                        
-                        <div className="flex justify-center mt-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
-                          <button 
-                            onClick={() => document.getElementById('piano-app')?.scrollIntoView({ behavior: 'smooth' })}
-                            className="flex items-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label="Scroll to guitar app"
-                          >
-                            Start Playing
-                            <ChevronDown className="w-4 h-4 animate-bounce" />
-                          </button>
-                        </div>
-
-            </header></div>
-
+      {/* <AppLayout> */}
+ 
 
     <div className="container mx-auto p-4 ">
       
@@ -599,11 +569,10 @@ const PianoPage = () => {
       
       <PianoTutorial isOpen={tutorialOpen} onClose={() => setTutorialOpen(false)} />
     </div>
-    </div>
 
     {/* Add instrument interlink */}
-           <InstrumentInterlink currentInstrument="Piano" />
-          </AppLayout>
+           {/* <InstrumentInterlink currentInstrument="Piano" /> */}
+          {/* </AppLayout> */}
     </>
   );
 };

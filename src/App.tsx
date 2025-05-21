@@ -44,7 +44,7 @@ const Misc = {
 
 // Instrument Pages - grouped by instrument type for better code splitting
 const KeyboardInstruments = {
-  Piano: lazy(() => import("./pages/Piano"))
+  Piano: lazy(() => import("./components/instruments/piano/Index.tsx"))
 };
 
 const StringInstruments = {

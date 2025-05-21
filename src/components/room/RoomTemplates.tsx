@@ -110,7 +110,7 @@ const RoomTemplates = () => {
   const createRoomFromTemplate = async (template: any) => {
     if (!user) {
       toast.error("Please log in to create a room");
-      navigate('/auth/login');
+      navigate('/music-room-templates');
       return;
     }
 

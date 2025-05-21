@@ -3,5 +3,5 @@
 export * from '../firebase';
 
 // Export specific types needed for blog components
-export { User } from "firebase/auth";
+export type { User } from "firebase/auth"; // ✅ Correct
 export { Timestamp, QueryDocumentSnapshot } from "firebase/firestore";

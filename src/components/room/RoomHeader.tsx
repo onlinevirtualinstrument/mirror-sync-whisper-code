@@ -2,24 +2,25 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Lock, 
-  Globe, 
-  Clock, 
-  Settings, 
-  X, 
-  Users, 
+import { toast } from '@/components/ui/use-toast';
+import {
+  Lock,
+  Globe,
+  Clock,
+  Settings,
+  X,
+  Users,
   Share,
   Volume,
   VolumeX,
   MessageSquare
 } from 'lucide-react';
 import { useRoom } from './RoomContext';
-import { 
-  Tooltip, 
-  TooltipContent, 
-  TooltipProvider, 
-  TooltipTrigger 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
 } from '@/components/ui/tooltip';
 import {
   AlertDialog,
@@ -32,12 +33,47 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import RoomSettings from './RoomSettings';
+import RoomParticipants from './RoomParticipants';
+import RoomChat from './RoomChat';
 
 const RoomHeader: React.FC = () => {
-  const { room, isHost, leaveRoom, closeRoom, toggleChat } = useRoom();
+  const { room, isHost, userInfo, switchInstrument, leaveRoom, closeRoom, toggleChat } = useRoom();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
-  if (!room) return null;
+
+  if (!room || !userInfo) return null;
+
+  const instruments = [
+    'piano',
+    'guitar',
+    'drummachine',
+    'chordprogression',
+    'drums',
+    'flute',
+    'saxophone',
+    'trumpet',
+    'veena',
+    'violin',
+    'xylophone',
+    'kalimba',
+    'marimba'
+  ];
+
+  const handleInstrumentChange = (value: string) => {
+    switchInstrument(value);
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -92,19 +128,50 @@ const RoomHeader: React.FC = () => {
             </Badge>
           </div>
           <div className="text-sm text-muted-foreground mt-1">
-            Created: {formatDate(room.createdAt)} 
+            Created: {formatDate(room.createdAt)}
             {room.lastActivity && (
               <span> • Last activity: {formatDate(room.lastActivity)}</span>
             )}
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <div className="space-y-1">
+            {/* {!room.allowDifferentInstruments && !isHost && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  The host has restricted instrument selection
+                </p>
+              )} */}
+              
+            <Select
+              value={userInfo.instrument}
+              onValueChange={handleInstrumentChange}
+              disabled={!room.allowDifferentInstruments && !isHost}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select instrument" />
+              </SelectTrigger>
+              <SelectContent>
+                {instruments.map((instrument) => (
+
+                  <SelectItem
+                    key={instrument}
+                    value={instrument}
+                    disabled={!room.allowDifferentInstruments && room.hostInstrument !== instrument && !isHost}
+                  >
+                    {instrument.charAt(0).toUpperCase() + instrument.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={handleShare}
                 >
@@ -116,15 +183,51 @@ const RoomHeader: React.FC = () => {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          
+
+
+          {/* Open Chat Dialog */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="mr-2">Open Chat</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl h-[70vh] overflow-hidden flex flex-col">
+              <DialogHeader>
+                <DialogTitle>Room Chat</DialogTitle>
+                <DialogDescription>Send messages in the room.</DialogDescription>
+              </DialogHeader>
+              <div className="flex-1 overflow-y-auto border-t pt-4">
+                <RoomChat />
+              </div>
+            </DialogContent>
+          </Dialog>
+
+
+          {/* Open Participants Dialog */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline">Participants</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md h-[70vh] overflow-hidden flex flex-col">
+              <DialogHeader>
+                <DialogTitle>Room Participants</DialogTitle>
+                <DialogDescription>See who is in the room.</DialogDescription>
+              </DialogHeader>
+              <div className="flex-1 overflow-y-auto border-t pt-4">
+                <RoomParticipants />
+              </div>
+            </DialogContent>
+          </Dialog>
+
+
+
           {isHost && (
             <>
-              {room.isChatDisabled ? (
+              {/* {room.isChatDisabled ? (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => toggleChat(false)}
                       >
@@ -140,8 +243,8 @@ const RoomHeader: React.FC = () => {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => toggleChat(true)}
                       >
@@ -153,13 +256,13 @@ const RoomHeader: React.FC = () => {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              )}
-              
+              )} */}
+
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="destructive"
                       size="sm"
                       onClick={() => closeRoom()}
                     >
@@ -173,17 +276,24 @@ const RoomHeader: React.FC = () => {
               </TooltipProvider>
             </>
           )}
-          
-          <Button 
-            variant={isHost ? "destructive" : "outline"}
+
+
+          <Button
+            variant={isHost ? "destructive" : "destructive"}
             size="sm"
             onClick={leaveRoom}
           >
             Leave Room
           </Button>
+
+
+          {isHost && <RoomSettings />}
+
+
         </div>
       </div>
-      
+
+
       {/* Share Dialog */}
       <AlertDialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
         <AlertDialogContent>
@@ -200,8 +310,8 @@ const RoomHeader: React.FC = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex items-center space-x-2 mt-2">
-            <Input 
-              value={`${window.location.origin}/room/${room.id}`} 
+            <Input
+              value={`${window.location.origin}/room/${room.id}`}
               readOnly
               className="font-mono"
             />
