@@ -13,24 +13,6 @@ import AppLayout from '@/components/layout/AppLayout';
 const LazyDrumComponent = lazy(() => import("./drums1/DrumsPage"));
 const LazyDrumAdvancedComponent = lazy(() => import("../PlaceholderComponent"));
 
-// Drum images for better loading management
-const guitarImages = [
-  {
-    src: "/images/drums/OnlineVirtualDrumsInstrument1.png",
-    alt: "Online Virtual Drums Instrument 1",
-    // label: "Acoustic Guitar"
-  },
-  {
-    src: "/images/drums/OnlineVirtualDrumsInstrument2.png",
-    alt: "Online Virtual Drums Instrument 2",
-    // label: "Electric Guitar"
-  },
-  {
-    src: "/images/drums/OnlineVirtualDrumsInstrument3.png",
-    alt: "Online Virtual Drums Instrument 3",
-    // label: "Bass Guitar"
-  }
-];
 
 const Index = () => {
   const navigate = useNavigate();
@@ -88,23 +70,6 @@ const Index = () => {
 
               </div>
 
-              <div className="mt-8 grid grid-cols-3 md:grid-cols-3 gap-4 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '0.4s' }}>
-                {guitarImages.map((image, index) => (
-                  <div key={index} className="relative overflow-hidden rounded-xl shadow-md group hover-scale">
-                    <img
-                      src={image.src}
-                      alt={image.alt}
-                      className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-500"
-                      loading={index === 0 ? "eager" : "lazy"}
-                      width="500"
-                      height="320"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
-                      {/* <span className="text-white font-medium">{image.label}</span> */}
-                    </div>
-                  </div>
-                ))}
-              </div>
 
               <div className="flex justify-center mt-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
                 <button

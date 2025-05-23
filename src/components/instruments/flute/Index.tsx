@@ -11,24 +11,6 @@ const FluteMaster2Component = lazy(() => import("./flute2/FlutePage"));
 import InstrumentInterlink from '@/components/instruments/InstrumentInterlink';
 
 
-// Guitar images for better loading management
-const guitarImages = [
-  {
-    src: "/images/flute/OnlineVirtualFluteInstrument1.png",
-    alt: "Online Virtual Flute Instrument1",
-    // label: "Acoustic Guitar"
-  },
-  {
-    src: "/images/flute/OnlineVirtualFluteInstrument2.png",
-    alt: "Online Virtual Flute Instrument2",
-    // label: "Electric Guitar"
-  },
-  {
-    src: "/images/flute/OnlineVirtualFluteInstrument3.png",
-    alt: "Online Virtual Flute Instrument3",
-    // label: "Bass Guitar"
-  }
-];
 
 const Index = () => {
   // Get the canonical URL from the current window location
@@ -119,24 +101,6 @@ const Index = () => {
                 Multiple Flute Types
               </div>
               
-            </div>
-
-            <div className="mt-8 grid grid-cols-3 md:grid-cols-3 gap-4 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '0.4s' }}>
-              {guitarImages.map((image, index) => (
-                <div key={index} className="relative overflow-hidden rounded-xl shadow-md group hover-scale">
-                  <img 
-                    src={image.src} 
-                    alt={image.alt} 
-                    className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading={index === 0 ? "eager" : "lazy"}
-                    width="500"
-                    height="320"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
-                    {/* <span className="text-white font-medium">{image.label}</span> */}
-                  </div>
-                </div>
-              ))}
             </div>
 
             <div className="text-center flex justify-center mt-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>

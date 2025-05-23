@@ -11,6 +11,13 @@ import { HelpCircle, Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { lockToLandscape } from "@/components/landscapeMode/lockToLandscape";
 import LandscapeInstrumentModal from '@/components/landscapeMode/LandscapeInstrumentModal';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select"; // If using ShadCN
 
 // Color themes for the guitar
 export interface GuitarColors {
@@ -57,6 +64,16 @@ const VirtualGuitarComponent: React.FC = () => {
   const [chordAssistMode, setChordAssistMode] = useState<boolean>(false);
   const [activeChord, setActiveChord] = useState<string | null>(null);
   const [showTutorial, setShowTutorial] = useState<boolean>(false);
+
+  const guitarOptions = [
+  { value: "acoustic", label: "Acoustic", color: "text-blue-600" },
+  { value: "electric", label: "Electric", color: "text-red-600" },
+  { value: "bass", label: "Bass", color: "text-green-600" },
+  { value: "classical", label: "Classical", color: "text-yellow-600" },
+  { value: "flamenco", label: "Flamenco", color: "text-pink-600" },
+  { value: "steel", label: "Steel", color: "text-gray-600" },
+  { value: "twelveString", label: "12-String", color: "text-purple-600" },
+];
   
   const [soundEngine, setSoundEngine] = useState<GuitarSoundEngine | null>(null);
   
@@ -177,7 +194,7 @@ const VirtualGuitarComponent: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex items-center space-x-4">
           <ThemeSelector onThemeChange={handleThemeChange} />
           <GuitarSettings
@@ -199,7 +216,10 @@ const VirtualGuitarComponent: React.FC = () => {
             onActiveChordChange={handleActiveChordChange}
           />
 
-          <Button 
+              </div>
+        
+        <div className="flex items-center space-x-2">
+            <Button 
             variant="outline" 
             size="sm" 
             className="flex items-center gap-1.5"
@@ -208,9 +228,25 @@ const VirtualGuitarComponent: React.FC = () => {
             <HelpCircle className="h-4 w-4" />
             Tutorial
           </Button>
-        </div>
-        
-        <div className="flex items-center space-x-2">
+
+          <Select value={guitarType} onValueChange={handleGuitarTypeChange}>
+  <SelectTrigger className="w-[150px]">
+    <SelectValue placeholder="Select Guitar Type" />
+  </SelectTrigger>
+  <SelectContent>
+    {guitarOptions.map((option) => (
+      <SelectItem
+        key={option.value}
+        value={option.value}
+        className={`font-medium ${option.color}`}
+      >
+        {option.label}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
+<Button variant='outline'>
           <label htmlFor="volume" className="text-sm font-medium">Volume:</label>
           <input
             type="range"
@@ -220,7 +256,7 @@ const VirtualGuitarComponent: React.FC = () => {
             value={volume}
             onChange={(e) => handleVolumeChange(parseInt(e.target.value))}
             className="w-24"
-          />
+          /></Button>
         </div>
       </div>
        <div className="landscape-warning text-xs text-muted-foreground bg-purple-100 p-2 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-2">
@@ -270,7 +306,7 @@ const VirtualGuitarComponent: React.FC = () => {
         showFretNumbers={showFretNumbers}
       />
       
-      <div className="flex justify-center space-x-4">
+      {/* <div className="flex justify-center space-x-4">
         <button
           className={`px-4 py-2 rounded-md ${guitarType === 'acoustic' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
           onClick={() => handleGuitarTypeChange('acoustic')}
@@ -313,7 +349,7 @@ const VirtualGuitarComponent: React.FC = () => {
         >
           12-String
         </button>
-      </div>
+      </div> */}
 
       <Dialog open={showTutorial} onOpenChange={setShowTutorial}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">

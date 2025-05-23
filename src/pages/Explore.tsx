@@ -11,27 +11,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Search, SlidersHorizontal } from 'lucide-react';
-
-// Sound sample URLs for each instrument
-const instrumentSoundURLs = {
-  "1": "/sounds/violin.mp3",
-  "2": "/sounds/piano.mp3",
-  "3": "/sounds/saxophone.mp3",
-  "4": "/sounds/guitar.mp3",
-  "5": "/sounds/drums.mp3",
-  "6": "/sounds/trumpet.mp3",
-  "7": "/sounds/veena.mp3", 
-  "8": "/sounds/banjo.mp3",
-  "9": "/sounds/xylophone.mp3",
-  "10": "/sounds/flute.mp3",
-  "11": "/sounds/sitar.mp3",
-  "12": "/sounds/harmonica.mp3",
-  "13": "/sounds/harp.mp3",
-  "14": "/sounds/theremin.mp3",
-  "15": "/sounds/drummachine.mp3",
-  "16": "/sounds/chordprogression.mp3"
-};
+import { Search } from 'lucide-react';
 
 const allInstruments = [
   {
@@ -62,7 +42,7 @@ const allInstruments = [
     id: 'drums',
     name: 'Drum Kit',
     category: 'Percussion',
-    imageUrl: '/images/drums/OnlineVirtualDrumsInstrument3.png'
+    imageUrl: '/images/drums/OnlineVirtualDrumsInstrument2.png'
   },
   {
     id: 'trumpet',
@@ -74,7 +54,7 @@ const allInstruments = [
     id: 'veena',
     name: 'Veena',
     category: 'String',
-    imageUrl: '/images/veena/OnlineVirtualVeenaInstrument3.png'
+    imageUrl: '/images/veena/OnlineVirtualVeenaInstrument1.png'
   },
   {
     id: 'banjo',
@@ -122,7 +102,7 @@ const allInstruments = [
     id: 'marimba',
     name: 'Marimba',
     category: 'Percussion',
-    imageUrl: '/images/marimba/OnlineVirtualMarimbaInstrument3.png'
+    imageUrl: '/images/marimba/OnlineVirtualMarimbaInstrument1.png'
   },
   {
     id: 'tabla',
@@ -249,7 +229,6 @@ const Explore = () => {
                 name={instrument.name}
                 category={instrument.category}
                 imageUrl={instrument.imageUrl}
-                soundUrl={instrumentSoundURLs[instrument.id as keyof typeof instrumentSoundURLs]}
               />
             ))}
           </div>

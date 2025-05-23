@@ -94,7 +94,7 @@ return (
 
       <div className="relative h-48 overflow-hidden">
 
-        <div className="relative pl-3 pr-3 pt-3 w-full h-full">
+        <div className="relative m-3 w-full h-full rounded-xl overflow-hidden">
           {imageUrl ? (
             <img
               src={imageUrl}

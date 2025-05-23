@@ -38,7 +38,7 @@ export const categoryData = {
         id: 'veena',
         name: 'Veena',
         category: 'Strings',
-        imageUrl: '/images/veena/OnlineVirtualVeenaInstrument3.png'
+        imageUrl: '/images/veena/OnlineVirtualVeenaInstrument1.png'
       },
       {
         id: 'banjo',
@@ -74,7 +74,7 @@ export const categoryData = {
         id: 'harmonica',
         name: 'Harmonica',
         category: 'wind',
-        imageUrl: 'https://images.unsplash.com/photo-1573871669414-010dbf73ca84?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80'
+        imageUrl: '/images/harmonica/OnlineVirtualHarmonicaInstrument1.png'
       },
       
     ],
@@ -88,7 +88,7 @@ export const categoryData = {
         id: 'drums',
         name: 'Drum Kit',
         category: 'Percussion',
-        imageUrl: '/images/drums/OnlineVirtualDrumsInstrument3.png'
+        imageUrl: '/images/drums/OnlineVirtualDrumsInstrument2.png'
       },
       {
         id: 'xylophone',
@@ -106,7 +106,7 @@ export const categoryData = {
         id: 'marimba',
         name: 'Marimba',
         category: 'Percussion',
-        imageUrl: '/images/marimba/OnlineVirtualMarimbaInstrument3.png'
+        imageUrl: '/images/marimba/OnlineVirtualMarimbaInstrument1.png'
       },
       {
         id: 'tabla',

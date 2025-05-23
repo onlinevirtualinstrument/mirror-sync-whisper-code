@@ -12,24 +12,6 @@ import AppLayout from '@/components/layout/AppLayout';
 const LazySitarComponent = lazy(() => import("./Sitar1/SitarPage"));
 const LazySitarAdvancedComponent = lazy(() => import("../PlaceholderComponent"));
 
-// Guitar images for better loading management
-const guitarImages = [
-  {
-    src: "/images/sitar/OnlineVirtualSitarInstrument1.png",
-    alt: "Online Virtual Sitar Instrument1",
-    // label: "Acoustic Guitar"
-  },
-  {
-    src: "/images/sitar/OnlineVirtualSitarInstrument2.png",
-    alt: "Online Virtual Sitar Instrument2",
-    // label: "Electric Guitar"
-  },
-  {
-    src: "/images/sitar/OnlineVirtualSitarInstrument3.png",
-    alt: "Online Virtual Sitar Instrument3",
-    // label: "Bass Guitar"
-  }
-];
 
 const Index = () => {
   const [selected, setSelected] = useState('Guitar 1');
@@ -89,23 +71,6 @@ const Index = () => {
         
             </div>
 
-            <div className="mt-8 grid grid-cols-3 md:grid-cols-3 gap-4 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '0.4s' }}>
-              {guitarImages.map((image, index) => (
-                <div key={index} className="relative overflow-hidden rounded-xl shadow-md group hover-scale">
-                  <img 
-                    src={image.src} 
-                    alt={image.alt} 
-                    className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading={index === 0 ? "eager" : "lazy"}
-                    width="500"
-                    height="320"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
-                    {/* <span className="text-white font-medium">{image.label}</span> */}
-                  </div>
-                </div>
-              ))}
-            </div>
                  
             <div className="flex justify-center mt-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
               <button 

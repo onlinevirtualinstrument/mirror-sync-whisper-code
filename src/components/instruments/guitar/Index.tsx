@@ -19,42 +19,13 @@ const LazyVirtualGuitar3Component = lazy(() =>
   import(/* webpackChunkName: "virtual-guitar-component" */ "./guitar3/GuitarPage")
 );
 
-// Guitar images for better loading management
-const guitarImages = [
-  {
-    src: "/images/guitar/OnlineVirtualGuitarInstrument1.png",
-    alt: "Online Virtual Guitar Instrument1",
-    // label: "Acoustic Guitar"
-  },
-  {
-    src: "/images/guitar/OnlineVirtualGuitarInstrument2.png",
-    alt: "Online Virtual Guitar Instrument2",
-    // label: "Electric Guitar"
-  },
-  {
-    src: "/images/guitar/OnlineVirtualGuitarInstrument3.png",
-    alt: "Online Virtual Guitar Instrument3",
-    // label: "Bass Guitar"
-  }
-];
 
 const Index = () => {
   // React hooks must be called at the top level
   const navigate = useNavigate();
   const [selected, setSelected] = useState('Guitar 1');
   
-  useEffect(() => {
-    // Preload guitar images during idle time
-    if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(() => {
-        guitarImages.forEach(image => {
-          preloadImage(image.src).catch(() => {
-            // Silent catch - don't block rendering for failed preloads
-          });
-        });
-      });
-    }
-    
+  useEffect(() => {    
     // Track page view for analytics
     if (typeof window !== 'undefined' && 'gtag' in window) {
       (window as any).gtag('event', 'page_view', {
@@ -105,24 +76,6 @@ const Index = () => {
              
             </div>
 
-            <div className="mt-8 grid grid-cols-3 md:grid-cols-3 gap-4 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '0.4s' }}>
-            {guitarImages.map((image, index) => (
-                <div key={index} className="relative overflow-hidden rounded-xl shadow-md group hover-scale">
-                  <img 
-                    src={image.src} 
-                    alt={image.alt} 
-                    className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading={index === 0 ? "eager" : "lazy"}
-                    width="500"
-                    height="320"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
-                    {/* <span className="text-white font-medium">{image.label}</span> */}
-                  </div>
-                </div>
-              ))}
-            </div>
-            
             <div className="flex justify-center mt-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
               <button 
                 onClick={() => document.getElementById('guitar-app')?.scrollIntoView({ behavior: 'smooth' })}

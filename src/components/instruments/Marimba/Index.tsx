@@ -10,25 +10,6 @@ import AppLayout from '@/components/layout/AppLayout';
 const LazyMarimbaComponent = lazy(() => import("./marimba1/MarimbaPage"));
 const LazyMarimba2Component = lazy(() => import("./marimba2/MarimbaPage"));
 
-// Marimba images for better loading management
-const marimbaImages = [
-  {
-    src: "/images/marimba/OnlineVirtualMarimbaInstrument1.png",
-    alt: "Online Virtual Marimba Instrument1",
-    // label: "Rosewood Marimba"
-  },
-  {
-    src: "/images/marimba/OnlineVirtualMarimbaInstrument2.png",
-    alt: "Online Virtual Marimba Instrument2",
-    // label: "Synthetic Marimba"
-  },
-  {
-    src: "/images/marimba/OnlineVirtualMarimbaInstrument3.png",
-    alt: "Online Virtual Marimba Instrument3",
-    // label: "Bass Marimba"
-  }
-];
-
 const Index = () => {
   const [selected, setSelected] = useState('Marimba 1');
   
@@ -80,24 +61,7 @@ const Index = () => {
               </div>
             </div>
 
-            <div className="mt-8 grid grid-cols-3 md:grid-cols-3 gap-4 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '0.4s' }}>
-              {marimbaImages.map((image, index) => (
-                <div key={index} className="relative overflow-hidden rounded-xl shadow-md group hover-scale">
-                  <img 
-                    src={image.src} 
-                    alt={image.alt} 
-                    className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading={index === 0 ? "eager" : "lazy"}
-                    width="500"
-                    height="320"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
-                    {/* <span className="text-white font-medium">{image.label}</span> */}
-                  </div>
-                </div>
-              ))}
-            </div>
-                 
+
             <div className="flex justify-center mt-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
               <button 
                 onClick={() => document.getElementById('marimba-app')?.scrollIntoView({ behavior: 'smooth' })}

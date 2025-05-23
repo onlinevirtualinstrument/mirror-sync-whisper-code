@@ -79,9 +79,8 @@ const featuredInstruments = [
     id: 'piano',
     name: 'Grand Piano',
     category: 'Keyboard',
-    imageUrl: '/images/piano/OnlineVirtualPianoInstrument2.png',
+    imageUrl: '/images/piano/OnlineVirtualPianoInstrument3.png',
     isFeatured: true,
-    soundUrl: '/sounds/piano.mp3'
   },
   {
     id: 'guitar',
@@ -89,7 +88,6 @@ const featuredInstruments = [
     category: 'String',
     imageUrl: '/images/guitar/OnlineVirtualGuitarInstrument2.png',
     isFeatured: true,
-    soundUrl: '/sounds/guitar.mp3'
   },
   {
     id: 'drums',
@@ -130,7 +128,6 @@ const Index = () => {
                   category={instrument.category}
                   imageUrl={instrument.imageUrl}
                   isFeatured={instrument.isFeatured}
-                  soundUrl={instrument.soundUrl}
                 />
               ))}
             </div>

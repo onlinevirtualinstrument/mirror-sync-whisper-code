@@ -1,83 +1,26 @@
-
-import { Heart, Play, Pause } from 'lucide-react';
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import audioPlayer from '@/utils/music/audioPlayer';
 
 interface InstrumentCardProps {
   id: string;
   name: string;
   category: string;
   imageUrl: string;
-  isFeatured?: boolean;
-  soundUrl?: string;
+  isFeatured?: boolean; 
 }
 
-const InstrumentCard = ({ id, name, category, imageUrl, isFeatured, soundUrl }: InstrumentCardProps) => {
-  const [isLiked, setIsLiked] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  
-  // const handleLikeClick = (e: React.MouseEvent) => {
-  //   e.preventDefault();
-  //   e.stopPropagation();
-  //   setIsLiked(!isLiked);
-  // };
-  
-  const handlePlayClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (isPlaying) {
-      audioPlayer.stop();
-      setIsPlaying(false);
-    } else if (soundUrl) {
-      audioPlayer.play(soundUrl);
-      setIsPlaying(true);
-      
-      // Reset playing state when audio ends
-      const checkIfPlaying = setInterval(() => {
-        if (!audioPlayer.isCurrentlyPlaying()) {
-          setIsPlaying(false);
-          clearInterval(checkIfPlaying);
-        }
-      }, 500);
-    }
-  };
-  
+const InstrumentCard = ({ id, name, category, imageUrl, isFeatured }: InstrumentCardProps) => {
+
+
   return (
     <Link to={`/${id}`}>
       <div className="group relative bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
-        <div className="absolute top-3 right-3 z-10 flex gap-2">
-          {soundUrl && (
-            <div 
-              className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center cursor-pointer hover:bg-white transition-colors"
-              onClick={handlePlayClick}
-            >
-              {isPlaying ? (
-                <Pause size={16} className="text-blue-500" />
-              ) : (
-                <Play size={16} className="text-gray-600" />
-              )}
-            </div>
-          )}
-          
-          {/* <div 
-            className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center cursor-pointer hover:bg-white transition-colors"
-            onClick={handleLikeClick}
-          >
-            <Heart 
-              size={16} 
-              className={`${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'} transition-colors`} 
-            />
-          </div> */}
-        </div>
-        
-        <div className={`w-full ${isFeatured ? 'h-64' : 'h-48'} overflow-hidden`}>
+        <div className={`w-full ${isFeatured ? 'h-64' : 'h-48'} overflow-hidden m-3 rounded-xl overflow-hidden`}>
           <img 
             src={imageUrl} 
             alt={name} 
             className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500" 
           />
+          
         </div>
         
         <div className="p-4">

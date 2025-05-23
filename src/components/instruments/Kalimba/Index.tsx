@@ -9,24 +9,6 @@ import AppLayout from '@/components/layout/AppLayout';
 const LazyKalimbaComponent = lazy(() => import("./kalimba1/KalimbaPage"));
 const LazyKalimba2Component = lazy(() => import("./kalimba2/KalimbaPage"));
 
-// Guitar images for better loading management
-const guitarImages = [
-  {
-    src: "/images/kalimba/OnlineVirtualKalimbaInstrument1.png",
-    alt: "Online Virtual Kalimba Instrument1",
-    // label: "Acoustic Guitar"
-  },
-  {
-    src: "/images/kalimba/OnlineVirtualKalimbaInstrument2.png",
-    alt: "Online Virtual Kalimba Instrument2",
-    // label: "Electric Guitar"
-  },
-  {
-    src: "/images/kalimba/OnlineVirtualKalimbaInstrument3.png",
-    alt: "Online Virtual Kalimba Instrument3",
-    // label: "Bass Guitar"
-  }
-];
 
 const Index = () => {
   const [selected, setSelected] = useState('Guitar 1');
@@ -86,24 +68,6 @@ const Index = () => {
               
             </div>
 
-            <div className="mt-8 grid grid-cols-3 md:grid-cols-3 gap-4 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '0.4s' }}>
-            {guitarImages.map((image, index) => (
-                <div key={index} className="relative overflow-hidden rounded-xl shadow-md group hover-scale">
-                  <img 
-                    src={image.src} 
-                    alt={image.alt} 
-                    className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading={index === 0 ? "eager" : "lazy"}
-                    width="500"
-                    height="320"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
-                    {/* <span className="text-white font-medium">{image.label}</span> */}
-                  </div>
-                </div>
-              ))}
-            </div>
-                 
             <div className="flex justify-center mt-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
               <button 
                 onClick={() => document.getElementById('banjo-app')?.scrollIntoView({ behavior: 'smooth' })}
