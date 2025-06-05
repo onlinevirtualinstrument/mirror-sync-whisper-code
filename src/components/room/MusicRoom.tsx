@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,8 +12,6 @@ import PrivateMessaging from './PrivateMessaging';
 import JoinRequests from './JoinRequests';
 import JoinPrivateRoom from './JoinPrivateRoom';
 import AppLayout from '@/components/layout/AppLayout';
-
-
 
 const MusicRoom: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -45,37 +42,37 @@ const MusicRoom: React.FC = () => {
 
   return (
     <AppLayout>
-    <RoomProvider>
-      {/* <div className="flex flex-col h-screen overflow-hidden"> */}
-        {/* Header section with controls */}
-        <RoomHeader />
-        
-        {/* Join requests visible only to host when there are pending requests */}
-        <JoinRequests />
-        
-        {/* Main content area: instrument, chat and participants */}
-        {/* <div className="flex-1 flex flex-col overflow-hidden"> */}
-          {/* Instrument takes full width for better usability */}
-          {/* <div className="flex-grow overflow-hidden"> */}
-            <RoomInstrument />
-          {/* </div> */}
+      <RoomProvider>
+        <div className="flex flex-col h-screen overflow-hidden">
+          {/* Header section with controls */}
+          <RoomHeader />
           
-          {/* Footer section with chat and participants */}
-          {/* <div className="h-72 md:h-64 border-t flex">
-            <div className="w-3/4 border-r">
-              <RoomChat />
+          {/* Join requests visible only to host when there are pending requests */}
+          <JoinRequests />
+          
+          {/* Main content area: instrument and sidebar */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Instrument takes majority of space */}
+            <div className="flex-1 overflow-hidden">
+              <RoomInstrument />
             </div>
-            <div className="w-1/4">
-              <RoomParticipants />
+            
+            {/* Sidebar with chat and participants */}
+            <div className="w-80 border-l flex flex-col">
+              <div className="flex-1">
+                <RoomChat />
+              </div>
+              <div className="h-48 border-t">
+                <RoomParticipants />
+              </div>
             </div>
-          </div> */}
-        {/* </div> */}
+          </div>
+        </div>
         
         {/* Modals and overlays */}
         <PrivateMessaging />
         <JoinPrivateRoom />
-      {/* </div> */}
-    </RoomProvider>
+      </RoomProvider>
     </AppLayout>
   );
 };

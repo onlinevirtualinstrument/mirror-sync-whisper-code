@@ -24,7 +24,7 @@ import {
 } from '@/utils/firebase';
 import { broadcastNote, listenToInstrumentNotes, InstrumentNote } from '@/utils/firebase/room-instruments';
 import { playInstrumentNote } from '@/utils/instruments/instrumentUtils';
-import { playRealtimeNote, initializeRealtimeAudio, stopAllRealtimeNotes } from '@/utils/audio/realtimeAudio';
+import { playRealtimeNote, initializeRealtimeAudio, stopAllRealtimeNotes, setMasterVolume } from '@/utils/audio/realtimeAudio';
 
 type RoomContextType = {
   room: any;
@@ -37,6 +37,7 @@ type RoomContextType = {
   privateMessages: any[];
   privateMessagingUser: string | null;
   unreadCounts: Record<string, number>;
+  unreadMessageCount: number;
   remotePlaying: InstrumentNote | null;
   sendMessage: (message: string) => Promise<void>;
   leaveRoom: () => Promise<void>;
@@ -52,6 +53,7 @@ type RoomContextType = {
   setPrivateMessagingUser: (userId: string | null) => void;
   requestJoin: (code?: string) => Promise<void>;
   broadcastInstrumentNote: (note: InstrumentNote) => Promise<void>;
+  markChatAsRead: () => void;
 };
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -72,33 +74,35 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [privateMessages, setPrivateMessages] = useState<any[]>([]);
   const [privateMessagingUser, setPrivateMessagingUser] = useState<string | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [unreadMessageCount, setUnreadMessageCount] = useState<number>(0);
   const [wasRemoved, setWasRemoved] = useState<boolean>(false);
   const [roomClosed, setRoomClosed] = useState<boolean>(false);
   const [remotePlaying, setRemotePlaying] = useState<InstrumentNote | null>(null);
   const [lastMessageId, setLastMessageId] = useState<string | null>(null);
-  const [lastActivityCheck, setLastActivityCheck] = useState<number>(Date.now());
+  const [lastActivityTime, setLastActivityTime] = useState<number>(Date.now());
+  const [lastSeenMessageId, setLastSeenMessageId] = useState<string | null>(null);
 
-  // Auto-close functionality
+  // Initialize real-time audio on mount
+  useEffect(() => {
+    initializeRealtimeAudio().catch(console.error);
+  }, []);
+
+  // Auto-close functionality with improved tracking
   const checkInactivityAndClose = useCallback(async () => {
     if (!room || !isHost || !room.autoCloseAfterInactivity) return;
     
     const now = Date.now();
-    const timeSinceLastCheck = now - lastActivityCheck;
+    const inactivityTimeout = (room.inactivityTimeout || 5) * 60 * 1000; // Convert to milliseconds
     
-    // Only check every 30 seconds to avoid excessive checks
-    if (timeSinceLastCheck < 30000) return;
+    // Check if there are any active participants
+    const activeParticipants = room.participants?.length || 0;
     
-    setLastActivityCheck(now);
+    // Check time since last activity (either instrument play or message)
+    const timeSinceLastActivity = now - lastActivityTime;
     
-    if (!room.lastActivity) return;
+    console.log(`Checking inactivity: ${Math.round(timeSinceLastActivity / 1000)}s since last activity, ${activeParticipants} participants`);
 
-    const lastActivity = new Date(room.lastActivity);
-    const diffMinutes = (now - lastActivity.getTime()) / (1000 * 60);
-    const timeoutMinutes = room.inactivityTimeout || 5;
-
-    console.log(`Checking inactivity: ${diffMinutes.toFixed(1)} minutes since last activity (timeout: ${timeoutMinutes})`);
-
-    if (diffMinutes > timeoutMinutes) {
+    if (activeParticipants === 0 || timeSinceLastActivity > inactivityTimeout) {
       console.log('Auto-closing room due to inactivity');
       try {
         await deleteRoomFromFirestore(roomId!);
@@ -112,7 +116,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('Error auto-closing room:', error);
       }
     }
-  }, [room, isHost, roomId, navigate, addNotification, lastActivityCheck]);
+  }, [room, isHost, roomId, navigate, addNotification, lastActivityTime]);
 
   // Fetch room data and set up listeners
   useEffect(() => {
@@ -150,12 +154,17 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setRoom(roomData);
         setIsLoading(false);
         
+        // Update last activity time when room data changes
+        if (roomData.lastActivity) {
+          const activityTime = new Date(roomData.lastActivity).getTime();
+          setLastActivityTime(activityTime);
+        }
+        
         // Check if user is a participant and host
         if (user) {
           const participants = roomData.participants || [];
           const participantInfo = participants.find((p: any) => p.id === user.uid);
           
-          // User was previously a participant but now is not - they were removed
           if (isParticipant && !participantInfo && !wasRemoved) {
             setWasRemoved(true);
             addNotification({
@@ -185,7 +194,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
-    // Enhanced chat listener with notifications
+    // Enhanced chat listener with unread message tracking
     const unsubscribeChat = listenToRoomChat(
       roomId,
       (messagesData) => {
@@ -195,14 +204,25 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           return timeA.getTime() - timeB.getTime();
         });
         
-        // Check for new messages (excluding own messages)
+        setMessages(sortedMessages);
+        
+        // Calculate unread messages
         if (sortedMessages.length > 0) {
           const latestMessage = sortedMessages[sortedMessages.length - 1];
+          
+          // Count unread messages
+          const unreadCount = sortedMessages.filter(msg => 
+            msg.senderId !== user.uid && 
+            (!lastSeenMessageId || msg.id !== lastSeenMessageId)
+          ).length;
+          
+          setUnreadMessageCount(unreadCount);
+          
+          // Show notification for new messages
           if (latestMessage.id !== lastMessageId && 
               latestMessage.senderId !== user.uid &&
               lastMessageId !== null) {
             
-            // Show notification for new message
             addNotification({
               title: "New Message",
               message: `${latestMessage.senderName}: ${latestMessage.text.substring(0, 50)}${latestMessage.text.length > 50 ? '...' : ''}`,
@@ -211,36 +231,38 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
           setLastMessageId(latestMessage.id);
         }
-        
-        setMessages(sortedMessages);
       },
       (error) => {
         console.error("Chat error:", error);
       }
     );
 
-    // Enhanced instrument notes listener with proper audio playback
+    // Enhanced instrument notes listener with better audio mixing
     const unsubscribeNotes = listenToInstrumentNotes(
       roomId,
-      (noteData: InstrumentNote) => {
+      async (noteData: InstrumentNote) => {
         if (noteData && noteData.userId !== user.uid) {
           setRemotePlaying(noteData);
           
-          // Play the note with enhanced audio
+          // Update activity time when any user plays an instrument
+          setLastActivityTime(Date.now());
+          
+          // Play the note with enhanced real-time audio
           try {
-            const [note, octaveStr] = noteData.note.split(':');
-            const octave = octaveStr ? parseInt(octaveStr) : 4;
+            const noteId = `${noteData.userId}-${noteData.note}-${Date.now()}`;
+            const frequency = getNoteFrequency(noteData.note) || 440;
             
-            if (note) {
-              playInstrumentNote(
-                noteData.instrument,
-                note,
-                octave,
-                600, // duration
-                noteData.volume || 0.7,
-                noteData.effects
-              );
-            }
+            // Use real-time audio for better synchronization
+            await playRealtimeNote(
+              noteId,
+              frequency,
+              noteData.instrument,
+              noteData.userId,
+              noteData.volume || 0.7,
+              600
+            );
+            
+            console.log(`Playing remote note: ${noteData.note} from ${noteData.userName} on ${noteData.instrument}`);
           } catch (error) {
             console.error("Error playing remote note:", error);
           }
@@ -261,13 +283,13 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       unsubscribeChat();
       unsubscribeNotes();
     };
-  }, [roomId, user, navigate, isParticipant, wasRemoved, lastMessageId, addNotification]);
+  }, [roomId, user, navigate, isParticipant, wasRemoved, lastMessageId, addNotification, lastSeenMessageId]);
 
-  // Auto-close check interval
+  // Auto-close check interval - improved timing
   useEffect(() => {
     if (!room || !isHost || !room.autoCloseAfterInactivity) return;
 
-    const interval = setInterval(checkInactivityAndClose, 60000); // Check every minute
+    const interval = setInterval(checkInactivityAndClose, 30000); // Check every 30 seconds
     checkInactivityAndClose(); // Initial check
 
     return () => clearInterval(interval);
@@ -344,6 +366,9 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     
     try {
+      // Update activity time when local user plays
+      setLastActivityTime(Date.now());
+      
       await broadcastNote(roomId, {
         ...note,
         timestamp: new Date().toISOString(),
@@ -366,7 +391,16 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Send a chat message
+  // Mark chat messages as read
+  const markChatAsRead = useCallback(() => {
+    if (messages.length > 0) {
+      const latestMessage = messages[messages.length - 1];
+      setLastSeenMessageId(latestMessage.id);
+      setUnreadMessageCount(0);
+    }
+  }, [messages]);
+
+  // Send a chat message with activity tracking
   const sendMessage = async (message: string) => {
     if (!roomId || !user || !message.trim()) return;
     
@@ -389,6 +423,9 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     
     try {
+      // Update activity time when sending message
+      setLastActivityTime(Date.now());
+      
       await saveChatMessage(roomId, {
         text: message,
         senderId: user.uid,
@@ -666,21 +703,116 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     privateMessages,
     privateMessagingUser,
     unreadCounts,
+    unreadMessageCount,
     remotePlaying,
     sendMessage,
-    leaveRoom,
-    closeRoom,
-    switchInstrument,
-    muteUser,
-    removeUser,
-    toggleChat,
-    toggleAutoClose,
-    updateSettings,
-    respondToJoinRequest,
-    sendPrivateMsg,
+    leaveRoom: async () => {
+      if (!roomId || !user) return;
+      try {
+        await removeUserFromRoom(roomId, user.uid);
+        navigate('/music-rooms');
+        addNotification({
+          title: "Left Room",
+          message: "You have left the room",
+          type: "info"
+        });
+      } catch (error) {
+        console.error("Error leaving room:", error);
+      }
+    },
+    closeRoom: async () => {
+      if (!roomId || !user || !isHost) return;
+      try {
+        await deleteRoomFromFirestore(roomId);
+        navigate('/music-rooms');
+        addNotification({
+          title: "Room Closed", 
+          message: "Room has been closed",
+          type: "info"
+        });
+      } catch (error) {
+        console.error("Error closing room:", error);
+      }
+    },
+    switchInstrument: async (instrument: string) => {
+      if (!roomId || !user) return;
+      try {
+        await updateUserInstrument(roomId, user.uid, instrument);
+        if (userInfo) {
+          setUserInfo({ ...userInfo, instrument });
+        }
+      } catch (error) {
+        console.error("Error switching instrument:", error);
+      }
+    },
+    muteUser: async (userId: string, mute: boolean) => {
+      if (!roomId || !user || !isHost) return;
+      try {
+        await toggleUserMute(roomId, userId, mute);
+      } catch (error) {
+        console.error("Error toggling mute:", error);
+      }
+    },
+    removeUser: async (userId: string) => {
+      if (!roomId || !user || !isHost) return;
+      try {
+        await removeUserFromRoom(roomId, userId);
+      } catch (error) {
+        console.error("Error removing user:", error);
+      }
+    },
+    toggleChat: async (disabled: boolean) => {
+      if (!roomId || !user || !isHost) return;
+      try {
+        await toggleRoomChat(roomId, disabled);
+        setRoom(prev => ({ ...prev, isChatDisabled: disabled }));
+      } catch (error) {
+        console.error("Error toggling chat:", error);
+      }
+    },
+    toggleAutoClose: async (enabled: boolean, timeout: number = 5) => {
+      if (!roomId || !user || !isHost) return;
+      try {
+        await toggleAutoCloseRoom(roomId, enabled, timeout);
+      } catch (error) {
+        console.error("Error toggling auto-close:", error);
+      }
+    },
+    updateSettings: async (settings: any) => {
+      if (!roomId || !user || !isHost) return;
+      try {
+        await updateRoomSettings(roomId, settings);
+      } catch (error) {
+        console.error("Error updating settings:", error);
+      }
+    },
+    respondToJoinRequest: async (userId: string, approve: boolean) => {
+      if (!roomId || !user || !isHost) return;
+      try {
+        await handleJoinRequest(roomId, userId, approve);
+      } catch (error) {
+        console.error("Error handling join request:", error);
+      }
+    },
+    sendPrivateMsg: async (receiverId: string, message: string) => {
+      if (!roomId || !user || !message.trim()) return;
+      try {
+        await sendPrivateMessage(roomId, user.uid, receiverId, message);
+      } catch (error) {
+        console.error("Error sending private message:", error);
+      }
+    },
     setPrivateMessagingUser,
-    requestJoin,
-    broadcastInstrumentNote
+    requestJoin: async (code?: string) => {
+      if (!roomId || !user) return;
+      try {
+        await requestToJoinRoom(roomId, user.uid, !!code);
+      } catch (error) {
+        console.error("Error requesting to join:", error);
+      }
+    },
+    broadcastInstrumentNote,
+    markChatAsRead
   };
 
   return (

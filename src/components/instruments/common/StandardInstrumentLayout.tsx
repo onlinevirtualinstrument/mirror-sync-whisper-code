@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,20 +37,42 @@ const StandardInstrumentLayout: React.FC<StandardInstrumentLayoutProps> = ({
   additionalControls
 }) => {
   const [showSettings, setShowSettings] = useState(false);
+  const [actualFullscreen, setActualFullscreen] = useState(false);
+
+  // Monitor actual fullscreen state
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isActuallyFullscreen = !!document.fullscreenElement;
+      setActualFullscreen(isActuallyFullscreen);
+      onFullscreenToggle(isActuallyFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [onFullscreenToggle]);
 
   const handleFullscreenToggle = async () => {
     const newFullscreenState = await toggleFullscreen();
-    onFullscreenToggle(newFullscreenState);
+    setActualFullscreen(newFullscreenState);
   };
 
+  // Fullscreen-specific styles
+  const fullscreenClasses = actualFullscreen 
+    ? 'fixed inset-0 z-[9999] bg-slate-900 overflow-hidden' 
+    : 'min-h-screen';
+
+  const contentClasses = actualFullscreen
+    ? 'h-screen overflow-hidden flex flex-col'
+    : 'min-h-screen';
+
   return (
-    <div className={`min-h-screen transition-all duration-300 ${
-      isFullscreen 
+    <div className={`${fullscreenClasses} transition-all duration-300 ${
+      actualFullscreen 
         ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
         : 'bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900'
     }`}>
       {/* Header Controls */}
-      <div className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-700">
+      <div className={`${actualFullscreen ? 'relative' : 'sticky top-0'} z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-700`}>
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             {/* Title and Instrument Selector */}
@@ -63,18 +85,23 @@ const StandardInstrumentLayout: React.FC<StandardInstrumentLayoutProps> = ({
               </div>
               
               {instrumentVariants && onVariantChange && (
-                <Select value={selectedVariant} onValueChange={onVariantChange}>
-                  <SelectTrigger className="w-48 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-300 dark:border-slate-600">
-                    <SelectValue placeholder="Select variant" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {instrumentVariants.map((variant) => (
-                      <SelectItem key={variant.id} value={variant.id}>
-                        {variant.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className={actualFullscreen ? 'relative z-[10000]' : ''}>
+                  <Select value={selectedVariant} onValueChange={onVariantChange}>
+                    <SelectTrigger className="w-48 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-300 dark:border-slate-600">
+                      <SelectValue placeholder="Select variant" />
+                    </SelectTrigger>
+                    <SelectContent 
+                      className={actualFullscreen ? 'z-[10001] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600' : ''}
+                      sideOffset={5}
+                    >
+                      {instrumentVariants.map((variant) => (
+                        <SelectItem key={variant.id} value={variant.id}>
+                          {variant.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
             </div>
 
@@ -112,14 +139,16 @@ const StandardInstrumentLayout: React.FC<StandardInstrumentLayoutProps> = ({
                 onClick={handleFullscreenToggle}
                 className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-300 dark:border-slate-600"
               >
-                {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                {actualFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
               </Button>
             </div>
           </div>
 
           {/* Expandable Settings Panel */}
           {showSettings && (
-            <Card className="mt-4 bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border-slate-200 dark:border-slate-700 animate-fade-in">
+            <Card className={`mt-4 bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border-slate-200 dark:border-slate-700 animate-fade-in ${
+              actualFullscreen ? 'relative z-[9998]' : ''
+            }`}>
               <CardContent className="p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {/* Reverb Control */}
@@ -146,8 +175,8 @@ const StandardInstrumentLayout: React.FC<StandardInstrumentLayoutProps> = ({
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-fade-in">
+      <div className={`${actualFullscreen ? 'flex-1 overflow-hidden' : 'container mx-auto px-4 py-8'}`}>
+        <div className={`${actualFullscreen ? 'h-full' : ''} animate-fade-in`}>
           {children}
         </div>
       </div>
