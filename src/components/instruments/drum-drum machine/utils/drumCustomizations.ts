@@ -1,5 +1,5 @@
 
-import { DrumPad } from '@/data/drumKits';
+import { DrumPad } from '../data/drumKits';
 
 // Store drum customizations in localStorage
 const STORAGE_KEY = 'drum-kit-customizations';

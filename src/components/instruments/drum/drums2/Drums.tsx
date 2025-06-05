@@ -45,13 +45,12 @@ const Drums2: React.FC = () => {
     // Also use the legacy instrument utils for backup
     await playInstrumentNote('drum', pad.note, 2, 300, volume);
     
-    // Broadcast to room with enhanced data
+    // Broadcast to room without frequency property (not part of InstrumentNote type)
     broadcastInstrumentNote({
       note: pad.note,
       instrument: 'drum',
       userId: userInfo?.id || 'current-user',
       userName: userInfo?.name || 'User',
-      frequency: pad.frequency,
       volume: volume,
       effects: { reverb }
     });
