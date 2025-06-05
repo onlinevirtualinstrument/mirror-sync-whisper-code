@@ -1,77 +1,48 @@
 
-import { useEffect, useCallback } from 'react';
-import { useAudioContext } from './useAudioContext';
-import { useAudioEffects } from './useAudioEffects';
-import { useDrumSoundMapping } from './useDrumSoundMapping';
-import { createVisualFeedback } from '@/utils/audio/visualEffects';
+import { useState, useCallback, useRef } from 'react';
+import { EnhancedDrumSynthesizer } from '@/utils/audio/drumSynthesizer';
+import { useAudioEffects, AudioEffects } from './useAudioEffects';
+import { DrumPad } from '../data/drumKits';
+import { createVisualFeedback } from '../utils/audio/visualEffects';
 
 export const useAudioEngine = () => {
-  const { synthesizerRef, initializeAudio } = useAudioContext();
-  const { effects, setEffects, handleEffectChange, handleEffectToggle } = useAudioEffects();
-  const { mapDrumSound } = useDrumSoundMapping();
-  
-  // Initialize audio context on first user interaction
-  useEffect(() => {
-    const resumeAudioContext = async () => {
-      if (synthesizerRef.current) {
-        const context = (synthesizerRef.current as any).audioContext;
-        if (context && context.state === 'suspended') {
-          try {
-            await context.resume();
-            console.log('Audio context resumed');
-          } catch (error) {
-            console.error('Failed to resume audio context:', error);
-          }
-        }
+  const [isLoading, setIsLoading] = useState(false);
+  const synthesizerRef = useRef<EnhancedDrumSynthesizer | null>(null);
+  const { effects, handleEffectChange, handleEffectToggle } = useAudioEffects();
+
+  const initializeAudio = useCallback(async () => {
+    if (!synthesizerRef.current) {
+      try {
+        setIsLoading(true);
+        synthesizerRef.current = new EnhancedDrumSynthesizer();
+        console.log('Audio engine initialized');
+      } catch (error) {
+        console.error('Failed to initialize audio engine:', error);
+      } finally {
+        setIsLoading(false);
       }
-    };
-    
-    document.addEventListener('click', resumeAudioContext, { once: true });
-    document.addEventListener('keydown', resumeAudioContext, { once: true });
-    
-    return () => {
-      document.removeEventListener('click', resumeAudioContext);
-      document.removeEventListener('keydown', resumeAudioContext);
-    };
-  }, [synthesizerRef]);
-  
-  const playWithEffects = useCallback(async (pad: any) => {
-    console.log(`Playing ${pad.name} with enhanced synthesis`);
-    
-    try {
-      await initializeAudio();
-      
-      if (!synthesizerRef.current) {
-        console.error('Synthesizer not available');
-        return;
-      }
-      
-      const synthesizer = synthesizerRef.current;
-      
-      // Apply EQ settings
-      synthesizer.setEQ(effects.eq.low, effects.eq.mid, effects.eq.high);
-      
-      // Create visual feedback
-      createVisualFeedback(pad);
-      
-      // Map and play the drum sound
-      await mapDrumSound(synthesizer, pad);
-      
-      console.log(`Successfully synthesized ${pad.name}`);
-      
-    } catch (error) {
-      console.error(`Error synthesizing ${pad.name}:`, error);
     }
-  }, [effects, initializeAudio, synthesizerRef, mapDrumSound]);
-  
+  }, []);
+
+  const playWithEffects = useCallback(async (pad: DrumPad) => {
+    if (!synthesizerRef.current) {
+      await initializeAudio();
+    }
+
+    try {
+      await synthesizerRef.current?.playDrumSound(pad.id, 0.7);
+      createVisualFeedback(pad);
+    } catch (error) {
+      console.error('Error playing drum sound:', error);
+    }
+  }, [initializeAudio]);
+
   return {
     effects,
-    setEffects,
+    isLoading,
+    playWithEffects,
+    initializeAudio,
     handleEffectChange,
-    handleEffectToggle,
-    playWithEffects
+    handleEffectToggle
   };
 };
-
-// Re-export AudioEffects for backward compatibility
-export type { AudioEffects } from './useAudioEffects';

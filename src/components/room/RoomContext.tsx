@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useNotifications } from '@/hooks/useNotifications';
 import {
   listenToRoomData,
   isUserRoomParticipant,
@@ -19,19 +20,10 @@ import {
   getPrivateMessages,
   sendPrivateMessage,
   markMessageAsRead,
-  listenForUnreadMessages,
-  broadcastNote,
-  listenToInstrumentNotes
+  listenForUnreadMessages
 } from '@/utils/firebase';
+import { broadcastNote, listenToInstrumentNotes, InstrumentNote } from '@/utils/firebase/room-instruments';
 import { playInstrumentNote } from '@/utils/instruments/instrumentUtils';
-
-interface InstrumentNote {
-  note: string;
-  instrument: string;
-  userId: string;
-  userName: string;
-  timestamp?: string;
-}
 
 type RoomContextType = {
   room: any;
@@ -67,6 +59,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { roomId } = useParams<{ roomId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { addNotification } = useNotifications();
   
   const [room, setRoom] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -82,6 +75,43 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [roomClosed, setRoomClosed] = useState<boolean>(false);
   const [remotePlaying, setRemotePlaying] = useState<InstrumentNote | null>(null);
   const [lastMessageId, setLastMessageId] = useState<string | null>(null);
+  const [lastActivityCheck, setLastActivityCheck] = useState<number>(Date.now());
+
+  // Auto-close functionality
+  const checkInactivityAndClose = useCallback(async () => {
+    if (!room || !isHost || !room.autoCloseAfterInactivity) return;
+    
+    const now = Date.now();
+    const timeSinceLastCheck = now - lastActivityCheck;
+    
+    // Only check every 30 seconds to avoid excessive checks
+    if (timeSinceLastCheck < 30000) return;
+    
+    setLastActivityCheck(now);
+    
+    if (!room.lastActivity) return;
+
+    const lastActivity = new Date(room.lastActivity);
+    const diffMinutes = (now - lastActivity.getTime()) / (1000 * 60);
+    const timeoutMinutes = room.inactivityTimeout || 5;
+
+    console.log(`Checking inactivity: ${diffMinutes.toFixed(1)} minutes since last activity (timeout: ${timeoutMinutes})`);
+
+    if (diffMinutes > timeoutMinutes) {
+      console.log('Auto-closing room due to inactivity');
+      try {
+        await deleteRoomFromFirestore(roomId!);
+        navigate('/music-rooms');
+        addNotification({
+          title: "Room Auto-Closed",
+          message: "Room was automatically closed due to inactivity",
+          type: "info"
+        });
+      } catch (error) {
+        console.error('Error auto-closing room:', error);
+      }
+    }
+  }, [room, isHost, roomId, navigate, addNotification, lastActivityCheck]);
 
   // Fetch room data and set up listeners
   useEffect(() => {
@@ -106,11 +136,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log("Room data updated:", roomData);
         
         if (!roomData) {
-          // Room was deleted or doesn't exist
           setRoomClosed(true);
-          toast({
+          addNotification({
             title: "Room Closed",
-            description: "This room has been closed by the host",
+            message: "This room has been closed by the host",
+            type: "warning"
           });
           navigate('/music-rooms');
           return;
@@ -127,10 +157,10 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           // User was previously a participant but now is not - they were removed
           if (isParticipant && !participantInfo && !wasRemoved) {
             setWasRemoved(true);
-            toast({
+            addNotification({
               title: "Removed from Room",
-              description: "You have been removed from this room by the host",
-              variant: "destructive"
+              message: "You have been removed from this room by the host",
+              type: "error"
             });
             navigate('/music-rooms');
             return;
@@ -143,20 +173,6 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           } else {
             setIsParticipant(false);
             setIsHost(false);
-          }
-        }
-        
-        // Check for auto-close after inactivity
-        if (roomData.autoCloseAfterInactivity && roomData.lastActivity) {
-          const lastActivity = new Date(roomData.lastActivity);
-          const now = new Date();
-          const diffMinutes = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
-          
-          if (diffMinutes > (roomData.inactivityTimeout || 5)) {
-            if (isHost) {
-              // Only host can close the room automatically
-              closeRoom();
-            }
           }
         }
       },
@@ -186,9 +202,10 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               lastMessageId !== null) {
             
             // Show notification for new message
-            toast({
+            addNotification({
               title: "New Message",
-              description: `${latestMessage.senderName}: ${latestMessage.text.substring(0, 50)}${latestMessage.text.length > 50 ? '...' : ''}`,
+              message: `${latestMessage.senderName}: ${latestMessage.text.substring(0, 50)}${latestMessage.text.length > 50 ? '...' : ''}`,
+              type: "info"
             });
           }
           setLastMessageId(latestMessage.id);
@@ -238,41 +255,22 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
-    // Enhanced auto-close mechanism
-    useEffect(() => {
-      if (!room || !isHost || !room.autoCloseAfterInactivity) return;
-
-      const checkInactivity = () => {
-        if (!room.lastActivity) return;
-
-        const lastActivity = new Date(room.lastActivity);
-        const now = new Date();
-        const diffMinutes = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
-        const timeoutMinutes = room.inactivityTimeout || 5;
-
-        console.log(`Checking inactivity: ${diffMinutes.toFixed(1)} minutes since last activity (timeout: ${timeoutMinutes})`);
-
-        if (diffMinutes > timeoutMinutes) {
-          console.log('Auto-closing room due to inactivity');
-          closeRoom();
-        }
-      };
-
-      // Check every minute
-      const interval = setInterval(checkInactivity, 60000);
-      
-      // Initial check
-      checkInactivity();
-
-      return () => clearInterval(interval);
-    }, [room, isHost, closeRoom]);
-
     return () => {
       unsubscribeRoom();
       unsubscribeChat();
       unsubscribeNotes();
     };
-  }, [roomId, user, navigate, isParticipant, wasRemoved, lastMessageId]);
+  }, [roomId, user, navigate, isParticipant, wasRemoved, lastMessageId, addNotification]);
+
+  // Auto-close check interval
+  useEffect(() => {
+    if (!room || !isHost || !room.autoCloseAfterInactivity) return;
+
+    const interval = setInterval(checkInactivityAndClose, 60000); // Check every minute
+    checkInactivityAndClose(); // Initial check
+
+    return () => clearInterval(interval);
+  }, [room, isHost, checkInactivityAndClose]);
 
   // Set up private messaging if a user is selected
   useEffect(() => {
@@ -359,10 +357,10 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error) {
       console.error("Error broadcasting note:", error);
-      toast({
+      addNotification({
         title: "Connection Error",
-        description: "Failed to sync with other participants",
-        variant: "destructive"
+        message: "Failed to sync with other participants",
+        type: "error"
       });
     }
   };
@@ -372,12 +370,20 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!roomId || !user || !message.trim()) return;
     
     if (!isParticipant) {
-      toast({ description: "You must be a participant to send messages" });
+      addNotification({
+        title: "Access Denied",
+        message: "You must be a participant to send messages",
+        type: "error"
+      });
       return;
     }
     
     if (room?.isChatDisabled && !isHost) {
-      toast({ description: "Chat has been disabled by the host" });
+      addNotification({
+        title: "Chat Disabled",
+        message: "Chat has been disabled by the host",
+        type: "warning"
+      });
       return;
     }
     
@@ -398,7 +404,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      toast({ description: "Failed to send message" });
+      addNotification({
+        title: "Error",
+        message: "Failed to send message",
+        type: "error"
+      });
     }
   };
 
@@ -408,11 +418,19 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       await removeUserFromRoom(roomId, user.uid);
-      navigate('/music-rooms'); // Redirect to home
-      toast({ description: "You have left the room" });
+      navigate('/music-rooms');
+      addNotification({
+        title: "Left Room",
+        message: "You have left the room",
+        type: "info"
+      });
     } catch (error) {
       console.error("Error leaving room:", error);
-      toast({ description: "Failed to leave room" });
+      addNotification({
+        title: "Error",
+        message: "Failed to leave room",
+        type: "error"
+      });
     }
   };
 
@@ -422,13 +440,21 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       await deleteRoomFromFirestore(roomId);
-      navigate('/music-rooms'); // Redirect to home
-      toast({ description: "Room has been closed" });
+      navigate('/music-rooms');
+      addNotification({
+        title: "Room Closed",
+        message: "Room has been closed",
+        type: "info"
+      });
     } catch (error) {
       console.error("Error closing room:", error);
-      toast({ description: "Failed to close room" });
+      addNotification({
+        title: "Error",
+        message: "Failed to close room",
+        type: "error"
+      });
     }
-  }, [roomId, user, isHost, navigate]);
+  }, [roomId, user, isHost, navigate, addNotification]);
 
   // Switch instrument
   const switchInstrument = async (instrument: string) => {
@@ -445,7 +471,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error) {
       console.error("Error switching instrument:", error);
-      toast({ description: "Failed to switch instrument" });
+      addNotification({
+        title: "Error",
+        message: "Failed to switch instrument",
+        type: "error"
+      });
     }
   };
 
@@ -455,14 +485,18 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       await toggleUserMute(roomId, userId, mute);
-      toast({ 
-        description: mute ? 
-          "User has been muted" : 
-          "User has been unmuted" 
+      addNotification({ 
+        title: mute ? "User Muted" : "User Unmuted",
+        message: mute ? "User has been muted" : "User has been unmuted",
+        type: "info"
       });
     } catch (error) {
       console.error("Error toggling mute:", error);
-      toast({ description: "Failed to update user mute status" });
+      addNotification({
+        title: "Error",
+        message: "Failed to update user mute status",
+        type: "error"
+      });
     }
   };
 
@@ -472,10 +506,18 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       await removeUserFromRoom(roomId, userId);
-      toast({ description: "User removed from room" });
+      addNotification({
+        title: "User Removed",
+        message: "User removed from room",
+        type: "info"
+      });
     } catch (error) {
       console.error("Error removing user:", error);
-      toast({ description: "Failed to remove user from room" });
+      addNotification({
+        title: "Error",
+        message: "Failed to remove user from room",
+        type: "error"
+      });
     }
   };
 
@@ -485,20 +527,23 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       await toggleRoomChat(roomId, disabled);
-      // Update local state immediately for UI responsiveness
       setRoom(prev => ({
         ...prev,
         isChatDisabled: disabled
       }));
       
-      toast({ 
-        description: disabled ? 
-          "Chat has been disabled for all users" : 
-          "Chat has been enabled for all users" 
+      addNotification({ 
+        title: disabled ? "Chat Disabled" : "Chat Enabled",
+        message: disabled ? "Chat has been disabled for all users" : "Chat has been enabled for all users",
+        type: "info"
       });
     } catch (error) {
       console.error("Error toggling chat:", error);
-      toast({ description: "Failed to update chat settings" });
+      addNotification({
+        title: "Error",
+        message: "Failed to update chat settings",
+        type: "error"
+      });
     }
   };
 
@@ -510,7 +555,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await toggleAutoCloseRoom(roomId, enabled, timeout);
     } catch (error) {
       console.error("Error toggling auto-close:", error);
-      toast({ description: "Failed to update auto-close settings" });
+      addNotification({
+        title: "Error",
+        message: "Failed to update auto-close settings",
+        type: "error"
+      });
     }
   };
 
@@ -522,7 +571,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await updateRoomSettings(roomId, settings);
     } catch (error) {
       console.error("Error updating settings:", error);
-      toast({ description: "Failed to update room settings" });
+      addNotification({
+        title: "Error",
+        message: "Failed to update room settings",
+        type: "error"
+      });
     }
   };
 
@@ -532,14 +585,18 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       await handleJoinRequest(roomId, userId, approve);
-      toast({ 
-        description: approve ? 
-          "User has been approved to join" : 
-          "User's request has been denied" 
+      addNotification({ 
+        title: approve ? "User Approved" : "Request Denied",
+        message: approve ? "User has been approved to join" : "User's request has been denied",
+        type: approve ? "success" : "info"
       });
     } catch (error) {
       console.error("Error handling join request:", error);
-      toast({ description: "Failed to process join request" });
+      addNotification({
+        title: "Error",
+        message: "Failed to process join request",
+        type: "error"
+      });
     }
   };
 
@@ -551,7 +608,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await sendPrivateMessage(roomId, user.uid, receiverId, message);
     } catch (error) {
       console.error("Error sending private message:", error);
-      toast({ description: "Failed to send private message" });
+      addNotification({
+        title: "Error",
+        message: "Failed to send private message",
+        type: "error"
+      });
     }
   };
 
@@ -562,18 +623,34 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       if (code && room && !room.isPublic) {
         if (room.joinCode === code) {
-          await requestToJoinRoom(roomId, user.uid, true); // Pass true to auto-approve with correct code
-          toast({ description: "Join request sent with correct code" });
+          await requestToJoinRoom(roomId, user.uid, true);
+          addNotification({
+            title: "Request Sent",
+            message: "Join request sent with correct code",
+            type: "success"
+          });
         } else {
-          toast({ description: "Incorrect join code" });
+          addNotification({
+            title: "Invalid Code",
+            message: "Incorrect join code",
+            type: "error"
+          });
         }
       } else {
         await requestToJoinRoom(roomId, user.uid);
-        toast({ description: "Join request sent to room host" });
+        addNotification({
+          title: "Request Sent",
+          message: "Join request sent to room host",
+          type: "info"
+        });
       }
     } catch (error) {
       console.error("Error requesting to join:", error);
-      toast({ description: "Failed to send join request" });
+      addNotification({
+        title: "Error",
+        message: "Failed to send join request",
+        type: "error"
+      });
     }
   };
   

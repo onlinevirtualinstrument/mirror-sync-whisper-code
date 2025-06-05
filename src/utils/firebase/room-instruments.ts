@@ -1,7 +1,8 @@
+
 import { collection, addDoc, onSnapshot, query, orderBy, limit, where, serverTimestamp, deleteDoc, getDocs, doc } from "firebase/firestore";
 import { db } from './config';
 
-interface InstrumentNote {
+export interface InstrumentNote {
   note: string;
   instrument: string;
   userId: string;
@@ -9,6 +10,7 @@ interface InstrumentNote {
   timestamp?: any;
   volume?: number;
   effects?: any;
+  id?: string;
 }
 
 // Broadcast instrument note to all participants
@@ -70,13 +72,20 @@ const cleanupOldNotes = async (roomId: string): Promise<void> => {
     
     if (snapshot.size > 50) {
       const notesByTime = snapshot.docs
-        .map(doc => ({ id: doc.id, data: doc.data() }))
+        .map(doc => ({ 
+          id: doc.id, 
+          data: doc.data(),
+          note: doc.data().note || '',
+          instrument: doc.data().instrument || '',
+          userId: doc.data().userId || '',
+          userName: doc.data().userName || ''
+        } as InstrumentNote & { data: any }))
         .sort((a, b) => (b.data.playedAt || 0) - (a.data.playedAt || 0));
       
       const toDelete = notesByTime.slice(50);
       
       for (const note of toDelete) {
-        await deleteDoc(doc(db, "musicRooms", roomId, "instrumentNotes", note.id));
+        await deleteDoc(doc(db, "musicRooms", roomId, "instrumentNotes", note.id || ''));
       }
     }
   } catch (error) {

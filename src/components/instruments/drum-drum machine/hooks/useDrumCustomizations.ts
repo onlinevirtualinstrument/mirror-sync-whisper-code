@@ -1,58 +1,40 @@
 
-import { useState } from 'react';
-import { DrumPad } from '@/data/drumKits';
-import { loadCustomizations as loadSaved, updateDrumCustomization as updateDrum } from '@/utils/drumCustomizations';
-import { toast } from '@/hooks/use-toast';
+import { useState, useCallback } from 'react';
+import { DrumKit } from '../data/drumKits';
+import { 
+  saveCustomizations, 
+  loadCustomizations, 
+  resetCustomizations,
+  applyCustomizations,
+  CustomDrumKit 
+} from '@/utils/drumCustomizations';
 
-export interface DrumCustomization {
-  id: string;
-  name?: string;
-  color?: string;
-  glowColor?: string;
-  size?: number;
-}
+export const useCustomizations = (kit: DrumKit) => {
+  const [customizations, setCustomizations] = useState(() => 
+    loadCustomizations(kit.id)
+  );
 
-export const useCustomizations = () => {
-  const [customizations, setCustomizations] = useState<Record<string, DrumCustomization>>({});
-  
-  // Apply customizations to drum pads
-  const applyCustomizations = (pads: DrumPad[]): DrumPad[] => {
-    return pads.map(pad => {
-      const customization = customizations[pad.id];
-      if (!customization) return pad;
-      
-      return {
-        ...pad,
-        name: customization.name ?? pad.name,
-        color: customization.color ?? pad.color,
-        glowColor: customization.glowColor ?? pad.glowColor,
-        // Add any other customizable properties here
-      };
-    });
-  };
+  const updateCustomization = useCallback((padId: string, updates: any) => {
+    const newCustomizations = {
+      ...customizations,
+      [padId]: { ...customizations[padId], ...updates }
+    };
+    
+    setCustomizations(newCustomizations);
+    saveCustomizations(kit.id, newCustomizations);
+  }, [customizations, kit.id]);
 
-  // Function to handle drum customization
-  const handleDrumCustomize = (drumId: string, updates: Partial<DrumCustomization>) => {
-    const updatedCustomizations = updateDrum(drumId, updates);
-    setCustomizations(updatedCustomizations);
-    toast({
-      title: "Drum pad customized",
-      description: "Your changes have been saved",
-      duration: 3000,
-    });
-  };
-  
-  // Load saved customizations
-  const loadCustomizations = () => {
-    const saved = loadSaved();
-    return saved;
-  };
+  const resetAll = useCallback(() => {
+    setCustomizations({});
+    resetCustomizations(kit.id);
+  }, [kit.id]);
+
+  const customizedKit: CustomDrumKit = applyCustomizations(kit, customizations);
 
   return {
     customizations,
-    setCustomizations,
-    applyCustomizations,
-    handleDrumCustomize,
-    loadCustomizations
+    customizedKit,
+    updateCustomization,
+    resetAll
   };
 };

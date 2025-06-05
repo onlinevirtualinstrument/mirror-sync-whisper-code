@@ -1,6 +1,6 @@
 
 import { Layers, Music } from 'lucide-react';
-import { drumKits } from '@/data/drumKits';
+import { drumKits } from '../data/drumKits';
 
 interface DrumKitHeaderProps {
   kitName: string;

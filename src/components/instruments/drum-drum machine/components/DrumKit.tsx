@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from 'react';
 import DrumKitTabs from './DrumKitTabs';
-import { useAudioEngine } from '@/hooks/useAudioEngine';
+import { useAudioEngine } from '../hooks/useAudioEngine';
 
 const DrumKit = () => {
   const [selectedKit, setSelectedKit] = useState('classic');

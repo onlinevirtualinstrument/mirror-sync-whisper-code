@@ -1,8 +1,8 @@
 
 import { useMemo } from 'react';
 import DrumPad from './DrumPad';
-import { AudioEffects } from '@/hooks/useAudioEffects';
-import { DrumPad as DrumPadType } from '@/data/drumKits';
+import { AudioEffects } from '../hooks/useAudioEffects';
+import { DrumPad as DrumPadType } from '../data/drumKits';
 
 interface DrumPadGridProps {
   pads: DrumPadType[];
