@@ -69,9 +69,6 @@ const Banjo = () => {
           onStringClick={playString}
         />
         
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>Play the banjo by clicking on a string or using keys Q, W, E, R, T</p>
-        </div>
       </div>
     </>
   );

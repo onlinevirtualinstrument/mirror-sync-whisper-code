@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import SoundControls from '../../../../utils/music/SoundControls';
 import InstrumentVariantSelector from '../../../../pages/instruments/InstrumentVariantSelector';
 import GuitarBody from './GuitarBody';
@@ -8,8 +8,13 @@ import { useGuitarKeyboard } from './GuitarKeyboard';
 import { guitarVariants } from './GuitarVariants';
 import { TutorialButton } from '../../../Tutorial/TutorialButton';
 import { Slider } from "@/components/ui/slider";
+import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
+
 
 const Guitar = () => {
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
   const [guitarVariant, setGuitarVariant] = useState<string>("standard");
   const {
     activeStrings,
@@ -56,7 +61,15 @@ const Guitar = () => {
   }));
 
   return (
-    <div className="w-full max-w-4xl mx-auto pt-8">
+    
+    <div className="w-full  ">
+      <div className="text-center text-xs text-muted-foreground bg-purple-100 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-6">
+                <p>For the best experience, expand to full screen.
+                  <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
+                    Click here to expand
+                  </strong>
+                </p>
+              </div>
       <div className="mb-6 flex justify-between items-center">
         <InstrumentVariantSelector
           currentVariant={guitarVariant}
@@ -72,11 +85,13 @@ const Guitar = () => {
         />
       </div>
       
+       <div ref={containerRef} className="flex items-center justify-center bg-white animate-scale-in" style={{ animationDelay: '200ms' }}>
       <GuitarBody 
         guitarVariant={guitarVariant}
         activeStrings={activeStrings}
         playString={handleStringClick}
       />
+      </div>
       
       <div className="mt-8 space-y-6">
         <SoundControls
@@ -120,12 +135,12 @@ const Guitar = () => {
           </div>
         </div>
         
-        <div className="text-center text-muted-foreground">
+        {/* <div className="text-center text-muted-foreground">
           <p>
             Use your keyboard ({guitarVariants[guitarVariant]?.strings.map(s => s.key.toUpperCase()).join(", ")}) 
             or click on the strings to play
           </p>
-        </div>
+        </div> */}
       </div>
     </div>
   );

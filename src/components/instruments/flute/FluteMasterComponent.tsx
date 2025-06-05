@@ -328,13 +328,11 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {fluteTypes.map((flute) => {
           const regionStyle = getFluteRegionalStyle(flute, selectedFluteType);
-          
           return (
-            
             <motion.div 
               key={flute.id}
               className={`
-                relative p-5 rounded-2xl cursor-pointer transition-all duration-300 shadow-subtle
+                relative  rounded-2xl cursor-pointer transition-all duration-300 shadow-subtle
                 ${regionStyle.background} backdrop-blur-sm border-2 ${regionStyle.border}
                 ${regionStyle.hoverGlow}
               `}
@@ -355,7 +353,7 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 500, damping: 15 }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
                     <path d="M13.3334 4L6.00008 11.3333L2.66675 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </motion.span>
@@ -363,7 +361,7 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
               
               <div className="flex flex-col gap-3 items-center">
                 <motion.div 
-                  className={`w-full h-20 flex items-center justify-center mb-3 overflow-hidden ${regionStyle.headerImage}`}
+                  className={`w-full h-1 flex items-center justify-center  overflow-hidden ${regionStyle.headerImage}`}
                   whileHover={{ scale: 1.05, rotate: selectedFluteType === flute.id ? 5 : 0 }}
                   animate={selectedFluteType === flute.id ? {
                     y: [0, -5, 0],
@@ -413,7 +411,7 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
   ), [selectedFluteType, handleFluteTypeChange]);
 
   const renderFlutePlayer = useCallback(() => (
-    <div className="w-full max-w-4xl mx-auto p-6 animate-fade-in">
+    <div className="w-full max-w-4xl mx-auto animate-fade-in">
       <div  className="flex  mb-4  text-sm text-muted-foreground pt-6">
         <div className="flex-[3] text-center">
           
@@ -429,7 +427,7 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
               <div className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2 p-2 rounded-md mb-2">
               <p>Touch or click the keys to play. For keyboard, use keys 1-8.</p>
               </div>
-              <div className="landscape-warning text-xs text-muted-foreground bg-black/5 dark:bg-white/5 p-2 rounded-md mb-2">
+              <div className="text-center landscape-warning text-xs text-muted-foreground bg-purple-100 p-2 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-6">
                 <p>For the best experience, please rotate your device to <strong>landscape mode</strong></p>
               </div>
               <style>{`

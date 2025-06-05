@@ -88,7 +88,7 @@ const RoomParticipants: React.FC = () => {
               </div>
               
               <div className="flex space-x-1 ml-1">
-                {!isCurrentUser && (
+                {/* {!isCurrentUser && (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -111,7 +111,7 @@ const RoomParticipants: React.FC = () => {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                )}
+                )} */}
                 
                 {isHost && !isCurrentUser && (
                   <DropdownMenu>

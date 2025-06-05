@@ -7,6 +7,12 @@ import { trumpetVariants } from './TrumpetVariants';
 import { generateTrumpetSound, createReverb } from './TrumpetSoundUtils';
 import { useToast } from "@/hooks/use-toast";
 import { TutorialButton } from '@/components/Tutorial/TutorialButton';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const Trumpet = () => {
   const [volume, setVolume] = useState(0.7);
@@ -288,15 +294,19 @@ const Trumpet = () => {
           toneQuality={toneQuality}
           setToneQuality={setToneQuality}
         />
-        
-        <div className="mt-4 bg-background/80 backdrop-blur-sm rounded-lg p-4 border border-border/50">
-          <h3 className="font-semibold flex items-center mb-2">
-            <Music4 className="mr-2" size={16} />
-            About {variant.name}
-          </h3>
-          <p className="text-muted-foreground text-sm">{variant.description}</p>
-          <div className="mt-2 text-xs text-muted-foreground">Material: {variant.material}</div>
-        </div>
+
+        <Accordion type="single" collapsible className="w-full mt-8">
+        <AccordionItem value="about">
+          <AccordionTrigger className="flex items-center gap-2">
+            <Music4 className="h-4 w-4" />  About {variant.name}
+          </AccordionTrigger>
+          <AccordionContent>
+            <p className="text-muted-foreground text-sm">{variant.description}</p>
+          <p className="mt-2 text-xs text-muted-foreground">Material: {variant.material}</p>
+          </AccordionContent>
+        </AccordionItem>
+        </Accordion>
+
       </div>
     </div>
   );

@@ -340,7 +340,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
   }, [stopAllSounds]);
 
   return (
-    <div className={`w-full max-w-4xl mx-auto ${className} animate-fade-in`}>
+    <div className={`w-full  ${className} animate-fade-in`}>
       {/* Main controls with smooth animation */}
       <div className="flex flex-wrap gap-2 mb-6">
         <Button 
@@ -385,7 +385,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
       </div>
 
       {/* Main content */}
-      <Card className="p-4 mb-6">
+      <Card className="pt-4 mb-6">
         <CardContent className="space-y-8 pt-2">
           {/* Chord Sections */}
           <div className="space-y-6">

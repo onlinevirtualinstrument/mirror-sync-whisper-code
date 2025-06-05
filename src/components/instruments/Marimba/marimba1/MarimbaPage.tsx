@@ -12,6 +12,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
+
 
 // Links to other instruments to try
 const relatedInstruments = [
@@ -40,13 +42,16 @@ const marimbaKeys = [
 ];
 
 const MarimbaPage = () => {
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
   const [activeNote, setActiveNote] = useState<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     // Initialize the audio context
     audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    
+
     return () => {
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
@@ -56,40 +61,40 @@ const MarimbaPage = () => {
 
   const playNote = (note: string, frequency: number) => {
     if (!audioContextRef.current) return;
-    
+
     setActiveNote(note);
-    
+
     const now = audioContextRef.current.currentTime;
-    
+
     // Create oscillator
     const oscillator = audioContextRef.current.createOscillator();
     oscillator.type = 'sine';
     oscillator.frequency.value = frequency;
-    
+
     // Create gain node for envelope
     const gainNode = audioContextRef.current.createGain();
     gainNode.gain.setValueAtTime(0.00001, now);
     gainNode.gain.exponentialRampToValueAtTime(0.8, now + 0.01);
     gainNode.gain.exponentialRampToValueAtTime(0.00001, now + 1.5);
-    
+
     // Apply filters for more realistic marimba sound
     const filter = audioContextRef.current.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.value = 2000;
     filter.Q.value = 1;
-    
+
     // Connect nodes
     oscillator.connect(filter);
     filter.connect(gainNode);
     gainNode.connect(audioContextRef.current.destination);
-    
+
     // Start and stop
     oscillator.start(now);
     oscillator.stop(now + 1.5);
-    
+
     // Show toast
     toast.success(`Playing ${note}`, { duration: 1000 });
-    
+
     // Reset active state
     setTimeout(() => setActiveNote(null), 300);
   };
@@ -103,53 +108,32 @@ const MarimbaPage = () => {
       route="/marimba"
     >
       <div className="text-center mb-12">
-            <h1 className="text-3xl md:text-4xl font-display font-bold mb-4 animate-fade-in">Virtual Marimba</h1>
-           
-              <div className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2 p-2 rounded-md mb-2">
-                <p>Play the marimba by clicking on the wooden bars or using keyboard keys (A-L).</p>
-              </div>
-              <div className="landscape-warning text-xs text-muted-foreground bg-black/5 dark:bg-white/5 p-2 rounded-md mb-2">
-                <p>For the best experience, please rotate your device to <strong>landscape mode</strong></p>
-              </div>
-              <style>{`
-                @media (min-width: 768px) {
-          .landscape-warning {
-            display: none;
-          }
-        }
-      `}</style>
-           
-           
-          </div>
-      
-          {/* <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6 ">
+        <h1 className="text-3xl md:text-4xl font-display font-bold mb-4 animate-fade-in">Virtual Marimba</h1>
+
+        <div className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2 p-2 rounded-md mb-2">
+          <p>Click on the bars to play or use keyboard keys A-L, ;, ', \</p>
+        </div>
+        <div className="landscape-warning text-xs text-muted-foreground bg-purple-100 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-2">
+          <p>For the best experience, expand to full screen.
+            <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
+              Click here to expand
+            </strong>
+          </p>
+        </div>
+
+
+      </div>
+
+      {/* <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6 ">
         <RecordingControlsShared instrumentName="Marimba" primaryColor="bg-purple-500" />
         </div> */}
-      <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6 mb-8">
-       
-        
-            <Marimba />
-          
-        </div>
-        
-        
-      
-      
-      <div className="mt-8 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Try Related Instruments</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {relatedInstruments.map((instrument) => (
-            <div key={instrument.name} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-              <h3 className="font-medium">{instrument.name}</h3>
-              <p className="text-sm text-muted-foreground mb-3">{instrument.description}</p>
-              <Button asChild variant="outline" size="sm">
-                <a href={instrument.path}>Play {instrument.name}</a>
-              </Button>
-            </div>
-          ))}
-        </div>
+
+      <div ref={containerRef} className="flex items-center justify-center bg-white animate-scale-in" style={{ animationDelay: '200ms' }}>
+        <Marimba />
+
       </div>
-      
+
+
       <Accordion type="single" collapsible className="w-full mt-8">
         <AccordionItem value="about">
           <AccordionTrigger className="flex items-center gap-2">
@@ -172,7 +156,7 @@ const MarimbaPage = () => {
             </div>
           </AccordionContent>
         </AccordionItem>
-        
+
         <AccordionItem value="history">
           <AccordionTrigger className="flex items-center gap-2">
             <History className="h-4 w-4" /> History

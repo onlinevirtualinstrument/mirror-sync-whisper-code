@@ -80,9 +80,9 @@ const Violin = ({ variant = 'standard' }: ViolinProps) => {
         </div>
       </div>
       
-      <div className="text-center text-sm text-muted-foreground mt-4">
+      {/* <div className="text-center text-sm text-muted-foreground mt-4">
         <p>Click on the strings to play or use keyboard keys (Z, X, C, V)</p>
-      </div>
+      </div> */}
     </div>
   );
 };

@@ -44,7 +44,7 @@ const Harmonica = ({ variant = 'standard' }: HarmonicaProps) => {
   ];
 
   return (
-    <div className="glass-card p-8 rounded-xl">
+    <div className="glass-card w-full p-8 rounded-xl">
       <div className="mb-4 flex justify-between items-center">
         <InstrumentVariantSelector
           currentVariant={harmonicaVariant}

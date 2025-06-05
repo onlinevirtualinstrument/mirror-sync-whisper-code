@@ -153,7 +153,7 @@ const Harp = () => {
                   filter: ['brightness(1)', 'brightness(1.5)', 'brightness(1)'],
                 } : {}}
                 transition={{ duration: 0.5 }}
-                whileHover={{ scale: 1.01 }}
+                // whileHover={{ scale: 1.01 }}
               >
                 <motion.span 
                   className="absolute -bottom-10 -left-2 text-xs font-medium"
@@ -176,9 +176,9 @@ const Harp = () => {
         />
       </div>
       
-      <div className="text-center text-sm text-muted-foreground mt-4">
+      {/* <div className="text-center text-sm text-muted-foreground mt-4">
         <p>Pluck the harp strings by clicking on them or using keyboard keys (A-K)</p>
-      </div>
+      </div> */}
     </div>
   );
 };

@@ -154,7 +154,7 @@ const Drums = ({ drumType = 'standard' }: DrumsProps) => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="bg-secondary/30 border-secondary/30">
-                    <Music4 className="mr-2" size={16} />
+                    <Music4 className="mr-1" size={16} />
                     {drumKitType.charAt(0).toUpperCase() + drumKitType.slice(1)} Kit
                   </Button>
                 </DropdownMenuTrigger>
@@ -175,7 +175,7 @@ const Drums = ({ drumType = 'standard' }: DrumsProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
               
-              <div className="flex gap-2">
+              
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -188,7 +188,7 @@ const Drums = ({ drumType = 'standard' }: DrumsProps) => {
                 <Sheet>
                   <SheetTrigger asChild>
                     <Button variant="outline" size="sm" className="bg-secondary/30 border-secondary/30">
-                      <Sliders className="mr-2" size={14} />
+                      <Sliders className="mr-1" size={14} />
                       Sound
                     </Button>
                   </SheetTrigger>
@@ -207,7 +207,7 @@ const Drums = ({ drumType = 'standard' }: DrumsProps) => {
                     </div>
                   </SheetContent>
                 </Sheet>
-              </div>
+              
             </div>
           )}
           
@@ -242,13 +242,13 @@ const Drums = ({ drumType = 'standard' }: DrumsProps) => {
             toggleFullscreen={toggleFullscreen} 
           /> */}
           
-          <div className="text-center text-sm text-muted-foreground">
+          {/* <div className="text-center text-sm text-muted-foreground">
             <p>Click on the drum elements or press the corresponding keys to play</p>
             <div className="mt-2 flex justify-center items-center gap-2">
               <Music4 size={16} />
               <span>Choose different drum kits for different sound styles</span>
             </div>
-          </div>
+          </div> */}
         </>
       )}
     </div>

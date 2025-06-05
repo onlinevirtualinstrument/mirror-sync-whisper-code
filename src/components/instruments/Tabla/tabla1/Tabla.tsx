@@ -124,11 +124,12 @@ const Tabla = () => {
         ))}
       </div>
       
-      <div className="text-center text-sm text-muted-foreground mt-4">
+      {/* <div className="text-center text-sm text-muted-foreground mt-4">
         <p>Click on the tabla surfaces or use keyboard keys (A, S, D, F, G, H)</p>
-      </div>
+      </div> */}
     </div>
   );
 };
 
 export default Tabla;
+ 

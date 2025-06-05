@@ -30,4 +30,4 @@ Allow: /drummachine
 Allow: /chordprogression
 
 # Sitemap location
-Sitemap: https://musicca.lovable.app/sitemap.xml
+Sitemap: https://www.virtualinstrumentshub.com/sitemap.xml

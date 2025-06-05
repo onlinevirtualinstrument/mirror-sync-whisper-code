@@ -86,7 +86,7 @@ const InstrumentNavDropdown = () => {
       <DropdownMenuContent sideOffset={8} className="z-50 w-60">
      
      <DropdownMenuLabel className="text-center text-base font-semibold px-3 py-2">
-       <button className="bg-gradient-to-r from-purple-400 via-pink-400 to-violet-500 text-white px-4 py-2 rounded-lg animate-pulse hover:animate-none hover:scale-105 transition-all inline-block text-center">
+       {/* <button className="bg-gradient-to-r from-purple-400 via-pink-400 to-violet-500 text-white px-4 py-2 rounded-lg animate-pulse hover:animate-none hover:scale-105 transition-all inline-block text-center">
   <Link
     to="/music-rooms"
     className={`block px-2 ${mode === 'dark' ? 'text-gray-100 hover:text-white' : 'text-white hover:text-gray-100'}`}
@@ -96,7 +96,7 @@ const InstrumentNavDropdown = () => {
   >
     Play Live with friends
   </Link>
-</button>
+</button> */}
  <DropdownMenuSeparator />
         
           Play Virtual Instrument

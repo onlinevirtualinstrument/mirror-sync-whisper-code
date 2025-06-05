@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { HelmetProvider } from 'react-helmet-async';
-import { Music, Guitar, Bookmark, ChevronDown, Wand2 } from "lucide-react";
+import { Music, ChevronDown } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import InstrumentInterlink from '@/components/instruments/InstrumentInterlink';
@@ -15,6 +15,8 @@ const LazyChordProgressionPlayerComponent = lazy(() => import("./ChordProgressio
 
 const Index = () => {
 
+  // lockToLandscape();
+
   useEffect(() => {
     // Track page view for analytics
     if (typeof window !== 'undefined' && 'gtag' in window) {
@@ -25,12 +27,6 @@ const Index = () => {
       });
     }
   }, []);
-
- const [open, setOpen] = useState(false);
-  const handleOpen = async () => {
-    await lockToLandscape();
-    setOpen(true);
-  };
 
   return (
 
@@ -50,7 +46,7 @@ const Index = () => {
         {/* <Button variant="outline" className="hover:bg-gray-200" onClick={() => navigate("/")}>
           Back to Home
         </Button> */}
-          <header className="text-center mb-6 md:mb-12">
+          <header className="text-center mb-2 md:mb-2">
             <div className="inline-block mb-2 px-3 py-1 bg-black/5 dark:bg-white/10 rounded-full text-xs font-medium animate-fade-in">
               Virtual Chord Progression Experience
             </div>
@@ -74,25 +70,10 @@ const Index = () => {
           </header>
           
           <main id="banjo-app" className="animate-fade-in" style={{ animationDelay: '0.7s' }}>
-            <div className="landscape-warning text-xs text-muted-foreground bg-purple-100 p-2 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-2">
-                <p>For the best experience, please rotate your device to landscape mode.
-                  <strong  onClick={handleOpen} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]">
-                    Click to enter Landscape Mode
-                  </strong> 
-                </p>
-                <LandscapeInstrumentModal isOpen={open} onClose={() => setOpen(false)}>
-                  <LazyChordProgressionPlayerComponent />
-                </LandscapeInstrumentModal>
-              </div>
-              <style>{`
-                @media (min-width: 768px) {
-          .landscape-warning {
-            display: none;
-          }
-        }
-      `}</style>
+           
+             
             <Suspense fallback={
-              <div className="flex justify-center p-8 animate-pulse">
+              <div className="flex justify-center md:p-8 animate-pulse">
                 <div className="h-96 w-full max-w-4xl bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
                   Loading Chord Progression Player...
                 </div>
@@ -105,7 +86,7 @@ const Index = () => {
         </div>
       </div>
        {/* Add instrument interlink */}
-       <InstrumentInterlink currentInstrument="Banjo" />
+       <InstrumentInterlink currentInstrument="Chord Progression" />
       </AppLayout>
     </>
 

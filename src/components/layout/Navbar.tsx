@@ -62,7 +62,7 @@ const Navbar = () => {
     <header className={`fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-800 transition-colors duration-300`}>
       <nav className="container mx-auto px-6 py-4 flex items-center justify-between">
         {/* Navigation arrows for gesture nav visual feedback */}
-        <div className="hidden md:flex items-center gap-2">
+        {/* <div className="hidden md:flex items-center gap-2">
           {getPreviousPage() && (
             <Link to={getPreviousPage()} className="touch-friendly p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               <ChevronLeft className="h-5 w-5" />
@@ -73,7 +73,7 @@ const Navbar = () => {
               <ChevronRight className="h-5 w-5" />
             </Link>
           )}
-        </div>
+        </div> */}
         
         <Link to="/" className="flex items-center gap-2">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-900 to-gray-700 dark:from-gray-700 dark:to-gray-500 flex items-center justify-center text-white font-semibold animate-pulse-gentle">
@@ -84,7 +84,10 @@ const Navbar = () => {
         
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => {
-             if (link.name === 'Play with friends') {
+            //  if (link.name === 'Play with friends') {
+            //   return null; // ✅ Skip rendering
+            //  }
+             if (link.name === 'Blog') {
               return null; // ✅ Skip rendering
              }
             if (link.name === 'Play') {

@@ -110,9 +110,9 @@ const Sitar = () => {
           </div>
         </div>
         
-        <div className="text-center text-muted-foreground text-sm">
+        {/* <div className="text-center text-muted-foreground text-sm">
           <p>Play the sitar strings by clicking on them or using keyboard keys (1-7)</p>
-        </div>
+        </div> */}
       </div>
     </div>
   );

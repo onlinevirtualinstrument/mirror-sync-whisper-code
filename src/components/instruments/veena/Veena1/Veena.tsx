@@ -23,7 +23,7 @@ const Veena = ({ variant = 'standard' }: VeenaProps) => {
   useVeenaKeyboard(strings, playString);
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="w-full flex flex-col items-center">
       <div className="mb-4">
         <InstrumentVariantSelector
           currentVariant={veenaVariant}
@@ -35,13 +35,13 @@ const Veena = ({ variant = 'standard' }: VeenaProps) => {
       
       <VeenaBody 
         strings={strings} 
-        variant={veenaVariant}
+        variant={veenaVariant} 
         onStringClick={playString}
       />
       
-      <div className="text-center text-sm text-muted-foreground mt-4">
+      {/* <div className="text-center text-sm text-muted-foreground mt-4">
         <p>Click on the strings to play or use keyboard keys (Q, W, E, R, T, Y, U)</p>
-      </div>
+      </div> */}
     </div>
   );
 };

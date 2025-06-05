@@ -51,7 +51,7 @@
     <mobile:mobile/>
     <news:news>
       <news:publication>
-        <news:name>Musicca Blog</news:name>
+        <news:name>HarmonyHub Blog</news:name>
         <news:language>en</news:language>
       </news:publication>
       <news:publication_date>2025-05-04</news:publication_date>

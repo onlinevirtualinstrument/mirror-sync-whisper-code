@@ -270,7 +270,7 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
         className="relative w-full mb-10 flex justify-center overflow-hidden"
         style={{ minHeight: '250px' }}
       >
-        <div className="flex items-end justify-center gap-[2px] md:gap-1 relative">
+        <div className="flex w-full items-end justify-center gap-[3px] md:gap-1 relative">
           {notes.map((note, index) => {
             if (index === 0 || index === notes.length - 1) return null;
             
@@ -292,7 +292,7 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
               <div
                 key={`${note.note}${note.octave}`}
                 data-note-index={index}
-                className={`${barColor} ${widthClass} rounded-b-md hover:brightness-110 cursor-pointer shadow-md relative transition-all ${
+                className={`${barColor} ${widthClass}  rounded-b-md hover:brightness-110 cursor-pointer shadow-md relative transition-all ${
                   activeNote === index 
                     ? 'transform-gpu -translate-y-2 brightness-125 scale-y-[0.98]' 
                     : ''
@@ -341,12 +341,12 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
           setToneQuality={setToneQuality}
         />
         
-        <div className="text-center text-sm text-muted-foreground">
+        {/* <div className="text-center text-sm text-muted-foreground">
           <div className="flex justify-center items-center gap-2">
             <Music size={16} />
             <span>Adjust sound controls for different timbres and effects</span>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import InstrumentInterlink from '@/components/instruments/InstrumentInterlink';
 import AppLayout from '@/components/layout/AppLayout';
-import { lockToLandscape } from "../../landscapeMode/lockToLandscape";
+import { lockToLandscape, unlockOrientation, toggleFullscreen } from "../../landscapeMode/lockToLandscape";
 import LandscapeInstrumentModal from '../../landscapeMode/LandscapeInstrumentModal';
 import DrumMachine from "./DrumMachine";
 
@@ -17,8 +17,6 @@ const LazyDrumMachineComponent = lazy(() => import("./DrumMachinePage"));
 
 
 const Index = () => {
-
-  lockToLandscape();
 
   useEffect(() => {
     // Track page view for analytics
@@ -56,17 +54,14 @@ const Index = () => {
             {/* <Button variant="outline" className="hover:bg-gray-200" onClick={() => navigate("/")}>
           Back to Home
         </Button> */}
-            <header className="text-center mb-6 md:mb-12">
+            <header className="text-center mb-2 md:mb-2">
               <div className="inline-block mb-2 px-3 py-1 bg-black/5 dark:bg-white/10 rounded-full text-xs font-medium animate-fade-in">
                 Virtual Drum Machine Experience
               </div>
-
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-3 animate-fade-in flex items-center justify-center gap-2" style={{ animationDelay: '0.1s' }}>
                 Drum Machine <span className="bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent">Studio</span>
                 <Music className="h-8 w-8 md:h-10 md:w-10 lg:h-12 lg:w-12 ml-2 text-purple-500 animate-[string-vibration_2s_ease-in-out_infinite]" />
               </h1>
-
-
               <div className="flex justify-center mt-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
                 <button
                   onClick={() => document.getElementById('banjo-app')?.scrollIntoView({ behavior: 'smooth' })}
@@ -77,32 +72,33 @@ const Index = () => {
                   <ChevronDown className="w-4 h-4 animate-bounce" />
                 </button>
               </div>
-
             </header>
 
             <main id="banjo-app" className="animate-fade-in" style={{ animationDelay: '0.7s' }}>
-              <div className="landscape-warning text-xs text-muted-foreground bg-purple-100 p-2 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-2">
-                <p>For the best experience, rotate your device to landscape mode.
-                  <strong  onClick={handleOpen} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]">
-                    Click to enter Landscape Mode
-                  </strong> 
+              <div className="text-center landscape-warning text-xs text-muted-foreground bg-purple-100 p-2 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-6">
+                <p>For the best experience, expand to full screen.
+                  <strong onClick={handleOpen} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent ">
+                    Click here to expand
+                  </strong>
                 </p>
                 <LandscapeInstrumentModal isOpen={open} onClose={() => setOpen(false)}>
                   <DrumMachine />
                 </LandscapeInstrumentModal>
               </div>
-              <style>{`
+
+              {/* <style>{`
                 @media (min-width: 768px) {
           .landscape-warning {
             display: none;
           }
         }
-      `}</style>
-      {/* <div className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2 p-2 rounded-md mb-2"> */}
+      `}</style> */}
+
+              {/* <div className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2 p-2 rounded-md mb-2"> */}
               <Suspense fallback={
                 <div className="flex justify-center p-8 animate-pulse">
                   <div className="h-96 w-full max-w-4xl bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
-                    Loading Chord Progression Player...
+                    Loading Drum Machine...
                   </div>
                 </div>
               }>
@@ -113,7 +109,7 @@ const Index = () => {
           </div>
         </div>
         {/* Add instrument interlink */}
-        <InstrumentInterlink currentInstrument="Banjo" />
+        <InstrumentInterlink currentInstrument="Drum Machine" />
       </AppLayout>
     </>
 

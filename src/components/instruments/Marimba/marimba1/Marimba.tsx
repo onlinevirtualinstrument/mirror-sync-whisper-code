@@ -2,6 +2,8 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { TutorialButton } from '../../../Tutorial/TutorialButton';
 import AudioContextManager from '../../../../utils/music/AudioContextManager';
 import { Slider } from "@/components/ui/slider";
+import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
+
 
 const Marimba: React.FC = () => {
   const [activeNotes, setActiveNotes] = useState<string[]>([]);
@@ -197,7 +199,7 @@ const Marimba: React.FC = () => {
   }));
 
   return (
-    <div className="glass-card p-8 rounded-xl">
+    <div className="w-full glass-card rounded-xl">
       <div className="flex justify-end mb-2">
         <TutorialButton 
           instrumentName="Marimba"
@@ -258,9 +260,9 @@ const Marimba: React.FC = () => {
           </div>
         </div>
       
-        <div className="text-center text-muted-foreground text-sm">
+        {/* <div className="text-center text-muted-foreground text-sm">
           Click on the bars to play or use keyboard keys A-L, ;, ', \
-        </div>
+        </div> */}
       </div>
     </div>
   );

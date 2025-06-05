@@ -6,6 +6,8 @@ import { Music, Piano, Bookmark, ChevronDown } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import InstrumentInterlink from '@/components/instruments/InstrumentInterlink';
 import AppLayout from '@/components/layout/AppLayout';
+import { lockToLandscape } from "../../landscapeMode/lockToLandscape";
+
 
 const LazyVirtualPianoComponent = lazy(() => 
   import(/* webpackChunkName: "virtual-guitar-component" */ "@/pages/Piano")
@@ -14,6 +16,9 @@ const LazyVirtualPianoComponent = lazy(() =>
 
 
 const Index = () => {
+
+  // lockToLandscape();
+  
   // React hooks must be called at the top level
   const navigate = useNavigate();
   const [selected, setSelected] = useState('Guitar 1');
@@ -40,8 +45,8 @@ const Index = () => {
     </HelmetProvider>
       
       <AppLayout>
-      <div className="min-h-screen flex flex-col items-center justify-center py-8 px-4 overflow-x-hidden bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 border-8 border-purple-500/20 border-double rounded-2xl m-4">
-        <div className="w-full max-w-screen-xl mx-auto space-y-8">
+      <div className="min-h-screen flex flex-col items-center justify-center py-8 overflow-x-hidden bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 border-8 border-purple-500/20 border-double rounded-2xl m-4">
+        <div className="w-full  max-w-screen-xl mx-auto space-y-8">
           {/* <Button variant="outline" className="hover:bg-gray-200" onClick={() => navigate("/")}>
             Back to Home
           </Button> */}

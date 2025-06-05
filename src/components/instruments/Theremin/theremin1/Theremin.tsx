@@ -3,6 +3,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { TutorialButton } from '../../../Tutorial/TutorialButton';
 import SoundControls from '../../../../utils/music/SoundControls';
 import { useThereminAudio } from './ThereminAudio';
+import { motion } from "framer-motion";
+
 
 const Theremin = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -10,14 +12,14 @@ const Theremin = () => {
   const [volume, setVolume] = useState<number>(0.6);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [sensitivity, setSensitivity] = useState<number>(0.5);
-  
+
   // Use the theremin audio hook
   const { updateThereminSound, isPlaying } = useThereminAudio({
     volume,
     isMuted,
     sensitivity
   });
-  
+
   // Handle mouse movement
   const handleMouseMove = (e: React.MouseEvent) => {
     if (containerRef.current) {
@@ -28,7 +30,7 @@ const Theremin = () => {
       updateThereminSound(x, y);
     }
   };
-  
+
   // Handle mouse leave
   const handleMouseLeave = () => {
     updateThereminSound(position.x, 0);
@@ -48,50 +50,51 @@ const Theremin = () => {
   ];
 
   return (
-    <div className="glass-card p-8 rounded-xl">
+    <div className="w-full glass-card p-8 rounded-xl">
       <div className="flex justify-end mb-2">
-        <TutorialButton 
+        <TutorialButton
           instrumentName="Theremin"
           instructions={thereminInstructions}
           keyMappings={keyboardMappings}
         />
       </div>
-      
-      <div 
+
+      <div
         ref={containerRef}
         className="w-full h-64 bg-gradient-to-r from-indigo-100 to-blue-200 rounded-lg cursor-none relative overflow-hidden"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        <div 
+        <motion.div
           className={`absolute w-8 h-8 rounded-full bg-accent shadow-md transform -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-opacity ${isPlaying ? 'animate-pulse' : ''}`}
-          style={{ 
-            left: `${position.x * 100}%`, 
+          style={{
+            left: `${position.x * 100}%`,
             top: `${(1 - position.y) * 100}%`,
             opacity: isPlaying ? 0.9 : 0.7
           }}
-        />
+          whileHover={{ scale: 1.1 }}
+        /> 
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <p className="text-lg font-medium text-foreground/50">
             Move your cursor to play the theremin
           </p>
         </div>
       </div>
-      
+
       <div className="mt-6">
         <div className="mb-4">
           <p className="text-muted-foreground text-center">
             Pitch: {Math.round(position.x * 100)}% | Volume: {Math.round(position.y * 100)}%
           </p>
         </div>
-        
+
         <SoundControls
           volume={volume}
           setVolume={setVolume}
           isMuted={isMuted}
           setIsMuted={setIsMuted}
         />
-        
+
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Sensitivity</span>

@@ -48,7 +48,7 @@ const GuitarBody: React.FC<GuitarBodyProps> = ({
     
       {/* Guitar body */}
       <div 
-        className={`${currentVariant.bodyClass} mt-8 p-10 rounded-3xl shadow-xl relative overflow-hidden transform transition-all duration-300 z-20`}
+        className={`${currentVariant.bodyClass} mt-8 p-12 rounded-3xl shadow-xl relative overflow-hidden transform transition-all duration-300 z-20`}
         style={{ 
           clipPath: guitarVariant === 'electric' || guitarVariant === 'bass' 
             ? 'polygon(0% 30%, 15% 0%, 85% 0%, 100% 30%, 90% 100%, 10% 100%)' 

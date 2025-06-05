@@ -141,14 +141,14 @@ const Flute = () => {
         </div>
       </div>
       
-      <div className="mt-6 grid grid-cols-3 gap-4">
+      {/* <div className="mt-6 grid grid-cols-3 gap-4">
         {holes.map(hole => (
           <div key={hole.id} className={`text-center ${fluteStyles.text}`}>
             <div className="font-medium">{hole.name}</div>
             <div className="text-sm text-muted-foreground">({hole.note})</div>
           </div>
         ))}
-      </div>
+      </div> */}
     </div>
   );
 };

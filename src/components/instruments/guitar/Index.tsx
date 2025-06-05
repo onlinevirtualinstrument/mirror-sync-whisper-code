@@ -7,6 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { preloadImage } from "./performance";
 import InstrumentInterlink from '@/components/instruments/InstrumentInterlink';
 import AppLayout from '@/components/layout/AppLayout';
+import { lockToLandscape } from "../../landscapeMode/lockToLandscape";
+
 
 // Lazy load the virtual guitar component for code splitting
 const LazyVirtualGuitarComponent = lazy(() => 
@@ -21,6 +23,9 @@ const LazyVirtualGuitar3Component = lazy(() =>
 
 
 const Index = () => {
+
+  // lockToLandscape(); 
+  
   // React hooks must be called at the top level
   const navigate = useNavigate();
   const [selected, setSelected] = useState('Guitar 1');

@@ -41,7 +41,7 @@ const LandscapeInstrumentModal: React.FC<Props> = ({ isOpen, onClose, children }
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: 50, opacity: 0 }}
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        className="relative w-full max-w-screen-md bg-white rounded-2xl shadow-xl p-4 landscape-modal"
+                        className="overflow-x-auto relative w-full bg-white rounded-2xl shadow-xl p-4 landscape-modal"
                     >
 
                         <Button variant="outline"
