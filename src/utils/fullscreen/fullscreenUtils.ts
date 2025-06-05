@@ -1,20 +1,40 @@
 
-// Enhanced fullscreen utilities with proper ARIA handling
-export const toggleFullscreen = async (element?: HTMLElement): Promise<boolean> => {
+// Fullscreen utilities with proper accessibility handling
+export const toggleFullscreen = async (): Promise<boolean> => {
   try {
-    const targetElement = element || document.documentElement;
-    
-    if (document.fullscreenElement) {
-      // Exit fullscreen
-      await document.exitFullscreen();
-      restoreAriaAttributes();
-      return false;
-    } else {
-      // Enter fullscreen
-      preserveAriaAttributes();
-      await targetElement.requestFullscreen();
-      handleFullscreenAriaFix();
+    if (!document.fullscreenElement) {
+      // Entering fullscreen
+      const element = document.documentElement;
+      
+      // Remove any existing aria-hidden attributes before entering fullscreen
+      removeAriaHiddenFromFocusedElements();
+      
+      if (element.requestFullscreen) {
+        await element.requestFullscreen();
+      } else if ((element as any).webkitRequestFullscreen) {
+        await (element as any).webkitRequestFullscreen();
+      } else if ((element as any).msRequestFullscreen) {
+        await (element as any).msRequestFullscreen();
+      }
+      
+      // Add fullscreen class for styling
+      document.body.classList.add('fullscreen-mode');
+      
       return true;
+    } else {
+      // Exiting fullscreen
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        await (document as any).webkitExitFullscreen();
+      } else if ((document as any).msExitFullscreen) {
+        await (document as any).msExitFullscreen();
+      }
+      
+      // Remove fullscreen class
+      document.body.classList.remove('fullscreen-mode');
+      
+      return false;
     }
   } catch (error) {
     console.error('Fullscreen toggle failed:', error);
@@ -22,79 +42,40 @@ export const toggleFullscreen = async (element?: HTMLElement): Promise<boolean> 
   }
 };
 
-// Store original ARIA attributes before fullscreen
-let originalAriaAttributes: Map<Element, string | null> = new Map();
-
-const preserveAriaAttributes = () => {
-  originalAriaAttributes.clear();
+const removeAriaHiddenFromFocusedElements = () => {
+  // Find all elements with aria-hidden="true"
+  const hiddenElements = document.querySelectorAll('[aria-hidden="true"]');
   
-  // Find all elements with aria-hidden
-  const ariaHiddenElements = document.querySelectorAll('[aria-hidden]');
-  ariaHiddenElements.forEach(element => {
-    originalAriaAttributes.set(element, element.getAttribute('aria-hidden'));
-  });
-};
-
-const handleFullscreenAriaFix = () => {
-  // Remove aria-hidden from focused elements and their ancestors
-  const focusedElement = document.activeElement;
-  if (focusedElement) {
-    removeFocusedElementAriaHidden(focusedElement);
-  }
-  
-  // Add event listener for focus changes
-  document.addEventListener('focusin', handleFocusChange);
-};
-
-const handleFocusChange = (event: FocusEvent) => {
-  if (document.fullscreenElement && event.target) {
-    removeFocusedElementAriaHidden(event.target as Element);
-  }
-};
-
-const removeFocusedElementAriaHidden = (element: Element) => {
-  let current: Element | null = element;
-  
-  while (current && current !== document.body) {
-    if (current.hasAttribute('aria-hidden')) {
-      current.removeAttribute('aria-hidden');
-    }
-    current = current.parentElement;
-  }
-};
-
-const restoreAriaAttributes = () => {
-  document.removeEventListener('focusin', handleFocusChange);
-  
-  // Restore original aria-hidden attributes
-  originalAriaAttributes.forEach((originalValue, element) => {
-    if (originalValue !== null) {
-      element.setAttribute('aria-hidden', originalValue);
-    } else {
+  hiddenElements.forEach(element => {
+    // Check if element or its descendants have focus
+    const hasFocus = element.contains(document.activeElement) || element === document.activeElement;
+    
+    if (hasFocus) {
+      // Remove aria-hidden and store original value for restoration
+      element.setAttribute('data-original-aria-hidden', 'true');
       element.removeAttribute('aria-hidden');
     }
   });
-  
-  originalAriaAttributes.clear();
 };
 
-// Fullscreen event handlers
-export const addFullscreenListeners = (callbacks: {
-  onEnter?: () => void;
-  onExit?: () => void;
-} = {}) => {
-  const handleFullscreenChange = () => {
-    if (document.fullscreenElement) {
-      callbacks.onEnter?.();
-    } else {
-      callbacks.onExit?.();
-      restoreAriaAttributes();
-    }
-  };
-
-  document.addEventListener('fullscreenchange', handleFullscreenChange);
+export const restoreAriaHidden = () => {
+  // Restore original aria-hidden values after exiting fullscreen
+  const elementsToRestore = document.querySelectorAll('[data-original-aria-hidden="true"]');
   
-  return () => {
-    document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  };
+  elementsToRestore.forEach(element => {
+    element.setAttribute('aria-hidden', 'true');
+    element.removeAttribute('data-original-aria-hidden');
+  });
+};
+
+// Listen for fullscreen changes to handle cleanup
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) {
+    restoreAriaHidden();
+    document.body.classList.remove('fullscreen-mode');
+  }
+});
+
+export const isFullscreen = (): boolean => {
+  return !!document.fullscreenElement;
 };
