@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -82,6 +81,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [wasRemoved, setWasRemoved] = useState<boolean>(false);
   const [roomClosed, setRoomClosed] = useState<boolean>(false);
   const [remotePlaying, setRemotePlaying] = useState<InstrumentNote | null>(null);
+  const [lastMessageId, setLastMessageId] = useState<string | null>(null);
 
   // Fetch room data and set up listeners
   useEffect(() => {
@@ -168,16 +168,31 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
-    // Listen for chat messages
+    // Enhanced chat listener with notifications
     const unsubscribeChat = listenToRoomChat(
       roomId,
       (messagesData) => {
-        // Sort messages by timestamp
         const sortedMessages = [...messagesData].sort((a, b) => {
           const timeA = a.timestamp?.toDate?.() || new Date(a.timestamp || 0);
           const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp || 0);
           return timeA.getTime() - timeB.getTime();
         });
+        
+        // Check for new messages (excluding own messages)
+        if (sortedMessages.length > 0) {
+          const latestMessage = sortedMessages[sortedMessages.length - 1];
+          if (latestMessage.id !== lastMessageId && 
+              latestMessage.senderId !== user.uid &&
+              lastMessageId !== null) {
+            
+            // Show notification for new message
+            toast({
+              title: "New Message",
+              description: `${latestMessage.senderName}: ${latestMessage.text.substring(0, 50)}${latestMessage.text.length > 50 ? '...' : ''}`,
+            });
+          }
+          setLastMessageId(latestMessage.id);
+        }
         
         setMessages(sortedMessages);
       },
@@ -186,29 +201,36 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
-    // Listen for instrument notes being played
+    // Enhanced instrument notes listener with proper audio playback
     const unsubscribeNotes = listenToInstrumentNotes(
       roomId,
       (noteData: InstrumentNote) => {
-        // Only process notes from other users
         if (noteData && noteData.userId !== user.uid) {
           setRemotePlaying(noteData);
           
-          // Play the note using the audio utilities
+          // Play the note with enhanced audio
           try {
-            // This will play the sound on this client
-            const [note, octave] = noteData.note.split(':');
-            if (note && octave) {
+            const [note, octaveStr] = noteData.note.split(':');
+            const octave = octaveStr ? parseInt(octaveStr) : 4;
+            
+            if (note) {
               playInstrumentNote(
                 noteData.instrument,
                 note,
-                parseInt(octave),
-                500
+                octave,
+                600, // duration
+                noteData.volume || 0.7,
+                noteData.effects
               );
             }
           } catch (error) {
             console.error("Error playing remote note:", error);
           }
+          
+          // Clear remote playing indicator after delay
+          setTimeout(() => {
+            setRemotePlaying(null);
+          }, 800);
         }
       },
       (error) => {
@@ -216,12 +238,41 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
+    // Enhanced auto-close mechanism
+    useEffect(() => {
+      if (!room || !isHost || !room.autoCloseAfterInactivity) return;
+
+      const checkInactivity = () => {
+        if (!room.lastActivity) return;
+
+        const lastActivity = new Date(room.lastActivity);
+        const now = new Date();
+        const diffMinutes = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
+        const timeoutMinutes = room.inactivityTimeout || 5;
+
+        console.log(`Checking inactivity: ${diffMinutes.toFixed(1)} minutes since last activity (timeout: ${timeoutMinutes})`);
+
+        if (diffMinutes > timeoutMinutes) {
+          console.log('Auto-closing room due to inactivity');
+          closeRoom();
+        }
+      };
+
+      // Check every minute
+      const interval = setInterval(checkInactivity, 60000);
+      
+      // Initial check
+      checkInactivity();
+
+      return () => clearInterval(interval);
+    }, [room, isHost, closeRoom]);
+
     return () => {
       unsubscribeRoom();
       unsubscribeChat();
       unsubscribeNotes();
     };
-  }, [roomId, user, navigate, isParticipant, wasRemoved]);
+  }, [roomId, user, navigate, isParticipant, wasRemoved, lastMessageId]);
 
   // Set up private messaging if a user is selected
   useEffect(() => {
@@ -286,24 +337,33 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [roomId, user, room]);
 
-  // Broadcast instrument notes to other participants
+  // Enhanced broadcastInstrumentNote with better error handling
   const broadcastInstrumentNote = async (note: InstrumentNote): Promise<void> => {
-    if (!roomId || !user) return;
+    if (!roomId || !user) {
+      console.warn('Cannot broadcast note: missing roomId or user');
+      return;
+    }
     
     try {
       await broadcastNote(roomId, {
         ...note,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        volume: note.volume || 0.7
       });
       
       // Update room's last activity timestamp
       if (room) {
-        updateRoomSettings(roomId, {
+        await updateRoomSettings(roomId, {
           lastActivity: new Date().toISOString()
         });
       }
     } catch (error) {
       console.error("Error broadcasting note:", error);
+      toast({
+        title: "Connection Error",
+        description: "Failed to sync with other participants",
+        variant: "destructive"
+      });
     }
   };
 
