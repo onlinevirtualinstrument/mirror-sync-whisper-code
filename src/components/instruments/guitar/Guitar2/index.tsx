@@ -1,5 +1,6 @@
 
-import { GuitarRoutes, GuitarAppLink } from './routes';
+import { guitarRoutes, GuitarRoutes } from './routes';
+import GuitarAppLink from './components/GuitarAppLink';
 
 /**
  * This is the main entry point for the Guitar App module.
@@ -7,4 +8,4 @@ import { GuitarRoutes, GuitarAppLink } from './routes';
  */
 
 export default GuitarRoutes;
-export { GuitarAppLink };
+export { GuitarAppLink, guitarRoutes };

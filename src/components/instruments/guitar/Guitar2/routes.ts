@@ -10,3 +10,6 @@ export const guitarRoutes = {
 export const getGuitarRoute = (path: keyof typeof guitarRoutes): string => {
   return guitarRoutes[path];
 };
+
+// Export for compatibility
+export const GuitarRoutes = guitarRoutes;

@@ -1,86 +1,74 @@
 
-import { useState } from 'react';
-import { 
-  SlidersHorizontal,
-  BarChart3 
-} from 'lucide-react';
-import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
-import { Button } from './ui/button';
+import React from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import EffectSlider from './effects/EffectSlider';
+import EffectToggle from './effects/EffectToggle';
+import { Volume2, Zap } from 'lucide-react';
+import { AudioEffects } from '../hooks/useAudioEffects';
 
 interface EffectsPanelProps {
+  effects: AudioEffects;
   onEffectChange: (effect: string, value: number) => void;
   onEffectToggle: (effect: string, enabled: boolean) => void;
 }
 
-const EffectsPanel = ({ onEffectChange }: EffectsPanelProps) => {
-  const [effects, setEffects] = useState({
-    eq: { low: 0, mid: 0, high: 0 }
-  });
-  
-  const handleEffectChange = (effect: string, value: number) => {
-    setEffects(prev => {
-      if (effect === 'eq-low' || effect === 'eq-mid' || effect === 'eq-high') {
-        const [_, band] = effect.split('-');
-        return {
-          ...prev,
-          eq: {
-            ...prev.eq,
-            [band]: value
-          }
-        };
-      }
-      
-      return prev;
-    });
-    
-    onEffectChange(effect, value);
-  };
-  
+const EffectsPanel = ({ effects, onEffectChange, onEffectToggle }: EffectsPanelProps) => {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" className="flex gap-2 items-center">
-          <SlidersHorizontal className="h-4 w-4" />
-          EQ Controls
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80">
-        <div className="flex items-center gap-2 mb-4">
-          <BarChart3 className="h-4 w-4" />
-          <h4 className="text-sm font-medium">3-Band Equalizer</h4>
-        </div>
-        <div className="space-y-4">
-          <EffectSlider 
-            label="Bass (60-200Hz)"
+    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+      <h3 className="text-lg font-semibold mb-4 text-slate-800 dark:text-slate-200">Audio Effects</h3>
+      
+      <Tabs defaultValue="eq" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="eq">EQ</TabsTrigger>
+          <TabsTrigger value="fx">Effects</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="eq" className="space-y-4 mt-4">
+          <EffectSlider
+            label="Low"
             value={effects.eq.low}
             min={-12}
             max={12}
-            step={1}
+            step={0.5}
             unit="dB"
-            onChange={(val) => handleEffectChange('eq-low', val)}
+            onChange={(value) => onEffectChange('eq-low', value)}
           />
-          <EffectSlider 
-            label="Mid (200Hz-5kHz)"
+          <EffectSlider
+            label="Mid"
             value={effects.eq.mid}
             min={-12}
             max={12}
-            step={1}
+            step={0.5}
             unit="dB"
-            onChange={(val) => handleEffectChange('eq-mid', val)}
+            onChange={(value) => onEffectChange('eq-mid', value)}
           />
-          <EffectSlider 
-            label="Treble (5kHz+)"
+          <EffectSlider
+            label="High"
             value={effects.eq.high}
             min={-12}
             max={12}
-            step={1}
+            step={0.5}
             unit="dB"
-            onChange={(val) => handleEffectChange('eq-high', val)}
+            onChange={(value) => onEffectChange('eq-high', value)}
           />
-        </div>
-      </PopoverContent>
-    </Popover>
+        </TabsContent>
+        
+        <TabsContent value="fx" className="space-y-4 mt-4">
+          <EffectToggle
+            label="Reverb"
+            Icon={Volume2}
+            pressed={false}
+            onPressedChange={() => onEffectToggle('reverb', true)}
+          />
+          <EffectToggle
+            label="Distortion"
+            Icon={Zap}
+            pressed={false}
+            onPressedChange={() => onEffectToggle('distortion', true)}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 

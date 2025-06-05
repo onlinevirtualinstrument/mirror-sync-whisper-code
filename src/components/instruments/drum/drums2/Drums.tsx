@@ -4,6 +4,7 @@ import { useRoom } from '@/components/room/RoomContext';
 import StandardInstrumentLayout from '@/components/instruments/common/StandardInstrumentLayout';
 import { Button } from '@/components/ui/button';
 import { playInstrumentNote } from '@/utils/instruments/instrumentUtils';
+import { playRealtimeNote } from '@/utils/audio/realtimeAudio';
 
 interface DrumPad {
   id: string;
@@ -11,17 +12,18 @@ interface DrumPad {
   key: string;
   color: string;
   note: string;
+  frequency: number;
 }
 
 const drumPads: DrumPad[] = [
-  { id: 'kick', name: 'Kick', key: 'Q', color: 'bg-red-500', note: 'C2' },
-  { id: 'snare', name: 'Snare', key: 'W', color: 'bg-blue-500', note: 'D2' },
-  { id: 'hihat', name: 'Hi-Hat', key: 'E', color: 'bg-green-500', note: 'F#2' },
-  { id: 'openhat', name: 'Open Hat', key: 'R', color: 'bg-yellow-500', note: 'A2' },
-  { id: 'tom1', name: 'Tom 1', key: 'A', color: 'bg-purple-500', note: 'G2' },
-  { id: 'tom2', name: 'Tom 2', key: 'S', color: 'bg-pink-500', note: 'E2' },
-  { id: 'crash', name: 'Crash', key: 'D', color: 'bg-orange-500', note: 'B2' },
-  { id: 'ride', name: 'Ride', key: 'F', color: 'bg-teal-500', note: 'C#3' },
+  { id: 'kick', name: 'Kick', key: 'Q', color: 'bg-red-500', note: 'C2', frequency: 65.41 },
+  { id: 'snare', name: 'Snare', key: 'W', color: 'bg-blue-500', note: 'D2', frequency: 73.42 },
+  { id: 'hihat', name: 'Hi-Hat', key: 'E', color: 'bg-green-500', note: 'F#2', frequency: 92.50 },
+  { id: 'openhat', name: 'Open Hat', key: 'R', color: 'bg-yellow-500', note: 'A2', frequency: 110.00 },
+  { id: 'tom1', name: 'Tom 1', key: 'A', color: 'bg-purple-500', note: 'G2', frequency: 98.00 },
+  { id: 'tom2', name: 'Tom 2', key: 'S', color: 'bg-pink-500', note: 'E2', frequency: 82.41 },
+  { id: 'crash', name: 'Crash', key: 'D', color: 'bg-orange-500', note: 'B2', frequency: 123.47 },
+  { id: 'ride', name: 'Ride', key: 'F', color: 'bg-teal-500', note: 'C#3', frequency: 138.59 },
 ];
 
 const Drums2: React.FC = () => {
@@ -29,22 +31,29 @@ const Drums2: React.FC = () => {
   const [reverb, setReverb] = useState(0.3);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activePads, setActivePads] = useState<Set<string>>(new Set());
-  const { broadcastInstrumentNote } = useRoom();
+  const { broadcastInstrumentNote, userInfo } = useRoom();
 
   const handlePadPress = async (pad: DrumPad) => {
     if (activePads.has(pad.id)) return;
     
     setActivePads(prev => new Set(prev).add(pad.id));
     
-    // Play local sound
+    // Play local sound with enhanced real-time audio
+    const noteId = `${userInfo?.id || 'local'}-${pad.id}-${Date.now()}`;
+    await playRealtimeNote(noteId, pad.frequency, 'drum', userInfo?.id || 'local', volume, 300);
+    
+    // Also use the legacy instrument utils for backup
     await playInstrumentNote('drum', pad.note, 2, 300, volume);
     
-    // Broadcast to room
+    // Broadcast to room with enhanced data
     broadcastInstrumentNote({
       note: pad.note,
       instrument: 'drum',
-      userId: 'current-user',
-      userName: 'User'
+      userId: userInfo?.id || 'current-user',
+      userName: userInfo?.name || 'User',
+      frequency: pad.frequency,
+      volume: volume,
+      effects: { reverb }
     });
     
     setTimeout(() => {
@@ -85,9 +94,17 @@ const Drums2: React.FC = () => {
             onClick={() => handlePadPress(pad)}
             className={`
               ${pad.color} hover:opacity-80 text-white font-bold py-8 px-4 rounded-lg
-              transition-all duration-150 transform
-              ${activePads.has(pad.id) ? 'scale-95 shadow-lg' : 'hover:scale-105'}
+              transition-all duration-150 transform shadow-lg hover:shadow-xl
+              ${activePads.has(pad.id) 
+                ? 'scale-95 shadow-2xl ring-4 ring-white/50' 
+                : 'hover:scale-105 hover:shadow-2xl'
+              }
             `}
+            style={{
+              boxShadow: activePads.has(pad.id) 
+                ? `0 0 30px 8px ${pad.color.replace('bg-', '').replace('-500', '')}` 
+                : undefined
+            }}
           >
             <div className="text-center">
               <div className="text-lg font-bold">{pad.name}</div>
@@ -98,7 +115,7 @@ const Drums2: React.FC = () => {
       </div>
       
       <div className="mt-4 text-center text-sm text-muted-foreground">
-        Press the corresponding keys or click the pads to play
+        Press the corresponding keys or click the pads to play • Enhanced real-time audio mixing
       </div>
     </StandardInstrumentLayout>
   );

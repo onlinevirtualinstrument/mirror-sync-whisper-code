@@ -1,71 +1,95 @@
 
-import { useState } from 'react';
-import { 
-  LayoutGrid
-} from 'lucide-react';
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Slider } from './ui/slider';
+import { Label } from './ui/label';
+import { Grid3X3, Grid2X2, Square } from 'lucide-react';
 
 interface ControlsProps {
-  onGridChange: (grid: '2x2' | '3x3' | '4x4') => void;
+  gridLayout: '2x2' | '3x3' | '4x4';
+  onGridChange: (layout: '2x2' | '3x3' | '4x4') => void;
+  volume?: number;
+  onVolumeChange?: (volume: number) => void;
+  tempo?: number;
+  onTempoChange?: (tempo: number) => void;
 }
 
-const Controls = ({ onGridChange }: ControlsProps) => {
-  const [gridLayout, setGridLayout] = useState<'2x2' | '3x3' | '4x4'>('3x3');
-  const [isControlsOpen, setIsControlsOpen] = useState(false);
-
-  const handleGridChange = (value: '2x2' | '3x3' | '4x4') => {
-    setGridLayout(value);
-    onGridChange(value);
-  };
-
-  const toggleControls = () => {
-    setIsControlsOpen(!isControlsOpen);
-  };
+const Controls = ({ 
+  gridLayout, 
+  onGridChange, 
+  volume = 70, 
+  onVolumeChange,
+  tempo = 120,
+  onTempoChange 
+}: ControlsProps) => {
+  const gridOptions = [
+    { value: '2x2' as const, icon: Grid2X2, label: '2×2' },
+    { value: '3x3' as const, icon: Grid3X3, label: '3×3' },
+    { value: '4x4' as const, icon: Square, label: '4×4' }
+  ];
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      <Button 
-        variant="outline" 
-        size="sm"
-        onClick={toggleControls}
-        className="mb-2 bg-white/50 dark:bg-slate-700/50 backdrop-blur-sm"
-      >
-        <LayoutGrid className="h-4 w-4 mr-2" />
-        {isControlsOpen ? 'Hide Controls' : 'Show Controls'}
-      </Button>
-      
-      {isControlsOpen && (
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm p-6 rounded-lg mb-6 border border-slate-200 dark:border-slate-700 animate-fade-in">
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium flex items-center mb-3">
-                <LayoutGrid className="h-4 w-4 mr-2" />
-                Layout Grid
-              </label>
-              <RadioGroup 
-                value={gridLayout} 
-                onValueChange={(val) => handleGridChange(val as '2x2' | '3x3' | '4x4')}
-                className="flex gap-4"
+    <Card className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+      <CardHeader>
+        <CardTitle className="text-slate-800 dark:text-slate-200">Controls</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Grid Layout Controls */}
+        <div>
+          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 block">
+            Grid Layout
+          </Label>
+          <div className="flex gap-2">
+            {gridOptions.map(({ value, icon: Icon, label }) => (
+              <Button
+                key={value}
+                variant={gridLayout === value ? "default" : "outline"}
+                size="sm"
+                onClick={() => onGridChange(value)}
+                className="flex items-center gap-2"
               >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="2x2" id="grid-2x2" />
-                  <label htmlFor="grid-2x2" className="cursor-pointer text-sm">2×2</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="3x3" id="grid-3x3" />
-                  <label htmlFor="grid-3x3" className="cursor-pointer text-sm">3×3</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="4x4" id="grid-4x4" />
-                  <label htmlFor="grid-4x4" className="cursor-pointer text-sm">4×4</label>
-                </div>
-              </RadioGroup>
-            </div>
+                <Icon className="h-4 w-4" />
+                {label}
+              </Button>
+            ))}
           </div>
         </div>
-      )}
-    </div>
+
+        {/* Volume Control */}
+        {onVolumeChange && (
+          <div>
+            <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+              Volume: {volume}%
+            </Label>
+            <Slider
+              value={[volume]}
+              onValueChange={(value) => onVolumeChange(value[0])}
+              max={100}
+              step={1}
+              className="w-full"
+            />
+          </div>
+        )}
+
+        {/* Tempo Control */}
+        {onTempoChange && (
+          <div>
+            <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+              Tempo: {tempo} BPM
+            </Label>
+            <Slider
+              value={[tempo]}
+              onValueChange={(value) => onTempoChange(value[0])}
+              min={60}
+              max={180}
+              step={1}
+              className="w-full"
+            />
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

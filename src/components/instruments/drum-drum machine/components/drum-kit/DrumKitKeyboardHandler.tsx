@@ -1,6 +1,6 @@
 
 import { useEffect, useCallback } from 'react';
-import { DrumPad } from '@/data/drumKits';
+import { DrumPad } from '../../data/drumKits';
 
 interface DrumKitKeyboardHandlerProps {
   pads: DrumPad[];
