@@ -28,7 +28,7 @@ const BlogEditor = React.lazy(() => import('@/components/blog/BlogEditor'));
 const Login = React.lazy(() => import('@/components/auth/LoginForm'));
 const Register = React.lazy(() => import('@/components/auth/SignUpForm'));
 const ForgotPassword = React.lazy(() => import('@/components/auth/ForgotPasswordForm'));
-const Profile = React.lazy(() => import('@/components/auth/UserButton'));
+const Profile = React.lazy(() => import('@/components/auth/UserButton').then(module => ({ default: module.UserButton })));
 const Contact = React.lazy(() => import('@/components/Contact/Contact'));
 const About = React.lazy(() => import('@/components/About/About'));
 const Pricing = React.lazy(() => import('@/components/Pricing/Pricing'));
