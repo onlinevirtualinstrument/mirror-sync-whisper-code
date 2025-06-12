@@ -1,296 +1,138 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, MessageSquare, Lock, Smile, Music, Heart, Sparkle, StarIcon } from 'lucide-react';
-import { useRoom } from './RoomContext';
+import { MessageCircle, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useRoom } from './RoomContext';
+import UnreadMessageBadge from './UnreadMessageBadge';
 
 const RoomChat: React.FC = () => {
-  const { room, messages, isHost, userInfo, sendMessage } = useRoom();
-  const [message, setMessage] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const { 
+    messages, 
+    sendMessage, 
+    isParticipant, 
+    unreadMessageCount,
+    markChatAsRead 
+  } = useRoom();
+  
+  const [newMessage, setNewMessage] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [animatingMessages, setAnimatingMessages] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (isOpen) {
+      scrollToBottom();
+      markChatAsRead();
+    }
+  }, [messages, isOpen, markChatAsRead]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim() && (!room.isChatDisabled || isHost)) {
-      sendMessage(message);
-      setMessage('');
+    if (newMessage.trim()) {
+      await sendMessage(newMessage);
+      setNewMessage('');
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
-
-  const addEmoji = (emoji: string) => {
-    setMessage(prev => prev + emoji);
-    setShowEmojiPicker(false);
-  };
-  
-
-
-  const addSpecialMessage = (type: string) => {
-    const messages: Record<string, string> = {
-      clap: "👏👏👏 Amazing performance!",
-      amazing: "✨🎵 That was incredible! 🎵✨",
-      encore: "🔄 ENCORE! Let's hear that again! 🔄",
-      bravo: "🌟 BRAVO! Standing ovation! 🌟",
-      teamup: "🤝 Let's collaborate on the next one!",
-      learn: "📚 I'd love to learn how you played that!",
-      goosebumps: "😮 Wow! That gave me goosebumps!",
-      harmony: "🎶 Perfect harmony! We're in sync!"
-    };
-    
-    if (messages[type]) {
-      setMessage(messages[type]);
+  const toggleChat = () => {
+    setIsOpen(!isOpen);
+    if (!isOpen) {
+      markChatAsRead();
     }
   };
 
-  const handleAnimateMessage = (messageId: string) => {
-    setAnimatingMessages(prev => ({
-      ...prev,
-      [messageId]: true
-    }));
-    
-    setTimeout(() => {
-      setAnimatingMessages(prev => ({
-        ...prev,
-        [messageId]: false
-      }));
-    }, 2000);
-  };
-
-  if (!room || !userInfo) return null;
-
-  const formatTime = (timestamp: string | any) => {
-    if (!timestamp) return '';
-
-    // Handle both ISO string timestamps and Firebase Firestore timestamps
-    const date = timestamp.toDate
-      ? timestamp.toDate()
-      : new Date(timestamp || 0);
-    
+  const formatTime = (timestamp: any) => {
+    const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Parse message content for special formatting
-  const renderMessageContent = (text: string) => {
-    // Handle music effect formatting with asterisks
-    const parts = text.split(/(\*[^*]+\*)/g);
-    
-    return parts.map((part, index) => {
-      if (part.startsWith('*') && part.endsWith('*')) {
-        const effect = part.slice(1, -1);
-        return (
-          <span
-            key={index}
-            className="inline-block animate-pulse text-primary font-semibold bg-primary/10 px-2 py-0.5 rounded"
-          >
-            🎵 {effect} 🎵
-          </span>
-        );
-      }
-      return <span key={index}>{part}</span>;
-    });
-  };
-
-  // Check for special message types
-  const isEmojiOnly = (text: string) => {
-    const emojiRegex = /^[\p{Emoji}\s]+$/u;
-    return emojiRegex.test(text) && text.trim().length > 0;
-  };
-
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-2 bg-background border-b">
-        <h2 className="text-sm font-semibold flex items-center">
-          <MessageSquare size={16} className="mr-2" /> Room Chat
-        </h2>
-      </div>
+    <>
+      {/* Chat Toggle Button */}
+      <Button
+        onClick={toggleChat}
+        variant="outline"
+        size="sm"
+        className="fixed bottom-4 right-4 z-40 relative"
+      >
+        <MessageCircle className="h-4 w-4 mr-2" />
+        Chat
+        {unreadMessageCount > 0 && (
+          <UnreadMessageBadge count={unreadMessageCount} />
+        )}
+      </Button>
 
-      {room.isChatDisabled && !isHost ? (
-        <div className="flex-1 flex items-center justify-center p-6">
-          <Alert>
-            <Lock className="h-4 w-4" />
-            <AlertTitle>Chat Disabled</AlertTitle>
-            <AlertDescription>
-              The host has disabled chat for this room.
-            </AlertDescription>
-          </Alert>
-        </div>
-      ) : (
-        <>
-          <div className="flex-1 overflow-y-auto p-2 space-y-2">
-            {messages.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
-                No messages yet. Start the conversation!
-              </div>
-            ) : (
-              messages.map((msg: any) => {
-                const isCurrentUser = msg.senderId === userInfo.id;
-                const isEmojiMessage = isEmojiOnly(msg.text);
-                const isAnimating = animatingMessages[msg.id];
-                
-                return (
-                  <div 
-                    key={msg.id} 
-                    className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
-                    onDoubleClick={() => handleAnimateMessage(msg.id)}
-                  >
-                    <div className={`flex max-w-[80%] ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <Avatar className={`h-6 w-6 ${isCurrentUser ? 'ml-1' : 'mr-1'}`}>
-                        <AvatarImage src={msg.senderAvatar} />
-                        <AvatarFallback>{getInitials(msg.senderName)}</AvatarFallback>
-                      </Avatar>
-                      
-                      <div 
-                        className={`
-                          rounded-lg p-2 text-sm
-                          ${isAnimating ? 'animate-bounce' : ''}
-                          ${isEmojiMessage ? 'bg-transparent text-2xl' : isCurrentUser 
-                            ? 'bg-primary text-primary-foreground' 
-                            : 'bg-muted'
-                          }
-                        `}
-                      >
-                        {!isEmojiMessage && (
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium text-xs">
-                              {isCurrentUser ? 'You' : msg.senderName}
-                            </span>
-                            <span className="text-xs opacity-70 ml-2">
-                              {formatTime(msg.timestamp)}
-                            </span>
-                          </div>
-                        )}
-                        <p className="whitespace-pre-wrap">
-                          {isEmojiMessage ? msg.text : renderMessageContent(msg.text)}
-                        </p>
+      {/* Chat Panel */}
+      {isOpen && (
+        <Card className="fixed bottom-16 right-4 w-80 h-96 z-50 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between py-3">
+            <CardTitle className="text-sm">Room Chat</CardTitle>
+            <Button
+              onClick={toggleChat}
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          
+          <CardContent className="p-0 flex flex-col h-full">
+            {/* Messages */}
+            <ScrollArea className="flex-1 px-3">
+              <div className="space-y-2">
+                {messages.map((message) => (
+                  <div key={message.id} className="flex items-start gap-2 text-sm">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={message.senderAvatar} />
+                      <AvatarFallback className="text-xs">
+                        {message.senderName?.charAt(0)?.toUpperCase() || 'A'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-xs truncate">
+                          {message.senderName}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatTime(message.timestamp)}
+                        </span>
                       </div>
+                      <p className="text-xs break-words">{message.text}</p>
                     </div>
                   </div>
-                );
-              })
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+
+            {/* Message Input */}
+            {isParticipant && (
+              <form onSubmit={handleSendMessage} className="p-3 border-t">
+                <div className="flex gap-2">
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    className="text-sm"
+                  />
+                  <Button type="submit" size="sm" disabled={!newMessage.trim()}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </form>
             )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          <form onSubmit={handleSendMessage} className="p-2 border-t">
-            <div className="flex flex-col gap-2">
-              {/* Quick Reaction Buttons */}
-              <div className="flex flex-wrap gap-1 justify-center mb-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => addSpecialMessage('clap')}
-                >
-                  👏 Applause
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => addSpecialMessage('amazing')}
-                >
-                  ✨ Amazing!
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => addSpecialMessage('encore')}
-                >
-                  🔄 Encore
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => addSpecialMessage('harmony')}
-                >
-                  🎶 Harmony
-                </Button>
-              </div>
-              
-              <div className="flex gap-1">
-                <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
-                  <PopoverTrigger asChild>
-                    <Button 
-                      type="button" 
-                      size="icon" 
-                      variant="ghost" 
-                      className="h-8 w-8" 
-                      disabled={room.isChatDisabled && !isHost}
-                    >
-                      <Smile size={16} />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64 p-2">
-                    <div className="grid grid-cols-8 gap-1">
-                      {["😀", "😁", "😂", "🤣", "😃", "😄", "😅", "😆", "😉", "😊", 
-                        "😋", "😎", "😍", "😘", "🥰", "😗", "😙", "😚", "🙂", "🤗",
-                        "🤔", "😐", "😑", "😶", "🙄", "😏", "😣", "😥", "😮", "🤐",
-                        "😯", "😪", "😫", "😴", "😌", "😛", "😜", "😝", "🤤", "😒",
-                        "👍", "👎", "👏", "🙌", "👐", "🤝", "🙏", "💪", "🎵", "🎶",
-                        "🎸", "🎹", "🎷", "🎺", "🥁", "🎻", "🎤", "🎧", "💯", "✨"
-                      ].map(emoji => (
-                        <button
-                          key={emoji}
-                          type="button"
-                          className="h-7 w-7 flex items-center justify-center hover:bg-muted rounded"
-                          onClick={() => addEmoji(emoji)}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-
-                <Input
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type your message..."
-                  disabled={room.isChatDisabled && !isHost}
-                  className="flex-1 text-sm h-8"
-                />
-                <Button 
-                  type="submit" 
-                  size="icon" 
-                  disabled={room.isChatDisabled && !isHost}
-                  className="h-8 w-8"
-                >
-                  <Send size={14} />
-                </Button>
-              </div>
-            </div>
-          </form>
-        </>
+          </CardContent>
+        </Card>
       )}
-    </div>
+    </>
   );
 };
 
