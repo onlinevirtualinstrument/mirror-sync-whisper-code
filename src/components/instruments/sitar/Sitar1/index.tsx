@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import InstrumentVariantSelector from '@/pages/instruments/InstrumentVariantSelector';
 import SoundControls from '@/utils/music/SoundControls';
 import { useSitarAudio } from './SitarAudio';
@@ -7,8 +7,13 @@ import { useSitarKeyboard } from './SitarKeyboard';
 import { sitarVariants } from './SitarVariants';
 import { SitarBody } from './SitarBody';
 import { TutorialButton } from '@/components/Tutorial/TutorialButton';
+import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
+import FullscreenWrapper from "@/components/landscapeMode/FullscreenWrapper";
 
 const Sitar = () => {
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
   const {
     activeString,
     volume,
@@ -52,64 +57,49 @@ const Sitar = () => {
           variants={Object.values(sitarVariants).map(v => ({ id: v.id, name: v.name }))}
           label="Select Sitar Type"
         />
-        
-        <TutorialButton 
+
+        <TutorialButton
           instrumentName="Sitar"
           instructions={sitarInstructions}
           keyMappings={keyMappings}
         />
+
+        <div className="landscape-warning text-xs text-muted-foreground  dark:bg-white/5 p-2 rounded-md">
+          <p>
+            <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
+              ⛶Zoom
+            </strong>
+          </p>
+        </div>
+        <style>{`
+                                    @media (min-width: 768px) {
+                                      .landscape-warning {
+                                        display: none;
+                                      }
+                                    }
+                                  `}</style>
       </div>
-      
-      <SitarBody
-        sitarVariant={sitarVariant}
-        activeString={activeString}
-        onPlayString={playString}
-      />
-      
+
+      <FullscreenWrapper ref={containerRef} instrumentName="sitar">
+        <SitarBody
+          sitarVariant={sitarVariant}
+          activeString={activeString}
+          onPlayString={playString}
+        />
+      </FullscreenWrapper>
+
       <div className="mt-8 space-y-6">
         <SoundControls
           volume={volume}
           setVolume={setVolume}
           isMuted={isMuted}
           setIsMuted={setIsMuted}
+          stringBrightness={stringBrightness}
+          setStringBrightness={setStringBrightness}
+          resonance={resonance}
+          setResonance={setResonance}
         />
-        
-        <div className="bg-background/40 backdrop-blur-sm rounded-lg p-4 shadow-sm border border-border/50">
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">String Brightness</span>
-                <span className="text-xs text-muted-foreground">{Math.round(stringBrightness * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={stringBrightness}
-                onChange={(e) => setStringBrightness(parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-            
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Resonance</span>
-                <span className="text-xs text-muted-foreground">{Math.round(resonance * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={resonance}
-                onChange={(e) => setResonance(parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-          </div>
-        </div>
-        
+
         {/* <div className="text-center text-muted-foreground text-sm">
           <p>Play the sitar strings by clicking on them or using keyboard keys (1-7)</p>
         </div> */}

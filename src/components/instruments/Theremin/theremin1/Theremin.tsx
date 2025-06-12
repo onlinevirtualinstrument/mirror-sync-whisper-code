@@ -4,10 +4,13 @@ import { TutorialButton } from '../../../Tutorial/TutorialButton';
 import SoundControls from '../../../../utils/music/SoundControls';
 import { useThereminAudio } from './ThereminAudio';
 import { motion } from "framer-motion";
-
+import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
+import FullscreenWrapper from "@/components/landscapeMode/FullscreenWrapper";
 
 const Theremin = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [volume, setVolume] = useState<number>(0.6);
   const [isMuted, setIsMuted] = useState<boolean>(false);
@@ -50,15 +53,30 @@ const Theremin = () => {
   ];
 
   return (
-    <div className="w-full glass-card p-8 rounded-xl">
+    <div className="w-full glass-card rounded-xl">
       <div className="flex justify-end mb-2">
-        <TutorialButton
+        <TutorialButton 
           instrumentName="Theremin"
           instructions={thereminInstructions}
           keyMappings={keyboardMappings}
         />
+        <div className="landscape-warning text-xs text-muted-foreground  dark:bg-white/5 p-2 rounded-md">
+                    <p>
+                      <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
+                        ⛶Zoom
+                      </strong>
+                    </p>
+                  </div>
+                  <style>{`
+                            @media (min-width: 768px) {
+                              .landscape-warning {
+                                display: none;
+                              }
+                            }
+                          `}</style>
       </div>
 
+<FullscreenWrapper ref={containerRef} instrumentName="theremin">
       <div
         ref={containerRef}
         className="w-full h-64 bg-gradient-to-r from-indigo-100 to-blue-200 rounded-lg cursor-none relative overflow-hidden"
@@ -80,6 +98,7 @@ const Theremin = () => {
           </p>
         </div>
       </div>
+      </FullscreenWrapper>
 
       <div className="mt-6">
         <div className="mb-4">
@@ -93,23 +112,10 @@ const Theremin = () => {
           setVolume={setVolume}
           isMuted={isMuted}
           setIsMuted={setIsMuted}
+          sensitivity={sensitivity}
+          setSensitivity={setSensitivity}
         />
 
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Sensitivity</span>
-            <span className="text-xs text-muted-foreground">{Math.round(sensitivity * 100)}%</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={sensitivity}
-            onChange={(e) => setSensitivity(parseFloat(e.target.value))}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-          />
-        </div>
       </div>
     </div>
   );

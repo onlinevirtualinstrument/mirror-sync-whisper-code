@@ -1,12 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import SoundControls from '../../../../utils/music/SoundControls';
 import { Music, Wand2 } from 'lucide-react';
+import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
+import FullscreenWrapper from "@/components/landscapeMode/FullscreenWrapper";
 
 interface XylophoneProps {
   xylophoneType?: string;
 }
 
 const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
   const [activeNote, setActiveNote] = useState<number | null>(null);
   const [volume, setVolume] = useState<number>(0.6);
   const [isMuted, setIsMuted] = useState<boolean>(false);
@@ -16,12 +21,11 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
   const [currentXylophoneType, setCurrentXylophoneType] = useState<string>(xylophoneType);
   const audioContext = useRef<AudioContext | null>(null);
   const reverbNode = useRef<ConvolverNode | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     setCurrentXylophoneType(xylophoneType);
   }, [xylophoneType]);
-  
+
   const notes = [
     { note: 'C', octave: 4, freq: 261.63, key: 'Z', color: 'bg-[#8B4513]' }, // Wooden color for ends
     { note: 'D', octave: 4, freq: 293.66, key: 'X', color: 'bg-red-500' },
@@ -44,22 +48,22 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
 
   const createReverb = async (audioCtx: AudioContext) => {
     if (reverbNode.current) return reverbNode.current;
-    
+
     const convolver = audioCtx.createConvolver();
-    
+
     const sampleRate = audioCtx.sampleRate;
     const length = sampleRate * 3; // 3 seconds reverb
     const impulse = audioCtx.createBuffer(2, length, sampleRate);
     const impulseL = impulse.getChannelData(0);
     const impulseR = impulse.getChannelData(1);
-    
+
     for (let i = 0; i < length; i++) {
       const n = i / length;
       const decay = Math.exp(-n * 5);
       impulseL[i] = (Math.random() * 2 - 1) * decay;
       impulseR[i] = (Math.random() * 2 - 1) * decay;
     }
-    
+
     convolver.buffer = impulse;
     reverbNode.current = convolver;
     return convolver;
@@ -100,16 +104,16 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
       if (bar) {
         const rect = bar.getBoundingClientRect();
         const containerRect = containerRef.current.getBoundingClientRect();
-        
+
         const ripple = document.createElement('div');
         ripple.className = 'absolute rounded-full animate-note-ripple bg-white/30 pointer-events-none';
         ripple.style.width = '60px';
         ripple.style.height = '60px';
         ripple.style.left = `${rect.left - containerRect.left + rect.width / 2 - 30}px`;
         ripple.style.top = `${rect.top - containerRect.top + rect.height / 2 - 30}px`;
-        
+
         containerRef.current.appendChild(ripple);
-        
+
         setTimeout(() => {
           containerRef.current?.removeChild(ripple);
         }, 800);
@@ -121,14 +125,14 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
     const oscillator3 = audioContext.current.createOscillator();
     const masterGain = audioContext.current.createGain();
     const toneFilter = audioContext.current.createBiquadFilter();
-    
+
     let toneAdjustment = toneQuality;
     let attackTime = 0.005;
     let releaseTime = 1.5;
     let harmonic2Level = 0.05 * toneQuality;
     let harmonic3Level = 0.2 * toneQuality;
-    
-    switch(currentXylophoneType) {
+
+    switch (currentXylophoneType) {
       case 'marimba':
         oscillator1.type = 'sine';
         oscillator2.type = 'triangle';
@@ -156,7 +160,7 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
         harmonic3Level = 0.25 * toneQuality;
         attackTime = 0.01;
         releaseTime = 4.0;
-        
+
         const vibratoOsc = audioContext.current.createOscillator();
         const vibratoGain = audioContext.current.createGain();
         vibratoOsc.frequency.value = 5;
@@ -184,62 +188,62 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
         oscillator3.type = toneQuality > 0.5 ? 'triangle' : 'sine';
         break;
     }
-    
+
     oscillator1.frequency.value = frequency;
     oscillator2.frequency.value = frequency * 3;
     oscillator3.frequency.value = frequency * 2;
-    
+
     toneFilter.type = 'lowpass';
     toneFilter.frequency.value = 2000 + (toneAdjustment * 10000);
     toneFilter.Q.value = 1 + toneAdjustment * 5;
-    
+
     const gain1 = audioContext.current.createGain();
     const gain2 = audioContext.current.createGain();
     const gain3 = audioContext.current.createGain();
-    
+
     gain1.gain.value = 0.7;
     gain2.gain.value = harmonic2Level;
     gain3.gain.value = harmonic3Level;
-    
+
     masterGain.gain.setValueAtTime(0, audioContext.current.currentTime);
     masterGain.gain.linearRampToValueAtTime(volume, audioContext.current.currentTime + attackTime);
     masterGain.gain.exponentialRampToValueAtTime(0.001, audioContext.current.currentTime + releaseTime);
-    
+
     oscillator1.connect(gain1);
     oscillator2.connect(gain2);
     oscillator3.connect(gain3);
-    
+
     gain1.connect(toneFilter);
     gain2.connect(toneFilter);
     gain3.connect(toneFilter);
-    
+
     if (reverbLevel > 0 && reverbNode.current) {
       const dryGain = audioContext.current.createGain();
       const wetGain = audioContext.current.createGain();
-      
+
       dryGain.gain.value = 1 - reverbLevel;
       wetGain.gain.value = reverbLevel;
-      
+
       toneFilter.connect(dryGain);
       toneFilter.connect(reverbNode.current);
       reverbNode.current.connect(wetGain);
-      
+
       dryGain.connect(masterGain);
       wetGain.connect(masterGain);
     } else {
       toneFilter.connect(masterGain);
     }
-    
+
     masterGain.connect(audioContext.current.destination);
-    
+
     oscillator1.start();
     oscillator2.start();
     oscillator3.start();
-    
+
     oscillator1.stop(audioContext.current.currentTime + releaseTime);
     oscillator2.stop(audioContext.current.currentTime + releaseTime);
     oscillator3.stop(audioContext.current.currentTime + releaseTime);
-    
+
     setTimeout(() => {
       setActiveNote(null);
     }, 300);
@@ -250,7 +254,7 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
   };
 
   return (
-    <div className="flex flex-col items-center glass-card p-8 rounded-xl backdrop-blur-sm bg-gradient-to-b from-gray-50/30 to-gray-100/40 border border-gray-200/50 shadow-xl">
+    <div className="w-full flex flex-col items-center glass-card p-8 rounded-xl backdrop-blur-sm bg-gradient-to-b from-gray-50/30 to-gray-100/40 border border-gray-200/50 shadow-xl">
       <div className="mb-6 flex items-center gap-4">
         <button
           className="px-4 py-2 text-sm font-medium bg-secondary/50 rounded-md hover:bg-secondary/70 transition-colors"
@@ -258,25 +262,36 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
         >
           {showNotes ? 'Hide notes' : 'Show notes'}
         </button>
-        
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Wand2 size={16} />
-          <span>Click bars to play or use keyboard keys</span>
+
+        <div className="landscape-warning text-xs text-muted-foreground  dark:bg-white/5 p-2 rounded-md">
+          <p>
+            <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
+              ⛶Zoom
+            </strong>
+          </p>
         </div>
+        {/* <style>{`
+                            @media (min-width: 768px) {
+                              .landscape-warning {
+                                display: none;
+                              }
+                            }
+                          `}</style> */}
       </div>
-      
-      <div 
+
+<FullscreenWrapper ref={containerRef} instrumentName="xylophone">
+      <div
         ref={containerRef}
-        className="relative w-full mb-10 flex justify-center overflow-hidden"
+        className="relative w-full mb-10 flex justify-center overflow-visible"
         style={{ minHeight: '250px' }}
       >
         <div className="flex w-full items-end justify-center gap-[3px] md:gap-1 relative">
           {notes.map((note, index) => {
             if (index === 0 || index === notes.length - 1) return null;
-            
+
             const heightPercent = 100 - (index * 2);
             const widthClass = "w-3 sm:w-5 md:w-7";
-            
+
             let barColor = note.color;
             if (currentXylophoneType === 'marimba') {
               barColor = `bg-gradient-to-b from-amber-800 to-amber-700`;
@@ -287,17 +302,16 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
             } else if (currentXylophoneType === 'wooden') {
               barColor = `bg-gradient-to-b from-amber-600 to-amber-500`;
             }
-            
+
             return (
               <div
                 key={`${note.note}${note.octave}`}
                 data-note-index={index}
-                className={`${barColor} ${widthClass}  rounded-b-md hover:brightness-110 cursor-pointer shadow-md relative transition-all ${
-                  activeNote === index 
-                    ? 'transform-gpu -translate-y-2 brightness-125 scale-y-[0.98]' 
+                className={`${barColor} ${widthClass}  rounded-b-md hover:brightness-110 cursor-pointer shadow-md relative transition-all ${activeNote === index
+                    ? 'transform-gpu -translate-y-2 brightness-125 scale-y-[0.98]'
                     : ''
-                }`}
-                style={{ 
+                  }`}
+                style={{
                   height: `${heightPercent}%`,
                   transition: 'all 0.15s ease-out',
                   zIndex: 10 - index,
@@ -306,13 +320,13 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
               >
                 <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[6px] h-[6px] md:w-[8px] md:h-[8px] bg-white rounded-full"></div>
                 <div className="absolute bottom-[15%] left-1/2 -translate-x-1/2 w-[6px] h-[6px] md:w-[8px] md:h-[8px] bg-white rounded-full"></div>
-                
+
                 {showNotes && (
                   <div className="absolute bottom-0 left-0 right-0 text-center text-white font-medium text-[10px] md:text-xs p-[2px]">
                     {note.note}
                   </div>
                 )}
-                
+
                 {showNotes && (
                   <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 w-5 h-5 flex items-center justify-center rounded-sm shadow-sm">
                     {note.key}
@@ -321,14 +335,15 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
               </div>
             );
           })}
-          
+
           <div className="absolute bottom-0 w-[102%] h-4 bg-[#8B4513] rounded-md z-0"></div>
-          
+
           <div className="absolute bottom-0 left-0 w-[6px] h-[90%] bg-[#8B4513] rounded-t-md"></div>
           <div className="absolute bottom-0 right-0 w-[6px] h-[90%] bg-[#8B4513] rounded-t-md"></div>
         </div>
       </div>
-      
+</FullscreenWrapper>
+
       <div className="mt-8 space-y-6 w-full max-w-sm mx-auto">
         <SoundControls
           volume={volume}
@@ -340,7 +355,7 @@ const Xylophone = ({ xylophoneType = 'standard' }: XylophoneProps) => {
           toneQuality={toneQuality}
           setToneQuality={setToneQuality}
         />
-        
+
         {/* <div className="text-center text-sm text-muted-foreground">
           <div className="flex justify-center items-center gap-2">
             <Music size={16} />

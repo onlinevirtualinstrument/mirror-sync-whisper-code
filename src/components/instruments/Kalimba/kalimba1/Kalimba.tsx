@@ -193,7 +193,7 @@ const Kalimba = ({ variant = 'standard' }: KalimbaProps) => {
   };
 
   return (
-    <div className="glass-card p-8 rounded-xl">
+    <div className="w-full glass-card rounded-xl">
       <div className="flex justify-center items-end mb-8">
         <div className={`w-56 h-32 rounded-t-3xl rounded-b-lg relative flex justify-center items-end ${getBaseColor()}`}>
           {notes.map((note, i) => (
@@ -223,10 +223,6 @@ const Kalimba = ({ variant = 'standard' }: KalimbaProps) => {
             </div>
           ))}
         </div>
-      </div>
-      
-      <div className="text-center text-muted-foreground text-sm">
-        Click on the tines to play or use keys 1-8
       </div>
     </div>
   );

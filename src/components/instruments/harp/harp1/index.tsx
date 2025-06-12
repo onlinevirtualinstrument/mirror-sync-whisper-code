@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useHarpAudio } from './HarpAudio';
 import { useHarpKeyboard } from './HarpKeyboard';
 import { harpVariants } from './HarpVariants';
@@ -7,8 +7,14 @@ import InstrumentVariantSelector from '@/pages/instruments/InstrumentVariantSele
 import SoundControls from '@/utils/music/SoundControls';
 import { TutorialButton } from '@/components/Tutorial/TutorialButton';
 import { motion } from 'framer-motion';
+import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
+import FullscreenWrapper from "@/components/landscapeMode/FullscreenWrapper";
+
  
 const Harp = () => {
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
   const [harpVariant, setHarpVariant] = useState<string>('standard');
   const [volume, setVolume] = useState<number>(0.6);
   const [isMuted, setIsMuted] = useState<boolean>(false);
@@ -110,8 +116,24 @@ const Harp = () => {
           instructions={harpInstructions}
           keyMappings={keyMappings}
         />
+
+        <div className="landscape-warning text-xs text-muted-foreground  dark:bg-white/5 p-2 rounded-md">
+                    <p>
+                      <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
+                        ⛶Zoom
+                      </strong>
+                    </p>
+                  </div>
+                  <style>{`
+                            @media (min-width: 768px) {
+                              .landscape-warning {
+                                display: none;
+                              }
+                            }
+                          `}</style>
       </div>
       
+      <FullscreenWrapper ref={containerRef} instrumentName="banjo">
       <motion.div 
         className={`glass-card p-8 rounded-xl backdrop-blur-sm bg-gradient-to-br ${styles.card} border shadow-xl`}
         initial={{ opacity: 0 }}
@@ -166,7 +188,8 @@ const Harp = () => {
           </div>
         </div>
       </motion.div>
-      
+      </FullscreenWrapper>
+
       <div className="mt-6">
         <SoundControls
           volume={volume}

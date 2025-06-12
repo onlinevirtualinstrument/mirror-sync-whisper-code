@@ -3,13 +3,8 @@ import React, { useRef } from 'react';
 import InstrumentPageWrapper from '@/components/instruments/InstrumentPageWrapper';
 import Harp from '@/components/instruments/harp/harp1';
 import RecordingControlsShared from '@/components/recording/RecordingControlsShared';
-import InstrumentInterlink from '@/components/instruments/InstrumentInterlink';
-import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
-
 
 const HarpPage: React.FC = () => {
-
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
   return (
     <InstrumentPageWrapper
@@ -26,13 +21,6 @@ const HarpPage: React.FC = () => {
             <p>Pluck the harp strings by clicking on them or using keyboard keys (A-K).</p>
           </div>
         </div>
-        <div className="landscape-warning text-xs text-muted-foreground bg-purple-100 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-2">
-          <p>For the best experience, expand to full screen.
-            <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
-              Click here to expand
-            </strong>
-          </p>
-        </div>
       </div>
 
       {/* Add recording controls */}
@@ -40,7 +28,7 @@ const HarpPage: React.FC = () => {
               <RecordingControlsShared instrumentName="Harp" primaryColor="bg-pink-500" />
               </div> */}
 
-      <div ref={containerRef} className="flex items-center justify-center bg-white animate-scale-in" style={{ animationDelay: '200ms' }}>
+      <div className="flex items-center justify-center bg-white animate-scale-in" style={{ animationDelay: '200ms' }}>
         <Harp />
       </div>
 

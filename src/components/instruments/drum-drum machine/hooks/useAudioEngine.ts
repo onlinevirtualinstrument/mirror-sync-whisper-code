@@ -3,9 +3,9 @@ import { useEffect, useCallback } from 'react';
 import { useAudioContext } from './useAudioContext';
 import { useAudioEffects } from './useAudioEffects';
 import { useDrumSoundMapping } from './useDrumSoundMapping';
-import { createVisualFeedback } from '@/utils/audio/visualEffects';
+import { createVisualFeedback } from '../utils/audio/visualEffects';
 
-export const useAudioEngine = () => {
+export const useAudioEngine = () => { 
   const { synthesizerRef, initializeAudio } = useAudioContext();
   const { effects, setEffects, handleEffectChange, handleEffectToggle } = useAudioEffects();
   const { mapDrumSound } = useDrumSoundMapping();

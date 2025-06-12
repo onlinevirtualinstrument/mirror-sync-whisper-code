@@ -66,7 +66,7 @@ export const OnboardingTutorial = () => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-md p-0 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+      <DialogContent className="sm:max-w-md p-2 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
         <div className="relative h-64 bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
           {tutorialContent[step - 1].icon}
           <button 

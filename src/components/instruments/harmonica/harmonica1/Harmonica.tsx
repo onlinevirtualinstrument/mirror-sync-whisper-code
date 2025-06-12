@@ -6,7 +6,10 @@ import { useHarmonicaAudio } from './HarmonicaAudio';
 import { useHarmonicaKeyboard } from './HarmonicaKeyboard';
 import { TutorialButton } from '../../../Tutorial/TutorialButton';
 import { Slider } from "@/components/ui/slider";
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import SoundControls from '../../../../utils/music/SoundControls';
+import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
+import FullscreenWrapper from "@/components/landscapeMode/FullscreenWrapper";
 
 interface HarmonicaProps {
   variant?: string;
@@ -20,9 +23,13 @@ const Harmonica = ({ variant = 'standard' }: HarmonicaProps) => {
     playHole
   } = useHarmonicaAudio(variant);
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
   // Customization options
   const [breathIntensity, setBreathIntensity] = useState<number>(0.5);
   const [toneColor, setToneColor] = useState<number>(0.5);
+  const [volume, setVolume] = useState<number>(0.6);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
 
   // Setup keyboard control
   useHarmonicaKeyboard({
@@ -30,7 +37,7 @@ const Harmonica = ({ variant = 'standard' }: HarmonicaProps) => {
     harmonicaVariant,
     playHole
   });
-  
+
   // Tutorial content
   const harmonicaInstructions = [
     "Click on the holes to play different notes on the harmonica",
@@ -44,59 +51,60 @@ const Harmonica = ({ variant = 'standard' }: HarmonicaProps) => {
   ];
 
   return (
-    <div className="glass-card w-full p-8 rounded-xl">
-      <div className="mb-4 flex justify-between items-center">
+    <div className="w-full rounded-xl">
+      <div className="mb-8 flex justify-between items-center">
         <InstrumentVariantSelector
           currentVariant={harmonicaVariant}
           setVariant={setHarmonicaVariant}
           variants={Object.values(harmonicaVariants).map(v => ({ id: v.id, name: v.name }))}
           label="Select Harmonica Type"
         />
-        
-        <TutorialButton 
+
+        <TutorialButton
           instrumentName="Harmonica"
           instructions={harmonicaInstructions}
           keyMappings={keyMappings}
         />
-      </div>
-      
-      <HarmonicaBody
-        harmonicaVariant={harmonicaVariant}
-        activeHole={activeHole}
-        onHoleClick={playHole}
-      />
-      
-      <div className="mt-8 space-y-4">
-        <div className="bg-background/40 backdrop-blur-sm rounded-lg p-4 shadow-sm border border-border/50">
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Breath Intensity</span>
-                <span className="text-xs text-muted-foreground">{Math.round(breathIntensity * 100)}%</span>
-              </div>
-              <Slider
-                value={[breathIntensity]}
-                max={1}
-                step={0.01}
-                onValueChange={(newValue) => setBreathIntensity(newValue[0])}
-              />
-            </div>
-            
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Tone Color</span>
-                <span className="text-xs text-muted-foreground">{Math.round(toneColor * 100)}%</span>
-              </div>
-              <Slider
-                value={[toneColor]}
-                max={1}
-                step={0.01}
-                onValueChange={(newValue) => setToneColor(newValue[0])}
-              />
-            </div>
-          </div>
+
+        <div className="landscape-warning text-xs text-muted-foreground  dark:bg-white/5 p-2 rounded-md">
+          <p>
+            <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
+              ⛶Zoom
+            </strong>
+          </p>
         </div>
-      
+        <style>{`
+                            @media (min-width: 768px) {
+                              .landscape-warning {
+                                display: none;
+                              }
+                            }
+                          `}</style>
+
+      </div>
+
+      <FullscreenWrapper ref={containerRef} instrumentName="banjo">
+        <HarmonicaBody
+          harmonicaVariant={harmonicaVariant}
+          activeHole={activeHole}
+          onHoleClick={playHole}
+        />
+      </FullscreenWrapper>
+
+      <div className="mt-8 space-y-4">
+
+        <SoundControls
+          volume={volume}
+          setVolume={setVolume}
+          isMuted={isMuted}
+          setIsMuted={setIsMuted}
+          breathIntensity={breathIntensity}
+          setBreathIntensity={setBreathIntensity}
+          toneColor={toneColor}
+          setToneColor={setToneColor}
+        />
+
+
         {/* <div className="text-center text-muted-foreground text-sm">
           Click on the holes to play or use keyboard keys 1-8
         </div> */}

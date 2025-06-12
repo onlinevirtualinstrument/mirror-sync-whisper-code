@@ -587,16 +587,16 @@ const VirtualGuitarComponent: React.FC<VirtualGuitarComponentProps> = ({ classNa
     <div className={cn("relative h-full w-full flex flex-col bg-gradient-to-b from-background to-background/80 overflow-auto", className)}>
       <Navbar />
       <div className="glass-morphism p-2 sm:p-4 rounded-xl m-2 sm:m-4 animate-fade-in">
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
-          <div className="flex items-center gap-2">
+        <header className="flex sm:flex-row sm:flex-nowrap md:justify-between items-start sm:items-center gap-2 mb-4">
+          <div className="flex flex-row flex-nowrap items-center gap-2 ">
             <Guitar className="h-5 w-5 text-purple-500" />
             <h1 className="text-xl font-semibold">Virtual Guitar</h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setShowEffects(!showEffects)}
-              className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 transition-colors"
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded-md hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 transition-colors"
             >
               <Settings className="h-3.5 w-3.5" />
               {showEffects ? "Hide Effects" : "Show Effects"}

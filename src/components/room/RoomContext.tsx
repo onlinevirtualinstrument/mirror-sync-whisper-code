@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useNotifications } from '@/hooks/useNotifications';
 import {
   listenToRoomData,
   isUserRoomParticipant,
@@ -45,6 +46,7 @@ type RoomContextType = {
   privateMessages: any[];
   privateMessagingUser: string | null;
   unreadCounts: Record<string, number>;
+  unreadMessageCount: number;
   remotePlaying: InstrumentNote | null;
   sendMessage: (message: string) => Promise<void>;
   leaveRoom: () => Promise<void>;
@@ -60,6 +62,7 @@ type RoomContextType = {
   setPrivateMessagingUser: (userId: string | null) => void;
   requestJoin: (code?: string) => Promise<void>;
   broadcastInstrumentNote: (note: InstrumentNote) => Promise<void>;
+  markChatAsRead: () => void;
 };
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -68,7 +71,8 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { roomId } = useParams<{ roomId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+  const { addNotification } = useNotifications();
+
   const [room, setRoom] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,9 +83,43 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [privateMessages, setPrivateMessages] = useState<any[]>([]);
   const [privateMessagingUser, setPrivateMessagingUser] = useState<string | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [unreadMessageCount, setUnreadMessageCount] = useState<number>(0);
   const [wasRemoved, setWasRemoved] = useState<boolean>(false);
   const [roomClosed, setRoomClosed] = useState<boolean>(false);
   const [remotePlaying, setRemotePlaying] = useState<InstrumentNote | null>(null);
+
+
+  const [lastMessageId, setLastMessageId] = useState<string | null>(null);
+  const [lastActivityTime, setLastActivityTime] = useState<number>(Date.now());
+  const [lastSeenMessageId, setLastSeenMessageId] = useState<string | null>(null);
+
+
+  // Auto-close functionality with improved tracking
+  const checkInactivityAndClose = useCallback(async () => {
+    if (!room || !isHost || !room.autoCloseAfterInactivity) return;
+    const now = Date.now();
+    const inactivityTimeout = (room.inactivityTimeout || 5) * 60 * 1000; // Convert to milliseconds
+    // Check if there are any active participants
+    const activeParticipants = room.participants?.length || 0;
+    // Check time since last activity (either instrument play or message)
+    const timeSinceLastActivity = now - lastActivityTime;
+    console.log(`Checking inactivity: ${Math.round(timeSinceLastActivity / 1000)}s since last activity, ${activeParticipants} participants`);
+    if (activeParticipants === 0 || timeSinceLastActivity > inactivityTimeout) {
+      console.log('Auto-closing room due to inactivity');
+      try {
+        await deleteRoomFromFirestore(roomId!);
+        navigate('/music-rooms');
+        addNotification({
+          title: "Room Auto-Closed",
+          message: "Room was automatically closed due to inactivity",
+          type: "info"
+        });
+      } catch (error) {
+        console.error('Error auto-closing room:', error);
+      }
+    }
+  }, [room, isHost, roomId, navigate, addNotification, lastActivityTime]);
+
 
   // Fetch room data and set up listeners
   useEffect(() => {
@@ -104,38 +142,45 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       roomId,
       (roomData) => {
         console.log("Room data updated:", roomData);
-        
+
         if (!roomData) {
           // Room was deleted or doesn't exist
           setRoomClosed(true);
-          toast({
+           addNotification({
             title: "Room Closed",
-            description: "This room has been closed by the host",
+            message: "This room has been closed by the host",
+            type: "warning"
           });
           navigate('/music-rooms');
           return;
         }
-        
+
         setRoom(roomData);
         setIsLoading(false);
-        
+
+        // Update last activity time when room data changes
+        if (roomData.lastActivity) {
+          const activityTime = new Date(roomData.lastActivity).getTime();
+          setLastActivityTime(activityTime);
+        }
+
         // Check if user is a participant and host
         if (user) {
           const participants = roomData.participants || [];
           const participantInfo = participants.find((p: any) => p.id === user.uid);
-          
+
           // User was previously a participant but now is not - they were removed
           if (isParticipant && !participantInfo && !wasRemoved) {
             setWasRemoved(true);
-            toast({
+            addNotification({
               title: "Removed from Room",
-              description: "You have been removed from this room by the host",
-              variant: "destructive"
+              message: "You have been removed from this room by the host",
+              type: "error"
             });
             navigate('/music-rooms');
             return;
           }
-          
+
           if (participantInfo) {
             setIsParticipant(true);
             setIsHost(participantInfo.isHost);
@@ -145,13 +190,13 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsHost(false);
           }
         }
-        
+
         // Check for auto-close after inactivity
         if (roomData.autoCloseAfterInactivity && roomData.lastActivity) {
           const lastActivity = new Date(roomData.lastActivity);
           const now = new Date();
           const diffMinutes = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
-          
+
           if (diffMinutes > (roomData.inactivityTimeout || 5)) {
             if (isHost) {
               // Only host can close the room automatically
@@ -178,8 +223,31 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp || 0);
           return timeA.getTime() - timeB.getTime();
         });
-        
+
         setMessages(sortedMessages);
+
+        // Calculate unread messages
+        if (sortedMessages.length > 0) {
+          const latestMessage = sortedMessages[sortedMessages.length - 1];
+          // Count unread messages
+          const unreadCount = sortedMessages.filter(msg => 
+            msg.senderId !== user.uid && 
+            (!lastSeenMessageId || msg.id !== lastSeenMessageId)
+          ).length;
+          setUnreadMessageCount(unreadCount);
+          // Show notification for new messages
+          if (latestMessage.id !== lastMessageId && 
+              latestMessage.senderId !== user.uid &&
+              lastMessageId !== null) {
+            addNotification({
+              title: "New Message",
+              message: `${latestMessage.senderName}: ${latestMessage.text.substring(0, 50)}${latestMessage.text.length > 50 ? '...' : ''}`,
+              type: "info"
+            });
+          }
+          setLastMessageId(latestMessage.id);
+        }
+
       },
       (error) => {
         console.error("Chat error:", error);
@@ -193,7 +261,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Only process notes from other users
         if (noteData && noteData.userId !== user.uid) {
           setRemotePlaying(noteData);
-          
+
           // Play the note using the audio utilities
           try {
             // This will play the sound on this client
@@ -221,7 +289,15 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       unsubscribeChat();
       unsubscribeNotes();
     };
-  }, [roomId, user, navigate, isParticipant, wasRemoved]);
+  }, [roomId, user, navigate, isParticipant, wasRemoved, lastMessageId, addNotification, lastSeenMessageId]);
+  
+  // Auto-close check interval - improved timing
+  useEffect(() => {
+    if (!room || !isHost || !room.autoCloseAfterInactivity) return;
+    const interval = setInterval(checkInactivityAndClose, 30000); // Check every 30 seconds
+    checkInactivityAndClose(); // Initial check
+    return () => clearInterval(interval);
+  }, [room, isHost, checkInactivityAndClose]);
 
   // Set up private messaging if a user is selected
   useEffect(() => {
@@ -238,9 +314,9 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp || 0);
           return timeA.getTime() - timeB.getTime();
         });
-        
+
         setPrivateMessages(sortedMessages);
-        
+
         // Mark messages as read
         messagesData.forEach(msg => {
           if (msg.receiverId === user.uid && !msg.read) {
@@ -261,12 +337,12 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Listen for unread messages from all participants
   useEffect(() => {
     if (!roomId || !user || !room) return;
-    
+
     const unsubscribers: (() => void)[] = [];
-    
+
     room.participants.forEach((participant: any) => {
       if (participant.id === user.uid) return; // Skip self
-      
+
       const unsubscribe = listenForUnreadMessages(
         roomId,
         user.uid,
@@ -277,10 +353,10 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }));
         }
       );
-      
+
       unsubscribers.push(unsubscribe);
     });
-    
+
     return () => {
       unsubscribers.forEach(unsub => unsub());
     };
@@ -289,13 +365,13 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Broadcast instrument notes to other participants
   const broadcastInstrumentNote = async (note: InstrumentNote): Promise<void> => {
     if (!roomId || !user) return;
-    
+
     try {
       await broadcastNote(roomId, {
         ...note,
         timestamp: new Date().toISOString()
       });
-      
+
       // Update room's last activity timestamp
       if (room) {
         updateRoomSettings(roomId, {
@@ -304,24 +380,47 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error) {
       console.error("Error broadcasting note:", error);
+      addNotification({
+        title: "Connection Error",
+        message: "Failed to sync with other participants",
+        type: "error"
+      });
     }
   };
 
-  // Send a chat message
+  
+
+ // Mark chat messages as read
+  const markChatAsRead = useCallback(() => {
+    if (messages.length > 0) {
+      const latestMessage = messages[messages.length - 1];
+      setLastSeenMessageId(latestMessage.id);
+      setUnreadMessageCount(0);
+    }
+  }, [messages]);
+
+  // Send a chat message with activity tracking
   const sendMessage = async (message: string) => {
     if (!roomId || !user || !message.trim()) return;
-    
     if (!isParticipant) {
-      toast({ description: "You must be a participant to send messages" });
+      addNotification({
+        title: "Access Denied",
+        message: "You must be a participant to send messages",
+        type: "error"
+      });
       return;
     }
-    
     if (room?.isChatDisabled && !isHost) {
-      toast({ description: "Chat has been disabled by the host" });
+      addNotification({
+        title: "Chat Disabled",
+        message: "Chat has been disabled by the host",
+        type: "warning"
+      });
       return;
     }
-    
     try {
+      // Update activity time when sending message
+      setLastActivityTime(Date.now());
       await saveChatMessage(roomId, {
         text: message,
         senderId: user.uid,
@@ -329,7 +428,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         senderAvatar: user.photoURL || '',
         timestamp: new Date().toISOString()
       });
-      
+
       // Update room's last activity timestamp
       if (room) {
         updateRoomSettings(roomId, {
@@ -338,28 +437,40 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      toast({ description: "Failed to send message" });
+      addNotification({
+        title: "Error",
+        message: "Failed to send message",
+        type: "error"
+      });
     }
   };
 
   // Leave the room
   const leaveRoom = async () => {
     if (!roomId || !user) return;
-    
+
     try {
       await removeUserFromRoom(roomId, user.uid);
       navigate('/music-rooms'); // Redirect to home
-      toast({ description: "You have left the room" });
+      addNotification({
+        title: "Left Room",
+        message: "You have left the room",
+        type: "info"
+      });
     } catch (error) {
       console.error("Error leaving room:", error);
-      toast({ description: "Failed to leave room" });
+      addNotification({
+        title: "Error",
+        message: "Failed to leave room",
+        type: "error"
+      });
     }
   };
 
   // Close the room (host only)
   const closeRoom = useCallback(async () => {
     if (!roomId || !user || !isHost) return;
-    
+
     try {
       await deleteRoomFromFirestore(roomId);
       navigate('/music-rooms'); // Redirect to home
@@ -373,7 +484,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Switch instrument
   const switchInstrument = async (instrument: string) => {
     if (!roomId || !user) return;
-    
+
     try {
       await updateUserInstrument(roomId, user.uid, instrument);
       // Update local UI immediately for responsiveness
@@ -392,13 +503,13 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Mute/unmute a user (host only)
   const muteUser = async (userId: string, mute: boolean) => {
     if (!roomId || !user || !isHost) return;
-    
+
     try {
       await toggleUserMute(roomId, userId, mute);
-      toast({ 
-        description: mute ? 
-          "User has been muted" : 
-          "User has been unmuted" 
+      toast({
+        description: mute ?
+          "User has been muted" :
+          "User has been unmuted"
       });
     } catch (error) {
       console.error("Error toggling mute:", error);
@@ -409,7 +520,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Remove a user from the room (host only)
   const removeUser = async (userId: string) => {
     if (!roomId || !user || !isHost) return;
-    
+
     try {
       await removeUserFromRoom(roomId, userId);
       toast({ description: "User removed from room" });
@@ -422,7 +533,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Toggle chat for the room (host only)
   const toggleChat = async (disabled: boolean) => {
     if (!roomId || !user || !isHost) return;
-    
+
     try {
       await toggleRoomChat(roomId, disabled);
       // Update local state immediately for UI responsiveness
@@ -430,22 +541,39 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ...prev,
         isChatDisabled: disabled
       }));
-      
-      toast({ 
-        description: disabled ? 
-          "Chat has been disabled for all users" : 
-          "Chat has been enabled for all users" 
+
+       addNotification({ 
+
+        title: disabled ? "Chat Disabled" : "Chat Enabled",
+
+        message: disabled ? "Chat has been disabled for all users" : "Chat has been enabled for all users",
+
+        type: "info"
+
       });
+
     } catch (error) {
+
       console.error("Error toggling chat:", error);
-      toast({ description: "Failed to update chat settings" });
+
+      addNotification({
+
+        title: "Error",
+
+        message: "Failed to update chat settings",
+
+        type: "error"
+
+      });
+
     }
+
   };
 
   // Toggle auto-close after inactivity (host only)
   const toggleAutoClose = async (enabled: boolean, timeout: number = 5) => {
     if (!roomId || !user || !isHost) return;
-    
+
     try {
       await toggleAutoCloseRoom(roomId, enabled, timeout);
     } catch (error) {
@@ -457,66 +585,147 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Update room settings (host only)
   const updateSettings = async (settings: any) => {
     if (!roomId || !user || !isHost) return;
-    
+
     try {
       await updateRoomSettings(roomId, settings);
     } catch (error) {
       console.error("Error updating settings:", error);
-      toast({ description: "Failed to update room settings" });
+       addNotification({
+
+        title: "Error",
+
+        message: "Failed to update auto-close settings",
+
+        type: "error"
+
+      });
+
     }
+
   };
 
   // Respond to join request (host only)
   const respondToJoinRequest = async (userId: string, approve: boolean) => {
     if (!roomId || !user || !isHost) return;
-    
+
     try {
       await handleJoinRequest(roomId, userId, approve);
-      toast({ 
-        description: approve ? 
-          "User has been approved to join" : 
-          "User's request has been denied" 
+      addNotification({ 
+
+        title: approve ? "User Approved" : "Request Denied",
+
+        message: approve ? "User has been approved to join" : "User's request has been denied",
+
+        type: approve ? "success" : "info"
+
       });
+
     } catch (error) {
+
       console.error("Error handling join request:", error);
-      toast({ description: "Failed to process join request" });
+
+      addNotification({
+
+        title: "Error",
+
+        message: "Failed to process join request",
+
+        type: "error"
+
+      });
+
     }
+
   };
 
   // Send private message
   const sendPrivateMsg = async (receiverId: string, message: string) => {
     if (!roomId || !user || !message.trim()) return;
-    
+
     try {
       await sendPrivateMessage(roomId, user.uid, receiverId, message);
     } catch (error) {
       console.error("Error sending private message:", error);
-      toast({ description: "Failed to send private message" });
+      addNotification({
+
+        title: "Error",
+
+        message: "Failed to send private message",
+
+        type: "error"
+
+      });
+
     }
+
   };
 
   // Request to join room with optional join code
   const requestJoin = async (code?: string) => {
     if (!roomId || !user) return;
-    
+
     try {
       if (code && room && !room.isPublic) {
         if (room.joinCode === code) {
           await requestToJoinRoom(roomId, user.uid, true); // Pass true to auto-approve with correct code
-          toast({ description: "Join request sent with correct code" });
+           addNotification({
+
+            title: "Request Sent",
+
+            message: "Join request sent with correct code",
+
+            type: "success"
+
+          });
+
         } else {
-          toast({ description: "Incorrect join code" });
+
+          addNotification({
+
+            title: "Invalid Code",
+
+            message: "Incorrect join code",
+
+            type: "error"
+
+          });
+
         }
+
       } else {
+
         await requestToJoinRoom(roomId, user.uid);
-        toast({ description: "Join request sent to room host" });
+
+        addNotification({
+
+          title: "Request Sent",
+
+          message: "Join request sent to room host",
+
+          type: "info"
+
+        });
+
       }
+
     } catch (error) {
+
       console.error("Error requesting to join:", error);
-      toast({ description: "Failed to send join request" });
+
+      addNotification({
+
+        title: "Error",
+
+        message: "Failed to send join request",
+
+        type: "error"
+
+      });
+
     }
+
   };
-  
+
   const value = {
     room,
     isLoading,
@@ -528,23 +737,229 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     privateMessages,
     privateMessagingUser,
     unreadCounts,
-    remotePlaying,
-    sendMessage,
-    leaveRoom,
-    closeRoom,
-    switchInstrument,
-    muteUser,
-    removeUser,
-    toggleChat,
-    toggleAutoClose,
-    updateSettings,
-    respondToJoinRequest,
-    sendPrivateMsg,
-    setPrivateMessagingUser,
-    requestJoin,
-    broadcastInstrumentNote
-  };
 
+   unreadMessageCount,
+
+    remotePlaying,
+
+    sendMessage,
+
+    leaveRoom: async () => {
+
+      if (!roomId || !user) return;
+
+      try {
+
+        await removeUserFromRoom(roomId, user.uid);
+
+        navigate('/music-rooms');
+
+        addNotification({
+
+          title: "Left Room",
+
+          message: "You have left the room",
+
+          type: "info"
+
+        });
+
+      } catch (error) {
+
+        console.error("Error leaving room:", error);
+
+      }
+
+    },
+
+    closeRoom: async () => {
+
+      if (!roomId || !user || !isHost) return;
+
+      try {
+
+        await deleteRoomFromFirestore(roomId);
+
+        navigate('/music-rooms');
+
+        addNotification({
+
+          title: "Room Closed", 
+
+          message: "Room has been closed",
+
+          type: "info"
+
+        });
+
+      } catch (error) {
+
+        console.error("Error closing room:", error);
+
+      }
+
+    },
+
+    switchInstrument: async (instrument: string) => {
+
+      if (!roomId || !user) return;
+
+      try {
+
+        await updateUserInstrument(roomId, user.uid, instrument);
+
+        if (userInfo) {
+
+          setUserInfo({ ...userInfo, instrument });
+
+        }
+
+      } catch (error) {
+
+        console.error("Error switching instrument:", error);
+
+      }
+
+    },
+
+    muteUser: async (userId: string, mute: boolean) => {
+
+      if (!roomId || !user || !isHost) return;
+
+      try {
+
+        await toggleUserMute(roomId, userId, mute);
+
+      } catch (error) {
+
+        console.error("Error toggling mute:", error);
+
+      }
+
+    },
+
+    removeUser: async (userId: string) => {
+
+      if (!roomId || !user || !isHost) return;
+
+      try {
+
+        await removeUserFromRoom(roomId, userId);
+
+      } catch (error) {
+
+        console.error("Error removing user:", error);
+
+      }
+
+    },
+
+    toggleChat: async (disabled: boolean) => {
+
+      if (!roomId || !user || !isHost) return;
+
+      try {
+
+        await toggleRoomChat(roomId, disabled);
+
+        setRoom(prev => ({ ...prev, isChatDisabled: disabled }));
+
+      } catch (error) {
+
+        console.error("Error toggling chat:", error);
+
+      }
+
+    },
+
+    toggleAutoClose: async (enabled: boolean, timeout: number = 5) => {
+
+      if (!roomId || !user || !isHost) return;
+
+      try {
+
+        await toggleAutoCloseRoom(roomId, enabled, timeout);
+
+      } catch (error) {
+
+        console.error("Error toggling auto-close:", error);
+
+      }
+
+    },
+
+    updateSettings: async (settings: any) => {
+
+      if (!roomId || !user || !isHost) return;
+
+      try {
+
+        await updateRoomSettings(roomId, settings);
+
+      } catch (error) {
+
+        console.error("Error updating settings:", error);
+
+      }
+
+    },
+
+    respondToJoinRequest: async (userId: string, approve: boolean) => {
+
+      if (!roomId || !user || !isHost) return;
+
+      try {
+
+        await handleJoinRequest(roomId, userId, approve);
+
+      } catch (error) {
+
+        console.error("Error handling join request:", error);
+
+      }
+
+    },
+
+    sendPrivateMsg: async (receiverId: string, message: string) => {
+
+      if (!roomId || !user || !message.trim()) return;
+
+      try {
+
+        await sendPrivateMessage(roomId, user.uid, receiverId, message);
+
+      } catch (error) {
+
+        console.error("Error sending private message:", error);
+
+      }
+
+    },
+
+    setPrivateMessagingUser,
+
+    requestJoin: async (code?: string) => {
+
+      if (!roomId || !user) return;
+
+      try {
+
+        await requestToJoinRoom(roomId, user.uid, !!code);
+
+      } catch (error) {
+
+        console.error("Error requesting to join:", error);
+
+      }
+
+    },
+
+    broadcastInstrumentNote,
+
+    markChatAsRead
+
+  };
+  
   return (
     <RoomContext.Provider value={value}>
       {children}

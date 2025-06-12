@@ -1,11 +1,11 @@
 
 import { useRef, useCallback } from 'react';
-import { EnhancedDrumSynthesizer } from '@/utils/audio/drumSynthesizer';
+import { EnhancedDrumSynthesizer } from '../utils/audio/drumSynthesizer';
 
 export const useAudioContext = () => {
   const synthesizerRef = useRef<EnhancedDrumSynthesizer | null>(null);
   
-  const initializeAudio = useCallback(async () => {
+  const initializeAudio = useCallback(async () => { 
     if (!synthesizerRef.current) {
       try {
         synthesizerRef.current = new EnhancedDrumSynthesizer();

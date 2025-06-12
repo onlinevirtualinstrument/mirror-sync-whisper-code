@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Music, BookOpen } from 'lucide-react';
 import { defaultFluteSettings, FluteSettings, fluteTypes, getFluteNotes, FluteNote } from './utils/fluteData';
@@ -16,6 +16,9 @@ import FluteSettingsTabs from './ui/FluteSettingsTabs';
 import { FluteDecoration, NoteParticles } from './effects/FluteEffects';
 import { getFluteContainerClassName, getFluteRegionalStyle } from './helpers/fluteStyles';
 import FluteNoteInfo from './ui/FluteNoteInfo';
+import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
+import FullscreenWrapper from "@/components/landscapeMode/FullscreenWrapper";
+
 
 interface FluteMasterComponentProps {
   className?: string;
@@ -34,6 +37,11 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
   initialFluteType = 'western',
   initialSettings = defaultFluteSettings
 }) => {
+
+  // const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+
   // State management
   const [selectedFluteType, setSelectedFluteType] = useState(initialFluteType);
   const [settings, setSettings] = useState<FluteSettings>(initialSettings);
@@ -156,7 +164,7 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
     };
     setSettings(newSettings);
     fluteAudio.updateSettings({ useMicrophone: checked });
-    
+
     if (checked) {
       toast({
         title: "Microphone Access Requested",
@@ -243,13 +251,13 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
   const handleTouchStart = useCallback((note: FluteNote, e: React.TouchEvent) => {
     e.preventDefault();
     setIsHolding(true);
-    
+
     const touch = e.touches[0];
     const element = e.currentTarget as HTMLElement;
     const rect = element.getBoundingClientRect();
     const intensity = 1 - ((touch.clientY - rect.top) / rect.height);
     setTouchIntensity(intensity);
-    
+
     playNote(note, intensity);
   }, [playNote]);
 
@@ -261,11 +269,11 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
 
   const handleTouchMove = useCallback((note: FluteNote, e: React.TouchEvent) => {
     if (!isHolding) return;
-    
+
     const touch = e.touches[0];
     const element = e.currentTarget as HTMLElement;
     const rect = element.getBoundingClientRect();
-    
+
     if (
       touch.clientX >= rect.left &&
       touch.clientX <= rect.right &&
@@ -274,7 +282,7 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
     ) {
       const intensity = 1 - ((touch.clientY - rect.top) / rect.height);
       setTouchIntensity(intensity);
-      
+
       if (activeNote === note.note) {
         fluteAudio.updateNoteIntensity(note.frequency, intensity);
       }
@@ -290,29 +298,29 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
       const keyToIndex: { [key: string]: number } = {
         '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7
       };
-      
+
       const index = keyToIndex[e.key];
-      
+
       if (index !== undefined && fluteNotes[index] && !e.repeat) {
         playNote(fluteNotes[index]);
       }
     };
-    
+
     const handleKeyUp = (e: KeyboardEvent) => {
       const keyToIndex: { [key: string]: number } = {
         '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7
       };
-      
+
       const index = keyToIndex[e.key];
-      
+
       if (index !== undefined && fluteNotes[index] && activeNote === fluteNotes[index].note) {
         stopCurrentNote();
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
@@ -322,14 +330,14 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
   // Render functions for different component parts
   const renderFluteTypeSelector = useCallback(() => (
     <div className="w-full max-w-4xl mx-auto py-6 animate-fade-in">
-    
+
       <h2 className="text-2xl font-display font-bold text-center mb-6">Select Your Flute</h2>
-      
+
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {fluteTypes.map((flute) => {
           const regionStyle = getFluteRegionalStyle(flute, selectedFluteType);
           return (
-            <motion.div 
+            <motion.div
               key={flute.id}
               className={`
                 relative  rounded-2xl cursor-pointer transition-all duration-300 shadow-subtle
@@ -340,27 +348,27 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              whileHover={{ 
-                scale: 1.03, 
+              whileHover={{
+                scale: 1.03,
                 borderColor: 'rgba(255,255,255,0.3)'
               }}
               whileTap={{ scale: 0.98 }}
             >
               {selectedFluteType === flute.id && (
-                <motion.span 
+                <motion.span
                   className={`absolute top-3 right-3 ${regionStyle.accent} text-white p-1 rounded-full`}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 500, damping: 15 }}
                 >
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                    <path d="M13.3334 4L6.00008 11.3333L2.66675 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M13.3334 4L6.00008 11.3333L2.66675 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </motion.span>
               )}
-              
+
               <div className="flex flex-col gap-3 items-center">
-                <motion.div 
+                <motion.div
                   className={`w-full h-1 flex items-center justify-center  overflow-hidden ${regionStyle.headerImage}`}
                   whileHover={{ scale: 1.05, rotate: selectedFluteType === flute.id ? 5 : 0 }}
                   animate={selectedFluteType === flute.id ? {
@@ -377,24 +385,23 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
                   transition={{ duration: 0.3 }}
                 >
                 </motion.div>
-                
+
                 <h3 className="font-display font-semibold text-lg">{flute.name}</h3>
-                
-                <div className={`text-xs px-2 py-1 rounded-full ${
-                  flute.difficulty === 'beginner' ? 'bg-green-500/20 text-green-700' :
+
+                <div className={`text-xs px-2 py-1 rounded-full ${flute.difficulty === 'beginner' ? 'bg-green-500/20 text-green-700' :
                   flute.difficulty === 'intermediate' ? 'bg-amber-500/20 text-amber-700' :
-                  'bg-red-500/20 text-red-700'
-                }`}>
+                    'bg-red-500/20 text-red-700'
+                  }`}>
                   {flute.difficulty}
                 </div>
-                
+
                 <p className="text-sm text-muted-foreground text-center mt-1">{flute.soundProfile.tone}</p>
-                
-                <motion.div 
+
+                <motion.div
                   className="mt-2 text-xs text-center text-muted-foreground overflow-hidden"
                   initial={{ opacity: 0, height: 0 }}
-                  animate={selectedFluteType === flute.id ? 
-                    { opacity: 1, height: 'auto' } : 
+                  animate={selectedFluteType === flute.id ?
+                    { opacity: 1, height: 'auto' } :
                     { opacity: 0, height: 0 }
                   }
                   transition={{ duration: 0.3 }}
@@ -412,87 +419,94 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
 
   const renderFlutePlayer = useCallback(() => (
     <div className="w-full max-w-4xl mx-auto animate-fade-in">
-      <div  className="flex  mb-4  text-sm text-muted-foreground pt-6">
+      <div className="flex  mb-4  text-sm text-muted-foreground pt-6">
         <div className="flex-[3] text-center">
-          
-      <motion.div 
-        className=" "
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
 
-<div className=" grid-cols-1 md:grid-cols-2 lg:grid-cols-2 ">
-                
+          <motion.div
+            className=" "
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+
+            <div className=" grid-cols-1 md:grid-cols-2 lg:grid-cols-2 ">
+
               <div className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2 p-2 rounded-md mb-2">
-              <p>Touch or click the keys to play. For keyboard, use keys 1-8.</p>
+                <p>Touch or click the keys to play. For keyboard, use keys 1-8.</p>
               </div>
-              <div className="text-center landscape-warning text-xs text-muted-foreground bg-purple-100 p-2 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-6">
-                <p>For the best experience, please rotate your device to <strong>landscape mode</strong></p>
+              <div className="landscape-warning text-xs text-muted-foreground bg-purple-100 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-2">
+                <p>For the best experience, expand to full screen.
+                  <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
+                    Click here to expand
+                  </strong>
+                </p>
               </div>
-              <style>{`
+               <style>{`
                 @media (min-width: 768px) {
           .landscape-warning {
             display: none;
           }
         }
       `}</style>
+
             </div>
-       
-      </motion.div>
-      </div> 
-      <div className="">
-      {/* <BookOpen  /> */}
-      </div>
-      </div>
-      <div 
-        className={`relative ${getFluteContainerClassName(selectedFluteType)}`}
-        onMouseLeave={isHolding ? handleMouseUp : undefined}
-      >
-        <FluteDecoration fluteType={selectedFluteType} />
-        <NoteParticles 
-          activeNote={activeNote} 
-          particlesVisible={particlesVisible}
-          fluteType={selectedFluteType}
-        />
-        
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3 md:gap-4 relative z-10">
-          <AnimatePresence>
-            {fluteNotes.map((note, index) => (
-              <FluteKey
-                key={`${note.note}-${index}`}
-                note={note}
-                isActive={activeNote === note.note}
-                onMouseDown={() => handleMouseDown(note)}
-                onMouseUp={handleMouseUp}
-                onTouchStart={(e) => handleTouchStart(note, e)}
-                onTouchEnd={handleTouchEnd}
-                onTouchMove={(e) => handleTouchMove(note, e)}
-                index={index}
-                fluteType={selectedFluteType}
-              />
-            ))}
-          </AnimatePresence>
+
+          </motion.div>
         </div>
+        {/* <div className="">
+          <BookOpen  />
+        </div> */}
       </div>
-      
+      <FullscreenWrapper ref={containerRef} instrumentName="flute">
+        <div
+          className={`w-full relative ${getFluteContainerClassName(selectedFluteType)}`}
+          onMouseLeave={isHolding ? handleMouseUp : undefined}
+        >
+          <FluteDecoration fluteType={selectedFluteType} />
+          <NoteParticles
+            activeNote={activeNote}
+            particlesVisible={particlesVisible}
+            fluteType={selectedFluteType}
+          />
+
+          <div className="w-full grid grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3 md:gap-4 relative z-10">
+            <AnimatePresence>
+              {fluteNotes.map((note, index) => (
+                <FluteKey
+                  key={`${note.note}-${index}`}
+                  note={note}
+                  isActive={activeNote === note.note}
+                  onMouseDown={() => handleMouseDown(note)}
+                  onMouseUp={handleMouseUp}
+                  onTouchStart={(e) => handleTouchStart(note, e)}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchMove={(e) => handleTouchMove(note, e)}
+                  index={index}
+                  fluteType={selectedFluteType}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        </div>
+</FullscreenWrapper>
+
       <FluteNoteInfo
         isHolding={isHolding}
         activeNote={activeNote}
         touchIntensity={touchIntensity}
       />
 
-     
+
     </div>
   ), [
-    selectedFluteType, 
-    isHolding, 
-    activeNote, 
-    handleMouseDown, 
-    handleMouseUp, 
-    handleTouchStart, 
-    handleTouchEnd, 
-    handleTouchMove, 
+    selectedFluteType,
+    isHolding,
+    activeNote,
+    handleMouseDown,
+    handleMouseUp,
+    handleTouchStart,
+    handleTouchEnd,
+    handleTouchMove,
     touchIntensity,
     particlesVisible,
     fluteNotes,
@@ -501,48 +515,48 @@ const FluteMasterComponent: React.FC<FluteMasterComponentProps> = ({
   ]);
 
   return (
-    
+
     <div className={`flex flex-col items-center w-full p-4 ${className}`}>
       <Navbar />
       <Toaster />
-      
+
       {renderFluteTypeSelector()}
       {renderFlutePlayer()}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
-      <div className="w-full h-full mt-10 mb-6">
-<h2 className="text-2xl font-display font-bold text-center mb-6">Flute recording</h2>
-{showRecordingControls && (
-    <RecordingControls isPlaying={isPlaying} />
-)}
-</div>
-      <div >
-      {showControls && (
-        <div className="w-full mt-10 mb-6">
-          <h2 className="text-2xl font-display font-bold text-center mb-6">Flute Settings</h2>
-          <FluteSettingsTabs 
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            settings={settings}
-            intonationMode={intonationMode}
-            handleBreathChange={handleBreathChange}
-            handleTuningChange={handleTuningChange}
-            handleReverbChange={handleReverbChange}
-            handleVibratoIntensityChange={handleVibratoIntensityChange}
-            handleVibratoSpeedChange={handleVibratoSpeedChange}
-            handleIntonationModeChange={handleIntonationModeChange}
-            handleOverblowingChange={handleOverblowingChange}
-            handleMicInputChange={handleMicInputChange}
-            handleTransposeChange={handleTransposeChange}
-            handleDelayChange={handleDelayChange}
-            handleAutoVibratoChange={handleAutoVibratoChange}
-            handleDynamicRangeChange={handleDynamicRangeChange}
-            resetToDefaults={resetToDefaults}
-          />
+        <div className="w-full h-full mt-10 mb-6">
+          <h2 className="text-2xl font-display font-bold text-center mb-6">Flute recording</h2>
+          {showRecordingControls && (
+            <RecordingControls isPlaying={isPlaying} />
+          )}
         </div>
-      )}
-</div>
+        <div >
+          {showControls && (
+            <div className="w-full mt-10 mb-6">
+              <h2 className="text-2xl font-display font-bold text-center mb-6">Flute Settings</h2>
+              <FluteSettingsTabs
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                settings={settings}
+                intonationMode={intonationMode}
+                handleBreathChange={handleBreathChange}
+                handleTuningChange={handleTuningChange}
+                handleReverbChange={handleReverbChange}
+                handleVibratoIntensityChange={handleVibratoIntensityChange}
+                handleVibratoSpeedChange={handleVibratoSpeedChange}
+                handleIntonationModeChange={handleIntonationModeChange}
+                handleOverblowingChange={handleOverblowingChange}
+                handleMicInputChange={handleMicInputChange}
+                handleTransposeChange={handleTransposeChange}
+                handleDelayChange={handleDelayChange}
+                handleAutoVibratoChange={handleAutoVibratoChange}
+                handleDynamicRangeChange={handleDynamicRangeChange}
+                resetToDefaults={resetToDefaults}
+              />
+            </div>
+          )}
+        </div>
 
-</div></div>
+      </div></div>
 
   );
 };

@@ -31,7 +31,7 @@ const Index = () => {
 
   const [open, setOpen] = useState(false);
   const handleOpen = async () => {
-    await lockToLandscape();
+   // await lockToLandscape();
     setOpen(true);
   };
 
@@ -86,13 +86,13 @@ const Index = () => {
                 </LandscapeInstrumentModal>
               </div>
 
-              {/* <style>{`
+              <style>{`
                 @media (min-width: 768px) {
           .landscape-warning {
             display: none;
           }
         }
-      `}</style> */}
+      `}</style>
 
               {/* <div className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2 p-2 rounded-md mb-2"> */}
               <Suspense fallback={

@@ -1,11 +1,11 @@
 
 import { useCallback } from 'react';
-import { EnhancedDrumSynthesizer } from '@/utils/audio/drumSynthesizer';
+import { EnhancedDrumSynthesizer } from '../utils/audio/drumSynthesizer';
 
 export const useDrumSoundMapping = () => {
   const mapDrumSound = useCallback(async (synthesizer: EnhancedDrumSynthesizer, pad: any) => {
     const drumName = pad.name.toLowerCase();
-    const drumId = pad.id.toLowerCase();
+    const drumId = pad.id.toLowerCase(); 
     
     // Kick variants
     if (drumId.includes('kick') || drumName.includes('kick') || drumId === '808' || drumName.includes('808')) {

@@ -12,7 +12,7 @@ const FlutePage = () => {
 
   const [open, setOpen] = useState(false);
   const handleOpen = async () => {
-    await lockToLandscape();
+    //await lockToLandscape();
     setOpen(true);
   };
 

@@ -31,7 +31,7 @@ const InstrumentPageWrapper = memo(({
         keywords={`virtual ${instrumentType.toLowerCase()}, online ${instrumentType.toLowerCase()}, ${instrumentType.toLowerCase()} simulator, play ${instrumentType.toLowerCase()} online, music instrument`}
       /> 
       
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
+    <div className="bg-gradient-to-b from-background to-background/95">
       
       <main className="container px-4 pt-10 pb-10">
         <div className={`max-w-5xl mx-auto border-2 rounded-xl p-6 ${borderColor}`}>

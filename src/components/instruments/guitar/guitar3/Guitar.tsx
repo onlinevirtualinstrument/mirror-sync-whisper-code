@@ -9,7 +9,7 @@ import { guitarVariants } from './GuitarVariants';
 import { TutorialButton } from '../../../Tutorial/TutorialButton';
 import { Slider } from "@/components/ui/slider";
 import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
-
+import FullscreenWrapper from "@/components/landscapeMode/FullscreenWrapper";
 
 const Guitar = () => {
 
@@ -63,14 +63,8 @@ const Guitar = () => {
   return (
     
     <div className="w-full  ">
-      <div className="text-center text-xs text-muted-foreground bg-purple-100 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-6">
-                <p>For the best experience, expand to full screen.
-                  <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
-                    Click here to expand
-                  </strong>
-                </p>
-              </div>
-      <div className="mb-6 flex justify-between items-center">
+
+      <div className="mb-12 flex justify-between items-center">
         <InstrumentVariantSelector
           currentVariant={guitarVariant}
           setVariant={setGuitarVariant}
@@ -83,18 +77,35 @@ const Guitar = () => {
           instructions={guitarInstructions}
           keyMappings={keyMappings}
         />
+
+        <div className="landscape-warning text-xs text-muted-foreground  dark:bg-white/5 p-2 rounded-md">
+                    <p>
+                      <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
+                        ⛶Zoom
+                      </strong>
+                    </p>
+                  </div>
+                  <style>{`
+                            @media (min-width: 768px) {
+                              .landscape-warning {
+                                display: none;
+                              }
+                            }
+                          `}</style>
       </div>
       
-       <div ref={containerRef} className="flex items-center justify-center bg-white animate-scale-in" style={{ animationDelay: '200ms' }}>
+      <FullscreenWrapper ref={containerRef} instrumentName="guitar">
+       {/* <div className="md:flex md:items-center md:justify-center md:bg-white md:animate-scale-in" style={{ animationDelay: '200ms' }}> */}
       <GuitarBody 
         guitarVariant={guitarVariant}
         activeStrings={activeStrings}
         playString={handleStringClick}
       />
-      </div>
+      {/* </div> */}
+      </FullscreenWrapper>
       
       <div className="mt-8 space-y-6">
-        <SoundControls
+        {/* <SoundControls
           volume={volume}
           setVolume={setVolume}
           isMuted={isMuted}
@@ -103,9 +114,25 @@ const Guitar = () => {
           setReverbLevel={setReverbLevel}
           toneQuality={toneQuality}
           setToneQuality={setToneQuality}
-        />
+        /> */}
+
+        <SoundControls
+  volume={volume}
+  setVolume={setVolume}
+  isMuted={isMuted}
+  setIsMuted={setIsMuted}
+  reverbLevel={reverbLevel}
+  setReverbLevel={setReverbLevel}
+  toneQuality={toneQuality}
+  setToneQuality={setToneQuality}
+  stringTension={stringTension}
+  setStringTension={setStringTension}
+  pickPosition={pickPosition}
+  setPickPosition={setPickPosition}
+/>
+
         
-        <div className="bg-background/40 backdrop-blur-sm rounded-lg p-4 shadow-sm border border-border/50">
+        {/* <div className="bg-background/40 backdrop-blur-sm rounded-lg p-4 shadow-sm border border-border/50">
           <div className="space-y-4">
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -133,13 +160,6 @@ const Guitar = () => {
               />
             </div>
           </div>
-        </div>
-        
-        {/* <div className="text-center text-muted-foreground">
-          <p>
-            Use your keyboard ({guitarVariants[guitarVariant]?.strings.map(s => s.key.toUpperCase()).join(", ")}) 
-            or click on the strings to play
-          </p>
         </div> */}
       </div>
     </div>

@@ -5,6 +5,7 @@ import { useState, useRef } from 'react';
 import InstrumentVariantSelector, { VariantOption } from '@/pages/instruments/InstrumentVariantSelector';
 import RecordingControlsShared from '@/components/recording/RecordingControlsShared';
 import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
+import FullscreenWrapper from "@/components/landscapeMode/FullscreenWrapper";
 import { Music, History } from "lucide-react";
 import {
   Accordion,
@@ -40,42 +41,54 @@ const KalimbaPage = () => {
       borderColor="border-amber-500"
       route="/kalimba"
     >
-      <div className="text-center mb-12">
+      <div className="text-center mb-4">
         <h1 className="text-3xl md:text-4xl font-display font-bold mb-4 animate-fade-in">Virtual Kalimba</h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
-          The kalimba, also known as the thumb piano, is a musical instrument of African origin. Its sound is created by plucking metal tines attached to a wooden resonator.
-        </p>
-
-        <div className="flex justify-center mb-6">
-          <InstrumentVariantSelector
-            currentVariant={currentVariant}
-            setVariant={handleVariantChange}
-            variants={kalimbaVariants}
-            label="Select Kalimba Type"
-          />
-        </div>
 
         <div className="grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
           <div className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2 p-2 rounded-md mb-2">
             <p>Play the kalimba by clicking on the tines or using keyboard keys (1-8).</p>
           </div>
-          <div className="text-xs text-muted-foreground bg-purple-100 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-2">
-            <p>For the best experience, expand to full screen.
+        </div>
+
+        <div className="my-4 flex justify-between items-center">
+          <div className="w-full text-center md:text-center md:w-full">
+            <InstrumentVariantSelector
+              currentVariant={currentVariant}
+              setVariant={handleVariantChange}
+              variants={kalimbaVariants}
+              label="Select Kalimba Type"
+            />
+          </div>
+
+          <div className="landscape-warning block md:hidden text-xs text-muted-foreground  dark:bg-white/5 p-2 rounded-md">
+            <p>
               <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
-                Click here to expand
+                ⛶Zoom
               </strong>
             </p>
           </div>
+          <style>{`
+                              @media (min-width: 768px) {
+                                .landscape-warning {
+                                  display: none;
+                                }
+                              }
+                            `}</style>
+
         </div>
+
+
       </div>
 
       {/* <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6 mb-4">
         <RecordingControlsShared instrumentName="Marimba" primaryColor="bg-purple-500" />
         </div>
        */}
-      <div ref={containerRef} className="w-full flex items-center justify-center bg-white animate-scale-in" style={{ animationDelay: '200ms' }}>
+       <FullscreenWrapper ref={containerRef} instrumentName="kalimba">
+      <div className="w-full flex items-center justify-center bg-white animate-scale-in" style={{ animationDelay: '200ms' }}>
         <Kalimba variant={currentVariant} />
       </div>
+      </FullscreenWrapper>
 
 
 
@@ -86,6 +99,7 @@ const KalimbaPage = () => {
           <AccordionItem value="history">
             <AccordionTrigger className="flex items-center gap-2">
               <History className="h-4 w-4" /> About the {kalimbaVariants.find(v => v.id === currentVariant)?.name}
+              
             </AccordionTrigger>
             <AccordionContent>
               <p className="mb-2">
@@ -99,6 +113,9 @@ const KalimbaPage = () => {
                   "The chromatic kalimba includes additional tines for sharps and flats, allowing players to perform in any key and play more complex music. This versatile variant enables a wider range of musical styles and modulations between different keys."}
                 {currentVariant === 'african' &&
                   "The traditional African kalimba (also called mbira) has deep cultural significance in many African communities. Its unique tuning systems and playing techniques have been passed down through generations, and it's often used in spiritual ceremonies and traditional music."}
+              </p>
+              <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
+                The kalimba, also known as the thumb piano, is a musical instrument of African origin. Its sound is created by plucking metal tines attached to a wooden resonator.
               </p>
             </AccordionContent>
           </AccordionItem>

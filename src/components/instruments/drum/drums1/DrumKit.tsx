@@ -2,14 +2,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { Disc3, Disc2, Music4, Drum, Drumstick } from 'lucide-react';
 import { drumKitThemes } from './DrumKitThemes';
-import { DrumElement } from './DrumElements';
-import { 
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
   generateKickSound,
-  generateSnareSound, 
-  generateHiHatSound, 
-  generateTomSound, 
-  generateCrashSound, 
-  generateRideSound, 
+  generateSnareSound,
+  generateHiHatSound,
+  generateTomSound,
+  generateCrashSound,
+  generateRideSound,
   generatePedalSound,
   createReverb
 } from './DrumSoundUtils';
@@ -23,7 +23,7 @@ interface DrumKitProps {
   showShortcuts: boolean;
 }
 
-const DrumKit = ({ 
+const DrumKit = ({
   drumKitType,
   volume,
   isMuted,
@@ -32,14 +32,16 @@ const DrumKit = ({
   showShortcuts
 }: DrumKitProps) => {
   const [activeElements, setActiveElements] = useState<string[]>([]);
-  const [stickPosition, setStickPosition] = useState<{x: number, y: number} | null>(null);
-  
+  const [stickPosition, setStickPosition] = useState<{ x: number, y: number } | null>(null);
+
   const audioContext = useRef<AudioContext | null>(null);
   const reverbNode = useRef<ConvolverNode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const currentTheme = drumKitThemes[drumKitType as keyof typeof drumKitThemes] || drumKitThemes.standard;
   const drumKit = currentTheme.elements;
+
+  const isMobile = useIsMobile(); // detects mobile screen size
 
   useEffect(() => {
     const initializeAudioContext = () => {
@@ -50,9 +52,9 @@ const DrumKit = ({
         });
       }
     };
-    
+
     initializeAudioContext();
-    
+
     const handleKeyDown = (event: KeyboardEvent) => {
       const drumElement = drumKit.find(d => d.key.toLowerCase() === event.key.toLowerCase());
       if (drumElement && !activeElements.includes(drumElement.id)) {
@@ -61,7 +63,7 @@ const DrumKit = ({
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
@@ -69,7 +71,7 @@ const DrumKit = ({
 
   const playDrumSound = (id: string) => {
     if (!audioContext.current || isMuted) return;
-    
+
     setActiveElements(prev => [...prev, id]);
     setTimeout(() => {
       setActiveElements(prev => prev.filter(item => item !== id));
@@ -80,54 +82,54 @@ const DrumKit = ({
       if (drumElement) {
         const rect = drumElement.getBoundingClientRect();
         const containerRect = containerRef.current.getBoundingClientRect();
-        
+
         const xPos = rect.left - containerRect.left + rect.width / 2;
         const yPos = rect.top - containerRect.top + rect.height / 2;
-        setStickPosition({x: xPos, y: yPos});
-        
+        setStickPosition({ x: xPos, y: yPos });
+
         setTimeout(() => {
           setStickPosition(null);
         }, 300);
-        
+
         const ripple = document.createElement('div');
         ripple.className = 'absolute rounded-full animate-ping bg-white/30 pointer-events-none';
         ripple.style.width = '50px';
         ripple.style.height = '50px';
         ripple.style.left = `${xPos - 25}px`;
         ripple.style.top = `${yPos - 25}px`;
-        
+
         containerRef.current.appendChild(ripple);
-        
+
         setTimeout(() => {
           containerRef.current?.removeChild(ripple);
         }, 700);
       }
     }
-    
+
     const drum = drumKit.find(d => d.id === id);
     if (!drum) return;
-    
+
     const drumGain = audioContext.current.createGain();
-    
+
     if (reverbLevel > 0 && reverbNode.current) {
       const dryGain = audioContext.current.createGain();
       const wetGain = audioContext.current.createGain();
-      
+
       dryGain.gain.value = 1 - reverbLevel;
       wetGain.gain.value = reverbLevel;
-      
+
       drumGain.connect(dryGain);
       drumGain.connect(reverbNode.current);
       reverbNode.current.connect(wetGain);
-      
+
       dryGain.connect(audioContext.current.destination);
       wetGain.connect(audioContext.current.destination);
     } else {
       drumGain.connect(audioContext.current.destination);
     }
-    
+
     let volumeAdjustment = 1.0;
-    
+
     switch (drumKitType) {
       case 'rock':
         volumeAdjustment = 1.2;
@@ -144,9 +146,9 @@ const DrumKit = ({
       default:
         break;
     }
-    
+
     drumGain.gain.value = volume * volumeAdjustment;
-    
+
     switch (id) {
       case 'kick':
         generateKickSound(audioContext.current, drumGain, toneQuality, drumKitType);
@@ -180,230 +182,73 @@ const DrumKit = ({
     }
   };
 
+  const pads = [
+    { id: 'kick', label: 'X', top: '40%', left: '50%', size: '30%', sizeMobile: '25%', color: 'from-red-900 to-yellow-400' },
+    { id: 'hihat', label: 'H', top: '12%', left: '70%', size: '15%', sizeMobile: '18%',color: 'from-yellow-300 to-yellow-500' },
+    { id: 'crash', label: 'Y', top: '8%', left: '25%', size: '18%', sizeMobile: '21%',color: 'from-yellow-400 to-orange-400', rotate: 'rotate-12' },
+    { id: 'ride', label: 'U', top: '10%', left: '90%', size: '16%', sizeMobile: '19%',color: 'from-blue-400 to-indigo-500', rotate: '-rotate-6' },
+    { id: 'snare', label: 'S', top: '35%', left: '20%', size: '14%', sizeMobile: '17%',color: 'from-orange-200 to-orange-300' },
+    { id: 'tom1', label: 'G', top: '22%', left: '40%', size: '14%', sizeMobile: '17%',color: 'from-violet-300 to-violet-400' },
+    { id: 'tom2', label: 'J', top: '35%', left: '80%', size: '14%', sizeMobile: '17%', color: 'from-teal-300 to-teal-500' },
+    { id: 'floor', label: 'D', top: '60%', left: '25%', size: '16%', sizeMobile: '20%', color: 'from-lime-300 to-green-400' },
+    { id: 'pedal', label: 'C', top: '85%', left: '50%', size: '15%', sizeMobile: '30%', color: 'from-gray-400 to-gray-500', isRect: true },
+  ];
+
   return (
-    <div 
+    <div
       ref={containerRef}
       className="relative w-full aspect-[4/3] bg-gradient-to-b from-gray-900/50 to-gray-800/70 backdrop-blur-sm rounded-xl border border-gray-700/30 p-4 mb-6 overflow-hidden"
     >
       <div className="relative w-full h-full">
-        <div className={`absolute inset-0 ${currentTheme.background} bg-cover bg-center opacity-50 rounded-lg`}></div>
-        
-        {/* Kick Drum - Center Bass Drum */}
-        <div className="absolute top-[40%] left-[50%] transform -translate-x-1/2 -translate-y-1/2 w-[30%] aspect-square">
-          <div className={`absolute inset-0 rounded-full ${drumKitType === 'electronic' ? 'bg-gradient-to-br from-blue-900 to-blue-700' : 'bg-gradient-to-br from-red-900 to-red-700'} opacity-80 shadow-2xl`}></div>
-          <div className={`absolute inset-0 rounded-full border-8 ${drumKitType === 'jazz' ? 'border-amber-600/40' : drumKitType === 'indian' ? 'border-orange-800/40' : drumKitType === 'electronic' ? 'border-indigo-800/40' : 'border-amber-800/40'}`}></div>
-          <div 
-            data-drum-id="kick" 
-            className={`absolute inset-[15%] rounded-full flex items-center justify-center transition-all cursor-pointer ${
-              drumKitType === 'rock' ? 'bg-slate-200/90' : 
-              drumKitType === 'electronic' ? 'bg-cyan-300/90' : 
-              drumKitType === 'indian' ? 'bg-amber-100/80' : 
-              'bg-white/90'
-            } ${
-              activeElements.includes('kick') ? 'scale-95 brightness-110' : 'hover:brightness-105'
-            }`}
-            onClick={() => playDrumSound('kick')}
+        <div className={`absolute inset-0 ${currentTheme.background} bg-cover bg-center opacity-50 rounded-lg`} />
+
+        {pads.map((pad) => (
+          <div
+            key={pad.id}
+            className={`absolute ${pad.rotate || ''}`}
+            style={{
+              top: pad.top,
+              left: pad.left,
+              width: isMobile ? pad.sizeMobile || pad.size : pad.size, // use sizeMobile if defined
+              aspectRatio: pad.isRect ? '2/1' : '1/1',
+              transform: 'translate(-50%, -50%)',
+            }}
           >
-            {showShortcuts && (
-              <span className="flex items-center justify-center w-10 h-10 bg-green-600/80 rounded-full text-white font-bold">
-                X
-              </span>
-            )}
+            <div className={`absolute inset-0 rounded-${pad.isRect ? 'lg' : 'full'} bg-gradient-to-br ${pad.color} shadow-xl opacity-80`} />
+            <div className={`absolute inset-0 rounded-${pad.isRect ? 'lg' : 'full'} border-4 border-white/30`} />
+            <div
+              data-drum-id={pad.id}
+              onClick={() => playDrumSound(pad.id)}
+              className={`absolute inset-[15%] flex items-center justify-center cursor-pointer transition-transform duration-150 ease-in-out bg-white/90 hover:scale-105 hover:ring-2 hover:ring-white rounded-${pad.isRect ? 'lg' : 'full'} ${activeElements.includes(pad.id) ? 'scale-95 ring-4 ring-white/60' : ''
+                }`}
+            >
+              {showShortcuts && (
+                <span className="w-8 h-8 bg-green-600/80 rounded-full flex items-center justify-center text-white font-bold text-sm z-10">
+                  {pad.label}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-        
-        {/* Hi-Hat */}
-        <div className="absolute top-[12%] right-[20%] w-[15%] aspect-square">
-          <div className="absolute inset-0 bg-yellow-600/80 opacity-90 rounded-full shadow-xl"></div>
-          <div className="absolute inset-1 rounded-full border-2 border-yellow-900/40 flex items-center justify-center">
-            <div className="w-[60%] h-[60%] rounded-full border-2 border-yellow-800/30"></div>
-          </div>
-          <div 
-            data-drum-id="hihat" 
-            className={`absolute inset-0 rounded-full flex items-center justify-center cursor-pointer transition-all ${
-              activeElements.includes('hihat') ? 'scale-95 brightness-110' : 'hover:brightness-105'
-            }`}
-            onClick={() => playDrumSound('hihat')}
-          >
-            {showShortcuts && (
-              <span className="flex items-center justify-center w-8 h-8 bg-green-600/80 rounded-full text-white font-bold text-sm z-10">
-                H
-              </span>
-            )}
-          </div>
-        </div>
-        
-        {/* Crash Cymbal */}
-        <div className="absolute top-[8%] left-[25%] w-[18%] aspect-square">
-          <div className="absolute inset-0 bg-yellow-600/80 opacity-90 rounded-full shadow-xl transform rotate-12"></div>
-          <div className="absolute inset-1 rounded-full border-2 border-yellow-900/40 flex items-center justify-center transform rotate-12">
-            <div className="w-[70%] h-[70%] rounded-full border-2 border-yellow-800/30"></div>
-            <div className="w-[40%] h-[40%] rounded-full border-2 border-yellow-800/30"></div>
-          </div>
-          <div 
-            data-drum-id="crash" 
-            className={`absolute inset-0 rounded-full flex items-center justify-center cursor-pointer transition-all transform rotate-12 ${
-              activeElements.includes('crash') ? 'scale-95 brightness-110' : 'hover:brightness-105'
-            }`}
-            onClick={() => playDrumSound('crash')}
-          >
-            {showShortcuts && (
-              <span className="flex items-center justify-center w-8 h-8 bg-green-600/80 rounded-full text-white font-bold text-sm z-10">
-                Y
-              </span>
-            )}
-          </div>
-        </div>
-        
-        {/* Ride Cymbal */}
-        <div className="absolute top-[10%] right-[10%] w-[16%] aspect-square">
-          <div className="absolute inset-0 bg-yellow-600/80 opacity-90 rounded-full shadow-xl transform -rotate-6"></div>
-          <div className="absolute inset-1 rounded-full border-2 border-yellow-900/40 flex items-center justify-center transform -rotate-6">
-            <div className="w-[70%] h-[70%] rounded-full border-2 border-yellow-800/30"></div>
-            <div className="w-[40%] h-[40%] rounded-full border-2 border-yellow-800/30"></div>
-          </div>
-          <div 
-            data-drum-id="ride" 
-            className={`absolute inset-0 rounded-full flex items-center justify-center cursor-pointer transition-all transform -rotate-6 ${
-              activeElements.includes('ride') ? 'scale-95 brightness-110' : 'hover:brightness-105'
-            }`}
-            onClick={() => playDrumSound('ride')}
-          >
-            {showShortcuts && (
-              <span className="flex items-center justify-center w-8 h-8 bg-green-600/80 rounded-full text-white font-bold text-sm z-10">
-                U
-              </span>
-            )}
-          </div>
-        </div>
-        
-        {/* Snare Drum */}
-        <div className="absolute top-[35%] left-[20%] w-[14%] aspect-square">
-          <div className="absolute inset-0 bg-red-600/80 opacity-90 rounded-full shadow-xl"></div>
-          <div className="absolute inset-0 rounded-full border-4 border-red-800/30"></div>
-          <div 
-            data-drum-id="snare" 
-            className={`absolute inset-[10%] rounded-full flex items-center justify-center cursor-pointer transition-all bg-gradient-to-br from-orange-100 to-orange-200 ${
-              activeElements.includes('snare') ? 'scale-95 brightness-110' : 'hover:brightness-105'
-            }`}
-            onClick={() => playDrumSound('snare')}
-          >
-            {showShortcuts && (
-              <span className="flex items-center justify-center w-8 h-8 bg-green-600/80 rounded-full text-white font-bold text-sm z-10">
-                S
-              </span>
-            )}
-          </div>
-        </div>
-        
-        {/* Tom 1 */}
-        <div className="absolute top-[22%] left-[40%] w-[14%] aspect-square">
-          <div className="absolute inset-0 bg-red-600/80 opacity-90 rounded-full shadow-xl"></div>
-          <div className="absolute inset-0 rounded-full border-4 border-red-800/30"></div>
-          <div 
-            data-drum-id="tom1" 
-            className={`absolute inset-[10%] rounded-full flex items-center justify-center cursor-pointer transition-all bg-gradient-to-br from-orange-100 to-orange-200 ${
-              activeElements.includes('tom1') ? 'scale-95 brightness-110' : 'hover:brightness-105'
-            }`}
-            onClick={() => playDrumSound('tom1')}
-          >
-            {showShortcuts && (
-              <span className="flex items-center justify-center w-8 h-8 bg-green-600/80 rounded-full text-white font-bold text-sm z-10">
-                G
-              </span>
-            )}
-          </div>
-        </div>
-        
-        {/* Tom 2 */}
-        <div className="absolute top-[35%] right-[20%] w-[14%] aspect-square">
-          <div className="absolute inset-0 bg-red-600/80 opacity-90 rounded-full shadow-xl"></div>
-          <div className="absolute inset-0 rounded-full border-4 border-red-800/30"></div>
-          <div 
-            data-drum-id="tom2" 
-            className={`absolute inset-[10%] rounded-full flex items-center justify-center cursor-pointer transition-all bg-gradient-to-br from-orange-100 to-orange-200 ${
-              activeElements.includes('tom2') ? 'scale-95 brightness-110' : 'hover:brightness-105'
-            }`}
-            onClick={() => playDrumSound('tom2')}
-          >
-            {showShortcuts && (
-              <span className="flex items-center justify-center w-8 h-8 bg-green-600/80 rounded-full text-white font-bold text-sm z-10">
-                J
-              </span>
-            )}
-          </div>
-        </div>
-        
-        {/* Floor Tom */}
-        <div className="absolute bottom-[25%] left-[25%] w-[16%] aspect-square">
-          <div className="absolute inset-0 bg-red-600/80 opacity-90 rounded-full shadow-xl"></div>
-          <div className="absolute inset-0 rounded-full border-4 border-red-800/30"></div>
-          <div 
-            data-drum-id="floor" 
-            className={`absolute inset-[10%] rounded-full flex items-center justify-center cursor-pointer transition-all bg-gradient-to-br from-orange-100 to-orange-200 ${
-              activeElements.includes('floor') ? 'scale-95 brightness-110' : 'hover:brightness-105'
-            }`}
-            onClick={() => playDrumSound('floor')}
-          >
-            {showShortcuts && (
-              <span className="flex items-center justify-center w-8 h-8 bg-green-600/80 rounded-full text-white font-bold text-sm z-10">
-                D
-              </span>
-            )}
-          </div>
-        </div>
-        
-        {/* Pedal */}
-        <div className="absolute bottom-[12%] left-[50%] transform -translate-x-1/2 w-[10%] aspect-[2/1]">
-          <div className="absolute inset-0 bg-gray-400/80 opacity-90 rounded-lg shadow-xl"></div>
-          <div 
-            data-drum-id="pedal" 
-            className={`absolute inset-0 rounded-lg flex items-center justify-center cursor-pointer transition-all ${
-              activeElements.includes('pedal') ? 'scale-95 brightness-110' : 'hover:brightness-105'
-            }`}
-            onClick={() => playDrumSound('pedal')}
-          >
-            {showShortcuts && (
-              <span className="flex items-center justify-center w-8 h-8 bg-green-600/80 rounded-full text-white font-bold text-sm z-10">
-                C
-              </span>
-            )}
-          </div>
-        </div>
-        
+        ))}
+
         {/* Drum Sticks */}
         {stickPosition ? (
-          <div 
-            className={`absolute w-2 h-20 ${
-              drumKitType === 'rock' ? 'bg-gradient-to-b from-gray-800 to-gray-700' :
-              drumKitType === 'electronic' ? 'bg-gradient-to-b from-purple-800 to-purple-700' :
-              drumKitType === 'indian' ? 'bg-gradient-to-b from-orange-800 to-orange-700' :
-              'bg-gradient-to-b from-amber-800 to-amber-700'
-            } rounded-full origin-bottom animate-[drum-stick_0.3s_ease-out] z-20`}
-            style={{ 
-              left: `${stickPosition.x}px`, 
+          <div
+            className="absolute w-2 h-20 bg-gradient-to-b from-yellow-700 to-yellow-600 rounded-full origin-bottom animate-[drum-stick_0.3s_ease-out] z-20"
+            style={{
+              left: `${stickPosition.x}px`,
               top: `${stickPosition.y - 50}px`,
-              transform: 'rotate(-15deg) translateY(-20px)'
+              transform: 'rotate(-15deg) translateY(-20px)',
             }}
           >
             <div className="absolute bottom-0 left-1/2 w-4 h-4 -ml-2 rounded-full bg-amber-900"></div>
           </div>
         ) : (
-          <>
-            <div className={`absolute bottom-[15%] right-[15%] w-2 h-20 ${
-              drumKitType === 'rock' ? 'bg-gradient-to-b from-gray-800 to-gray-700' :
-              drumKitType === 'electronic' ? 'bg-gradient-to-b from-purple-800 to-purple-700' :
-              drumKitType === 'indian' ? 'bg-gradient-to-b from-orange-800 to-orange-700' :
-              'bg-gradient-to-b from-amber-800 to-amber-700'
-            } rounded-full transform rotate-45 origin-bottom`}>
+          <> 
+            <div className="absolute bottom-[15%] right-[15%] w-2 h-20 bg-gradient-to-b from-yellow-700 to-yellow-600 rounded-full rotate-45 origin-bottom">
               <div className="absolute bottom-0 left-1/2 w-4 h-4 -ml-2 rounded-full bg-amber-900"></div>
             </div>
-            <div className={`absolute bottom-[15%] right-[25%] w-2 h-20 ${
-              drumKitType === 'rock' ? 'bg-gradient-to-b from-gray-800 to-gray-700' :
-              drumKitType === 'electronic' ? 'bg-gradient-to-b from-purple-800 to-purple-700' :
-              drumKitType === 'indian' ? 'bg-gradient-to-b from-orange-800 to-orange-700' :
-              'bg-gradient-to-b from-amber-800 to-amber-700'
-            } rounded-full transform rotate-30 origin-bottom`}>
+            <div className="absolute bottom-[15%] right-[25%] w-2 h-20 bg-gradient-to-b from-yellow-700 to-yellow-600 rounded-full rotate-30 origin-bottom">
               <div className="absolute bottom-0 left-1/2 w-4 h-4 -ml-2 rounded-full bg-amber-900"></div>
             </div>
           </>

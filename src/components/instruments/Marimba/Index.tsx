@@ -11,7 +11,7 @@ const LazyMarimbaComponent = lazy(() => import("./marimba1/MarimbaPage"));
 const LazyMarimba2Component = lazy(() => import("./marimba2/MarimbaPage"));
 
 const Index = () => {
-  const [selected, setSelected] = useState('Marimba 1');
+  const [selected, setSelected] = useState('Marimba 2');
   
   useEffect(() => {
     // Track page view for analytics

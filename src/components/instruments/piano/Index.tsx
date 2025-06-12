@@ -93,7 +93,7 @@ const Index = () => {
       </div>
 
       {/* Add instrument interlink */}
-      <InstrumentInterlink currentInstrument="Guitar" />
+      <InstrumentInterlink currentInstrument="Piano" />
       </AppLayout>
     </>
   );

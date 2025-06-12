@@ -511,7 +511,7 @@ const PianoPage = () => {
           </div>
         </div>
 
-        <div className="landscape-warning text-xs text-muted-foreground bg-purple-100 p-2 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-6">
+        <div className="landscape-warning text-center text-xs text-muted-foreground bg-purple-100 p-2 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-6">
           <p>For the best experience, expand to full screen.
             <strong onClick={handleOpen} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]">
               Click here to expand
@@ -530,13 +530,13 @@ const PianoPage = () => {
             </div>
           </LandscapeInstrumentModal>
         </div>
-        {/* <style>{`
+        <style>{`
                 @media (min-width: 768px) {
           .landscape-warning {
             display: none;
           }
         }
-      `}</style> */}
+      `}</style>
         <div className={`piano-container rounded-lg overflow-hidden shadow-xl p-4 mb-8 ${theme === 'dark' ? 'bg-gray-900' :
             theme === 'neon' ? 'bg-gray-950 bg-opacity-90' :
               theme === 'classic' ? 'bg-gray-900' : 'bg-white'

@@ -6,6 +6,8 @@ import { saxophoneVariants } from './SaxophoneVariants';
 import { useToast } from "@/hooks/use-toast";
 import { TutorialButton } from '@/components/Tutorial/TutorialButton';
 import AudioContextManager from '@/utils/music/AudioContextManager';
+import { toggleFullscreen } from "@/components/landscapeMode/lockToLandscape";
+import FullscreenWrapper from "@/components/landscapeMode/FullscreenWrapper";
 import {
   Accordion,
   AccordionContent,
@@ -14,6 +16,9 @@ import {
 } from "@/components/ui/accordion";
 
 const Saxophone = () => {
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
   const [currentVariant, setCurrentVariant] = useState('alto');
   const [activeNotes, setActiveNotes] = useState<Set<number>>(new Set());
   const activeNoteRefs = useRef<Record<string, () => void>>({});
@@ -249,46 +254,63 @@ const Saxophone = () => {
           keyMappings={keyboardMappings}
         />
 
+        <div className="landscape-warning text-xs text-muted-foreground  dark:bg-white/5 p-2 rounded-md">
+          <p>
+            <strong onClick={() => toggleFullscreen(containerRef.current)} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent hover:brightness-110 hover:scale-[1.03]">
+              ⛶Zoom
+            </strong>
+          </p>
+        </div>
+        <style>{`
+                                    @media (min-width: 768px) {
+                                      .landscape-warning {
+                                        display: none;
+                                      }
+                                    }
+                                  `}</style>
+
       </div>
 
-      <div className={`w-full max-w-3xl rounded-xl p-6 shadow-lg ${variant.backgroundPattern}`}>
+      <FullscreenWrapper ref={containerRef} instrumentName="saxophone">
+        <div className={`w-full max-w-3xl rounded-xl p-6 shadow-lg ${variant.backgroundPattern}`}>
 
-        <div className="relative w-full h-64 flex justify-center items-center">
-          <div className={`relative w-24 h-56 rounded-full ${variant.bodyClass} transform -rotate-12 transition-colors duration-300`}>
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-8 w-4 h-12 bg-black rounded-t-full"></div>
-            <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-8 w-16 h-24 ${variant.bellColor} rounded-b-full transition-colors duration-300`}></div>
-            <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 w-full flex flex-col items-center space-y-3">
-              {variant.notes.map((note, index) => (
-                <button
-                  key={note.key}
-                  className={`${variant.keysColor} hover:opacity-80 active:opacity-70 w-6 h-6 rounded-full border border-gray-700 shadow-sm transition-transform ${activeNotes.has(note.frequency) ? 'scale-90 opacity-80' : ''}`}
-                  onClick={() => {
-                    // Initialize audio on click
-                    initAudioContext();
-                    handleNoteClick(note.frequency, note.key);
-                  }}
-                >
-                  <span className="sr-only">{note.label}</span>
-                </button>
-              ))}
+          <div className="relative w-full h-64 flex justify-center items-center">
+            <div className={`relative w-24 h-56 rounded-full ${variant.bodyClass} transform -rotate-12 transition-colors duration-300`}>
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-8 w-4 h-12 bg-black rounded-t-full"></div>
+              <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-8 w-16 h-24 ${variant.bellColor} rounded-b-full transition-colors duration-300`}></div>
+              <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 w-full flex flex-col items-center space-y-3">
+                {variant.notes.map((note, index) => (
+                  <button
+                    key={note.key}
+                    className={`${variant.keysColor} hover:opacity-80 active:opacity-70 w-6 h-6 rounded-full border border-gray-700 shadow-sm transition-transform ${activeNotes.has(note.frequency) ? 'scale-90 opacity-80' : ''}`}
+                    onClick={() => {
+                      // Initialize audio on click
+                      initAudioContext();
+                      handleNoteClick(note.frequency, note.key);
+                    }}
+                  >
+                    <span className="sr-only">{note.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-4 md:grid-cols-8 gap-2 mt-4 mb-6">
-          {variant.notes.map((note, index) => (
-            <div
-              key={note.key}
-              className={`relative flex flex-col items-center justify-center p-2 rounded-md border ${activeNotes.has(note.frequency) ? 'bg-primary/20 border-primary' : 'bg-background/50 border-border'} cursor-pointer hover:bg-primary/10 transition-colors`}
-              onClick={() => handleNoteClick(note.frequency, note.key)}
-            >
-              <div className="text-xs font-mono mb-1">{keyLabels[note.key]}</div>
-              <div className="text-sm font-semibold">{note.label}</div>
-            </div>
-          ))}
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-2 mt-4 mb-6">
+            {variant.notes.map((note, index) => (
+              <div
+                key={note.key}
+                className={`relative flex flex-col items-center justify-center p-2 rounded-md border ${activeNotes.has(note.frequency) ? 'bg-primary/20 border-primary' : 'bg-background/50 border-border'} cursor-pointer hover:bg-primary/10 transition-colors`}
+                onClick={() => handleNoteClick(note.frequency, note.key)}
+              >
+                <div className="text-xs font-mono mb-1">{keyLabels[note.key]}</div>
+                <div className="text-sm font-semibold">{note.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-
+      </FullscreenWrapper>
+      
       <Accordion type="single" collapsible className="w-full mt-8">
         <AccordionItem value="history">
           <AccordionTrigger className="flex items-center gap-2">
@@ -297,11 +319,11 @@ const Saxophone = () => {
           </AccordionTrigger>
           <AccordionContent>
             <p className="text-muted-foreground text-sm">{variant.description}</p>
-          <div className="mt-2 text-xs text-muted-foreground">Material: {variant.material}</div>
+            <div className="mt-2 text-xs text-muted-foreground">Material: {variant.material}</div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-      
+
     </div>
   );
 };

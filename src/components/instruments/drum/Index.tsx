@@ -11,6 +11,8 @@ import AppLayout from '@/components/layout/AppLayout';
 
 // Lazy load the components 
 const LazyDrumComponent = lazy(() => import("./drums1/DrumsPage"));
+//const LazyDrum2Component = lazy(() => import("../drum-drum machine/components/DrumKit"));
+import DrumKit from '../drum-drum machine/components/drums2/DrumKit';
 const LazyDrumAdvancedComponent = lazy(() => import("../PlaceholderComponent"));
 
 
@@ -143,7 +145,7 @@ const Index = () => {
                 </div>
               }>
                 {selected === 'Guitar 1' && <LazyDrumComponent />}
-                {selected === 'Guitar 2' && <LazyDrumAdvancedComponent instrumentName="Drum Advanced" />}
+                {selected === 'Guitar 2' && <DrumKit />}
               </Suspense>
             </main>
 
