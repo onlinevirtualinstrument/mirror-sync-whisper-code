@@ -19,7 +19,7 @@ const Piano = React.lazy(() => import('@/pages/Piano'));
 const Guitar = React.lazy(() => import('@/components/instruments/guitar/Guitar2/index'));
 const Drums = React.lazy(() => import('@/components/instruments/drum-drum machine/components/drums2/DrumKit'));
 const Flute = React.lazy(() => import('@/components/instruments/flute/Index'));
-const Saxophone = React.lazy(() => import('@/components/instruments/Saxophone/Index'));
+const Saxophone = React.lazy(() => import('@/components/instruments/saxophone/Index'));
 const BeatMaker = React.lazy(() => import('@/components/instruments/BeatMaker/Index'));
 const Theremin = React.lazy(() => import('@/components/instruments/Theremin/Index'));
 const Blog = React.lazy(() => import('@/components/blog/BlogList'));
