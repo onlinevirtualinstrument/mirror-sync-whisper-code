@@ -1,3 +1,4 @@
+
 import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -11,23 +12,23 @@ import AdvancedSEO from '@/components/seo/AdvancedSEO';
 import InstallPrompt from '@/components/pwa/InstallPrompt';
 
 // Lazy load components for better performance
-const Home = React.lazy(() => import('@/components/Home/Home'));
+const Home = React.lazy(() => import('@/pages/Index'));
 const MusicRoom = React.lazy(() => import('@/components/room/MusicRoom'));
 const BlogDraftManager = React.lazy(() => import('@/components/blog/BlogDraftManager'));
-const Piano = React.lazy(() => import('@/components/instruments/Piano/Piano'));
-const Guitar = React.lazy(() => import('@/components/instruments/Guitar/Guitar'));
+const Piano = React.lazy(() => import('@/pages/Piano'));
+const Guitar = React.lazy(() => import('@/components/instruments/guitar/Guitar2/index'));
 const Drums = React.lazy(() => import('@/components/instruments/drum-drum machine/components/drums2/DrumKit'));
-const Flute = React.lazy(() => import('@/components/instruments/Flute/Flute'));
-const Saxophone = React.lazy(() => import('@/components/instruments/Saxophone/Saxophone'));
-const BeatMaker = React.lazy(() => import('@/components/instruments/BeatMaker/BeatMaker'));
-const Theremin = React.lazy(() => import('@/components/instruments/Theremin/Theremin'));
-const Blog = React.lazy(() => import('@/components/blog/Blog'));
-const BlogPost = React.lazy(() => import('@/components/blog/BlogPost'));
+const Flute = React.lazy(() => import('@/components/instruments/flute/Index'));
+const Saxophone = React.lazy(() => import('@/components/instruments/Saxophone/Index'));
+const BeatMaker = React.lazy(() => import('@/components/instruments/BeatMaker/Index'));
+const Theremin = React.lazy(() => import('@/components/instruments/Theremin/Index'));
+const Blog = React.lazy(() => import('@/components/blog/BlogList'));
+const BlogPost = React.lazy(() => import('@/components/blog/BlogDetail'));
 const BlogEditor = React.lazy(() => import('@/components/blog/BlogEditor'));
-const Login = React.lazy(() => import('@/components/Auth/Login'));
-const Register = React.lazy(() => import('@/components/Auth/Register'));
-const ForgotPassword = React.lazy(() => import('@/components/Auth/ForgotPassword'));
-const Profile = React.lazy(() => import('@/components/Auth/Profile'));
+const Login = React.lazy(() => import('@/components/auth/LoginForm'));
+const Register = React.lazy(() => import('@/components/auth/SignUpForm'));
+const ForgotPassword = React.lazy(() => import('@/components/auth/ForgotPasswordForm'));
+const Profile = React.lazy(() => import('@/components/auth/UserButton'));
 const Contact = React.lazy(() => import('@/components/Contact/Contact'));
 const About = React.lazy(() => import('@/components/About/About'));
 const Pricing = React.lazy(() => import('@/components/Pricing/Pricing'));
@@ -39,7 +40,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime)
     },
   },
 });
