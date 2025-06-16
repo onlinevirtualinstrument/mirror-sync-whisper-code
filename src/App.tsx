@@ -30,7 +30,7 @@ const Categories = lazy(() => import("./pages/Categories"));
 const CategoryPage = lazy(() => import("./pages/categories/CategoryPage"));
 const InstrumentDetail = lazy(() => import("./pages/instruments/InstrumentDetail"));
 const Auth = {
-  Login: lazy(() => import("./pages/auth/Login")),
+  Login: lazy(() => import("./components/auth/Login.tsx")),
   Register: lazy(() => import("./pages/auth/Register")),
 };
 const Misc = {

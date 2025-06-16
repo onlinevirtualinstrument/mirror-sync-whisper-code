@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { LoginForm } from "../../components/auth/LoginForm";
+import { LoginForm } from "./LoginForm";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { Button } from "@/components/ui/button";
 import AuthLayout from "@/components/auth/AuthLayout";
@@ -9,7 +9,7 @@ import AuthLayout from "@/components/auth/AuthLayout";
 export default function Login() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   
-  return (
+  return ( 
     <AuthLayout
       title="Welcome back"
       subtitle={showForgotPassword ? "" : "Enter your credentials to access your account"}

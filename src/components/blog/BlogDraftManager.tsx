@@ -29,24 +29,22 @@ const BlogDraftManager: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-
   useEffect(() => {
-      const checkEditPermission = async () => {
-        if (user) {
-          const hasPermission = await canUserEditBlogs();
-          setCanEdit(hasPermission);
-        } else {
-          setCanEdit(false);
-        }
-      };
-  
-      checkEditPermission();
-    }, [user]);
+    const checkEditPermission = async () => {
+      if (user) {
+        const hasPermission = await canUserEditBlogs();
+        setCanEdit(hasPermission);
+      } else {
+        setCanEdit(false);
+      }
+    };
+
+    checkEditPermission();
+  }, [user]);
 
   useEffect(() => {
     loadDrafts();
   }, []);
-
 
   const loadDrafts = async () => {
     const user = auth.currentUser;
@@ -54,45 +52,13 @@ const BlogDraftManager: React.FC = () => {
 
     try {
       const fetched = await getUserDrafts(user.uid);
-      setDrafts(fetched); // ✅ Will now be correctly typed as BlogDraft[]
+      setDrafts(fetched);
     } catch (err) {
       console.error('Error loading drafts:', err);
     } finally {
       setLoading(false);
     }
   };
-
-
-  const saveDraft = (draftData: Partial<BlogDraft>) => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    const draft: BlogDraft = {
-      id: draftData.id || `draft-${Date.now()}`,
-      title: draftData.title || '',
-      content: draftData.content || '',
-      imageUrl: draftData.imageUrl,
-      authorId: user.uid,
-      authorName: user.displayName || 'Anonymous',
-      createdAt: draftData.createdAt || Date.now(),
-      updatedAt: Date.now(),
-      status: 'draft'
-    };
-
-    const existingDrafts = JSON.parse(localStorage.getItem('blog-drafts') || '[]');
-    const draftIndex = existingDrafts.findIndex((d: BlogDraft) => d.id === draft.id);
-
-    if (draftIndex >= 0) {
-      existingDrafts[draftIndex] = draft;
-    } else {
-      existingDrafts.push(draft);
-    }
-
-    localStorage.setItem('blog-drafts', JSON.stringify(existingDrafts));
-    loadDrafts();
-    toast.success('Draft saved successfully');
-  };
-
 
   const deleteDraft = async (draftId: string) => {
     try {
@@ -139,7 +105,6 @@ const BlogDraftManager: React.FC = () => {
             <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
             <h3 className="text-lg font-medium mb-2">No drafts yet</h3>
             <p className="text-gray-600 mb-4">Start writing your first blog post!</p>
-
             <Button onClick={() => navigate('/blog/new')} className="bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in" >
               <Plus size={16} />
               <span> Create Draft</span>
@@ -216,7 +181,7 @@ const BlogDraftManager: React.FC = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(`/blog/edit/${draft.id}`)}
+                    onClick={() => navigate(`/blog/edit/${draft.id}?isDraft=true`)}
                   >
                     <Edit className="h-4 w-4 mr-1" />
                     Edit

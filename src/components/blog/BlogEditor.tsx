@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { createBlogPost, updateBlogPost, getBlogPostById, saveDraftToFirestore, getDraftById, deleteDraftById, getUserDrafts } from '@/components/blog/blogService';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { auth } from '@/utils/auth/firebase';
 import { Save, ArrowLeft, DraftingCompass } from 'lucide-react';
@@ -18,8 +18,10 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(mode === 'edit');
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isDraftMode, setIsDraftMode] = useState(false);
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
 
   const modules = {
     toolbar: [
@@ -39,27 +41,40 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
   ];
 
   useEffect(() => {
+    const isDraft = searchParams.get('isDraft') === 'true';
+    setIsDraftMode(isDraft);
+
     if (mode === 'edit' && id) {
-      const fetchBlogPost = async () => {
+      const fetchData = async () => {
         try {
-          const post = await getBlogPostById(id);
-          if (post) {
-            setTitle(post.title);
-            setContent(post.content);
-            setImageUrl(post.imageUrl || '');
+          let postData = null;
+          
+          if (isDraft) {
+            // Load from drafts
+            postData = await getDraftById(id);
           } else {
-            toast.error('Blog post not found');
+            // Load from published posts
+            postData = await getBlogPostById(id);
+          }
+
+          if (postData) {
+            setTitle(postData.title || '');
+            setContent(postData.content || '');
+            setImageUrl(postData.imageUrl || '');
+          } else {
+            toast.error(isDraft ? 'Draft not found' : 'Blog post not found');
             navigate('/blog');
           }
-        } catch {
-          toast.error('Failed to load blog post');
+        } catch (error) {
+          console.error('Error loading data:', error);
+          toast.error('Failed to load content');
         } finally {
           setInitialLoading(false);
         }
       };
-      fetchBlogPost();
+      fetchData();
     }
-  }, [id, mode, navigate]);
+  }, [id, mode, navigate, searchParams]);
 
   // Auto-save draft functionality
   useEffect(() => {
@@ -79,7 +94,6 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
       if (timer) clearTimeout(timer);
     };
   }, [title, content, imageUrl]);
-
 
   const saveDraft = async () => {
     const user = auth.currentUser;
@@ -110,7 +124,6 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
     toast.success('Draft saved successfully');
   };
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -133,19 +146,32 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
         createdAt: Date.now(),
       };
 
-      if (mode === 'create') {
+      if (mode === 'create' || isDraftMode) {
+        // Creating new post or publishing a draft
         const postId = await createBlogPost(postData);
 
-        // Remove from drafts after publishing
-        const existingDrafts = JSON.parse(localStorage.getItem('blog-drafts') || '[]');
-        const updatedDrafts = existingDrafts.filter((d: any) =>
-          !(d.title === title && d.authorId === user.uid)
-        );
-        localStorage.setItem('blog-drafts', JSON.stringify(updatedDrafts));
+        // If this was a draft being published, delete the draft
+        if (isDraftMode && id) {
+          try {
+            await deleteDraftById(id);
+            toast.success('Draft published and removed from drafts');
+          } catch (error) {
+            console.error('Error deleting draft after publishing:', error);
+            toast.success('Blog post published');
+          }
+        } else {
+          // Remove from localStorage drafts if exists
+          const existingDrafts = JSON.parse(localStorage.getItem('blog-drafts') || '[]');
+          const updatedDrafts = existingDrafts.filter((d: any) =>
+            !(d.title === title && d.authorId === user.uid)
+          );
+          localStorage.setItem('blog-drafts', JSON.stringify(updatedDrafts));
+          toast.success('Blog post created');
+        }
 
-        toast.success('Blog post created');
         navigate(`/blog/${postId}`);
       } else if (mode === 'edit' && id) {
+        // Updating existing published post
         await updateBlogPost(id, postData);
         toast.success('Blog post updated');
         navigate(`/blog/${id}`);
@@ -172,10 +198,18 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
           <Button className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in">
             <DraftingCompass size={16} />
             View Drafts
-          </Button></Link>
+          </Button>
+        </Link>
       </div>
+      
       <Card className="allow-copy p-6 bg-gradient-to-r from-[#F1F0FB] to-[#D6BCFA] border-2 border-[#E5DEFF] shadow-lg animate-fade-in">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {isDraftMode && (
+            <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+              <strong>Editing Draft:</strong> This post will be published when you click "Publish Post" and removed from your drafts.
+            </div>
+          )}
+
           <div className="space-y-2">
             <label htmlFor="title" className="text-sm font-medium text-[#7E69AB]">
               Blog Title
@@ -289,7 +323,7 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
                 disabled={loading}
                 className="bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white font-bold hover:shadow-md transition-all"
               >
-                {loading ? 'Saving...' : mode === 'create' ? 'Publish Post' : 'Update Post'}
+                {loading ? 'Saving...' : (mode === 'create' || isDraftMode) ? 'Publish Post' : 'Update Post'}
               </Button>
             </div>
           </div>

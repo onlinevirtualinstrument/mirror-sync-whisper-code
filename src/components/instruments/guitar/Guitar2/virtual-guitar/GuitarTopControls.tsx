@@ -1,7 +1,6 @@
 import React, { memo, useCallback } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
-import { cn } from '../lib/utils';
 import { 
   Select,
   SelectContent,

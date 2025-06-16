@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/utils/firebase/config';
 import { 
   listenToRoomData, 
   isUserRoomParticipant, 
@@ -24,6 +26,34 @@ export const useRoomData = () => {
   const [wasRemoved, setWasRemoved] = useState<boolean>(false);
   const [lastActivityTime, setLastActivityTime] = useState<number>(Date.now());
   const [lastInstrumentPlayTime, setLastInstrumentPlayTime] = useState<number>(Date.now());
+  const [userPresenceHeartbeat, setUserPresenceHeartbeat] = useState<number>(Date.now());
+
+  // Send heartbeat every 30 seconds to indicate user is still active in room
+  useEffect(() => {
+    if (!roomId || !user || !isParticipant) return;
+
+    const heartbeatInterval = setInterval(() => {
+      setUserPresenceHeartbeat(Date.now());
+      // Update user's last seen timestamp in Firebase
+      if (room) {
+        const updatedParticipants = room.participants?.map((p: any) => {
+          if (p.id === user.uid) {
+            return { ...p, lastSeen: new Date().toISOString() };
+          }
+          return p;
+        }) || [];
+
+        // Update room with new participant data
+        const roomRef = doc(db, "musicRooms", roomId);
+        updateDoc(roomRef, {
+          participants: updatedParticipants,
+          lastActivity: new Date().toISOString()
+        }).catch(console.error);
+      }
+    }, 30000); // Send heartbeat every 30 seconds
+
+    return () => clearInterval(heartbeatInterval);
+  }, [roomId, user, isParticipant, room]);
 
   const checkInactivityAndClose = useCallback(async () => {
     if (!room || !isHost || !room.autoCloseAfterInactivity || !roomId) return;
@@ -36,21 +66,30 @@ export const useRoomData = () => {
     const timeSinceLastActivity = now - lastActivityTime;
     const timeSinceLastInstrument = now - lastInstrumentPlayTime;
     
-    console.log(`Checking inactivity: ${Math.round(timeSinceLastActivity / 1000)}s since last activity, ${Math.round(timeSinceLastInstrument / 1000)}s since instrument play, ${activeParticipants} active participants`);
+    // NEW: Check if all users have left the room (no recent heartbeat)
+    const allUsersLeft = room.participants?.every((p: any) => {
+      const lastSeen = p.lastSeen ? new Date(p.lastSeen).getTime() : 0;
+      const timeSinceLastSeen = now - lastSeen;
+      return timeSinceLastSeen > 90000; // 1.5 minutes without heartbeat = user left
+    }) || false;
+    
+    console.log(`Checking inactivity: ${Math.round(timeSinceLastActivity / 1000)}s since last activity, ${Math.round(timeSinceLastInstrument / 1000)}s since instrument play, ${activeParticipants} active participants, all users left: ${allUsersLeft}`);
     
     // Auto-close if:
     // 1. No active participants, OR
     // 2. No activity for the timeout period, OR
-    // 3. No instrument play for the timeout period
+    // 3. No instrument play for the timeout period, OR
+    // 4. All users have left the room (NEW LOGIC)
     if (activeParticipants === 0 || 
-        (timeSinceLastActivity > inactivityTimeout && timeSinceLastInstrument > inactivityTimeout)) {
-      console.log('Auto-closing room due to inactivity');
+        (timeSinceLastActivity > inactivityTimeout && timeSinceLastInstrument > inactivityTimeout) ||
+        allUsersLeft) {
+      console.log('Auto-closing room due to inactivity or all users left');
       try {
         await deleteRoomFromFirestore(roomId);
         navigate('/music-rooms');
         addNotification({
           title: "Room Auto-Closed",
-          message: "Room was automatically closed due to inactivity",
+          message: allUsersLeft ? "Room was automatically closed because all users left" : "Room was automatically closed due to inactivity",
           type: "info"
         });
       } catch (error) {

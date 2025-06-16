@@ -3,7 +3,7 @@ import React from "react";
 import { Helmet } from "react-helmet";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import VirtualGuitarComponent from "../components/VirtualGuitarComponent";
+import VirtualGuitarComponent from "./VirtualGuitarComponent";
 import { Music, Settings, Guitar } from 'lucide-react';
 
 const VirtualGuitar = () => {

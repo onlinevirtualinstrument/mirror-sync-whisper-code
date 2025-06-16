@@ -15,7 +15,7 @@ const LazyVirtualGuitarComponent = lazy(() =>
   import(/* webpackChunkName: "virtual-guitar-component" */ "./VirtualGuitarComponent")
 );
 const LazyVirtualGuitar2Component = lazy(() => 
-  import(/* webpackChunkName: "virtual-guitar-component" */ "./Guitar2/pages/VirtualGuitar")
+  import(/* webpackChunkName: "virtual-guitar-component" */ "./Guitar2/VirtualGuitar")
 );
 const LazyVirtualGuitar3Component = lazy(() => 
   import(/* webpackChunkName: "virtual-guitar-component" */ "./guitar3/GuitarPage")
