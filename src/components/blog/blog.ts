@@ -22,3 +22,17 @@ export interface UserRole {
   role: 'user' | 'admin' | 'super_admin';
   createdAt: number;
 }
+
+
+// src/components/blog/types.ts
+export interface BlogDraft {
+  id: string;
+  title: string;
+  content: string;
+  imageUrl?: string;
+  authorId: string;
+  authorName: string;
+  createdAt: number;
+  updatedAt: number;
+  status: 'draft' | 'published';
+}

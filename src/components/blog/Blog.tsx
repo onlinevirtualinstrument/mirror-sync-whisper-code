@@ -5,6 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import BlogList from '@/components/blog/BlogList';
 import BlogDetail from '@/components/blog/BlogDetail';
 import BlogEditor from '@/components/blog/BlogEditor';
+import BlogDraftManager from '@/components/blog/BlogDraftManager';
 import UserRoleManager from '@/components/blog/UserRoleManager';
 import { BlogPost, UserRole } from '@/components/blog/blog';
 import { useAuth } from '@/hooks/useAuth';
@@ -78,6 +79,19 @@ const Blog = () => {
                 <div className="container mx-auto px-6 py-10 text-center">Checking permissions...</div>
               ) : canEdit ? (
                 <BlogEditor mode="edit" />
+              ) : (
+                <Navigate to="/blog" replace />
+              )
+            }
+          />
+          
+          <Route
+            path="/drafts"
+            element={
+              loading ? (
+                <div className="container mx-auto px-6 py-10 text-center">Checking permissions...</div>
+              ) : canEdit ? (
+                <BlogDraftManager />
               ) : (
                 <Navigate to="/blog" replace />
               )

@@ -8,8 +8,13 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { OnboardingTutorial } from "@/components/onboarding/OnboardingTutorial";
 import { lazy, Suspense } from "react";
 import MusicRooms from "./components/room/MusicRooms.tsx";
-import Blog from './pages/Blog';
+import Blog from './components/blog/Blog.tsx';
 import RoomTemplates from './components/room/RoomTemplates';
+import { HelmetProvider } from 'react-helmet-async';
+// SEO and PWA Components
+import AdvancedSEO from '@/components/SEO/AdvancedSEO';
+import InstallPrompt from '@/components/pwa/InstallPrompt';
+
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -30,7 +35,7 @@ const Auth = {
 };
 const Misc = {
   Tutorial: lazy(() => import("./components/Tutorial/Tutorial.tsx")),
-  Blog: lazy(() => import("./pages/Blog.tsx")),
+  Blog: lazy(() => import("./components/blog/Blog.tsx")),
   NotFound: lazy(() => import("./pages/NotFound")),
 
   Help: lazy(() => import("./pages/Help")),
@@ -101,11 +106,14 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
+   <HelmetProvider>
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <TooltipProvider>
         <BrowserRouter>
+          {/* <AdvancedSEO /> */}
           <Toaster />
+
           <Sonner />
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
@@ -179,10 +187,13 @@ const App = () => (
             </Routes>
             <OnboardingTutorial />
           </Suspense>
+          <InstallPrompt />
+          <Toaster />
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;

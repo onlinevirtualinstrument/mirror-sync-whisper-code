@@ -1,5 +1,6 @@
 
 import {
+  setDoc,
   collection,
   addDoc,
   updateDoc,
@@ -13,7 +14,8 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db } from '@/utils/auth/firebase';
-import { BlogPost, UserRole } from '@/components/blog/blog';
+import { BlogPost, UserRole, BlogDraft } from '@/components/blog/blog';
+
 
 // Collections
 const blogsCollection = collection(db, 'blogs');
@@ -180,4 +182,47 @@ export const setUserRole = async (email: string, role: 'user' | 'admin' | 'super
       grantedBy: user.email,
     });
   }
+};
+
+
+
+
+export const saveDraftToFirestore = async (draftId: string, data: any) => {
+  const draftRef = doc(collection(db, 'blog-drafts'), draftId);
+  await setDoc(draftRef, data, { merge: true });
+};
+
+export const getDraftById = async (draftId: string) => {
+  const draftRef = doc(db, 'blog-drafts', draftId);
+  const snap = await getDoc(draftRef);
+  return snap.exists() ? snap.data() : null;
+};
+
+export const deleteDraftById = async (draftId: string) => {
+  const draftRef = doc(db, 'blog-drafts', draftId);
+  await deleteDoc(draftRef);
+};
+
+
+export const getUserDrafts = async (uid: string): Promise<BlogDraft[]> => {
+  const draftsRef = collection(db, 'blog-drafts');
+  const q = query(draftsRef, where('authorId', '==', uid));
+  const snapshot = await getDocs(q);
+
+  const drafts: BlogDraft[] = snapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      title: data.title || '',
+      content: data.content || '',
+      imageUrl: data.imageUrl || '',
+      authorId: data.authorId,
+      authorName: data.authorName || 'Anonymous',
+      createdAt: data.createdAt || Date.now(),
+      updatedAt: data.updatedAt || Date.now(),
+      status: data.status || 'draft',
+    };
+  });
+
+  return drafts;
 };

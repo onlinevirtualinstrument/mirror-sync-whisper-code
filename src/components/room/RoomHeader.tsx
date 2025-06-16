@@ -11,7 +11,7 @@ import {
   X,
   Users,
   Share,
-  Volume,
+  MessageCircle,
   VolumeX,
   MessageSquare
 } from 'lucide-react';
@@ -47,9 +47,11 @@ import { Label } from '@/components/ui/label';
 import RoomSettings from './RoomSettings';
 import RoomParticipants from './RoomParticipants';
 import RoomChat from './RoomChat';
+import UnreadMessageBadge from "./UnreadMessageBadge";
+
 
 const RoomHeader: React.FC = () => {
-  const { room, isHost, userInfo, switchInstrument, leaveRoom, closeRoom, toggleChat } = useRoom();
+  const { room, isHost, userInfo, switchInstrument, leaveRoom, closeRoom, unreadMessageCount, toggleChat } = useRoom();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
 
@@ -186,20 +188,29 @@ const RoomHeader: React.FC = () => {
 
 
           {/* Open Chat Dialog */}
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="mr-2">Open Chat</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl h-[70vh] overflow-hidden flex flex-col">
-              <DialogHeader>
-                <DialogTitle>Room Chat</DialogTitle>
-                <DialogDescription>Send messages in the room.</DialogDescription>
-              </DialogHeader>
-              <div className="flex-1 overflow-y-auto border-t pt-4">
-                <RoomChat />
-              </div>
-            </DialogContent>
-          </Dialog>
+           <Dialog>
+      <DialogTrigger asChild>
+        <div className="relative inline-block">
+          <Button variant="outline">Open Chat</Button>
+          {unreadMessageCount > 0 && (
+            <div className="absolute -top-1 -right-1">
+              <UnreadMessageBadge count={unreadMessageCount} />
+            </div>
+          )}
+        </div>
+      </DialogTrigger>
+
+      <DialogContent className="max-w-2xl h-[70vh] flex flex-col overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>Room Chat</DialogTitle>
+          <DialogDescription>Send messages in the room.</DialogDescription>
+        </DialogHeader>
+        <div className="flex-1 overflow-hidden border-t pt-4">
+          <RoomChat />
+        </div>
+      </DialogContent>
+    </Dialog>
+          
 
 
           {/* Open Participants Dialog */}

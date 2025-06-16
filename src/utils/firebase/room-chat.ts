@@ -1,4 +1,4 @@
-import { collection, addDoc, deleteDoc, query, where, onSnapshot, serverTimestamp, getDoc, updateDoc, doc, getDocs, arrayUnion, arrayRemove } from "firebase/firestore";
+import { collection, addDoc, deleteDoc, query, where, onSnapshot, serverTimestamp, writeBatch, getDoc, updateDoc, doc, getDocs, arrayUnion, arrayRemove } from "firebase/firestore";
 import { toast } from '@/hooks/use-toast';
 import { db } from './config';
 
@@ -243,4 +243,44 @@ export const listenForUnreadMessages = (
       if (onError) onError(error);
     }
   );
+};
+
+
+export const markChatAsRead = async (roomId: string, userId: string) => {
+  const q = query(
+    collection(db, "musicRooms", roomId, "privateMessages"),
+    where("receiverId", "==", userId),
+    where("read", "==", false)
+  );
+
+  const snapshot = await getDocs(q);
+  const batch = writeBatch(db);
+
+  snapshot.forEach((doc) => {
+    batch.update(doc.ref, { read: true });
+  });
+
+  if (!snapshot.empty) {
+    await batch.commit();
+  }
+};
+
+
+export const markChatAsReadInFirestore = async (roomId: string, userId: string) => {
+  const q = query(
+    collection(db, "musicRooms", roomId, "privateMessages"),
+    where("receiverId", "==", userId),
+    where("read", "==", false)
+  );
+
+  const snapshot = await getDocs(q);
+  const batch = writeBatch(db);
+
+  snapshot.forEach(doc => {
+    batch.update(doc.ref, { read: true });
+  });
+
+  if (!snapshot.empty) {
+    await batch.commit();
+  }
 };

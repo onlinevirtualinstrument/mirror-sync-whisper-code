@@ -5,32 +5,32 @@ import 'react-quill/dist/quill.snow.css';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { createBlogPost, updateBlogPost, getBlogPostById } from '@/components/blog/blogService';
-import { useNavigate, useParams } from 'react-router-dom';
+import { createBlogPost, updateBlogPost, getBlogPostById, saveDraftToFirestore, getDraftById, deleteDraftById, getUserDrafts } from '@/components/blog/blogService';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { auth } from '@/utils/auth/firebase';
+import { Save, ArrowLeft, DraftingCompass } from 'lucide-react';
 
 const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [imageUrlError, setImageUrlError] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(mode === 'edit');
+  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
   const navigate = useNavigate();
   const { id } = useParams();
 
-  // Quill editor modules and formats
   const modules = {
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
       ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-      [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
       ['link', 'image'],
       ['clean']
     ],
   };
-  
+
   const formats = [
     'header',
     'bold', 'italic', 'underline', 'strike', 'blockquote',
@@ -61,6 +61,56 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
     }
   }, [id, mode, navigate]);
 
+  // Auto-save draft functionality
+  useEffect(() => {
+    if (autoSaveTimer) {
+      clearTimeout(autoSaveTimer);
+    }
+
+    const timer = setTimeout(() => {
+      if (title || content) {
+        saveDraft();
+      }
+    }, 3000); // Auto-save after 3 seconds of inactivity
+
+    setAutoSaveTimer(timer);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [title, content, imageUrl]);
+
+
+  const saveDraft = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const draftId = id || `draft-${user.uid}-${Date.now()}`;
+    const draft = {
+      id: draftId,
+      title,
+      content,
+      imageUrl,
+      authorId: user.uid,
+      authorName: user.displayName || 'Anonymous',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      status: 'draft',
+    };
+
+    try {
+      await saveDraftToFirestore(draftId, draft);
+    } catch (err) {
+      console.error('Error saving draft:', err);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    await saveDraft();
+    toast.success('Draft saved successfully');
+  };
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -85,6 +135,14 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
 
       if (mode === 'create') {
         const postId = await createBlogPost(postData);
+
+        // Remove from drafts after publishing
+        const existingDrafts = JSON.parse(localStorage.getItem('blog-drafts') || '[]');
+        const updatedDrafts = existingDrafts.filter((d: any) =>
+          !(d.title === title && d.authorId === user.uid)
+        );
+        localStorage.setItem('blog-drafts', JSON.stringify(updatedDrafts));
+
         toast.success('Blog post created');
         navigate(`/blog/${postId}`);
       } else if (mode === 'edit' && id) {
@@ -103,6 +161,19 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
 
   return (
     <div className="container mx-auto px-6 py-10">
+      <div className="mb-4 flex justify-between">
+        <Button variant="ghost" asChild className="mb-6 text-[#7E69AB]">
+          <Link to="/blog" className="flex items-center gap-2">
+            <ArrowLeft size={16} />
+            <span>Back to all posts</span>
+          </Link>
+        </Button>
+        <Link to="/blog/drafts" className="flex items-center gap-2">
+          <Button className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in">
+            <DraftingCompass size={16} />
+            View Drafts
+          </Button></Link>
+      </div>
       <Card className="allow-copy p-6 bg-gradient-to-r from-[#F1F0FB] to-[#D6BCFA] border-2 border-[#E5DEFF] shadow-lg animate-fade-in">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
@@ -124,7 +195,7 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
               Blog Content
             </label>
 
-            <div className="mb-6"> {/* Add spacing below editor */}
+            <div className="mb-6">
               <ReactQuill
                 theme="snow"
                 value={content}
@@ -160,7 +231,7 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
               </style>
             </div>
           </div>
-             
+
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <label htmlFor="imageUrl" className="text-sm font-medium text-[#7E69AB]">
@@ -192,23 +263,35 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
             </div>
           </div>
 
-          <div className="flex justify-end space-x-4">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => navigate('/blog')} 
-              disabled={loading}
-              className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF] animate-fade-in"
+          <div className="flex justify-between items-center">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSaveDraft}
+              className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF]"
             >
-              Cancel
+              <Save className="h-4 w-4 mr-2" />
+              Save Draft
             </Button>
-            <Button 
-              type="submit" 
-              disabled={loading}
-              className="bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white font-bold animate-scale-in hover:shadow-md transition-all"
-            >
-              {loading ? 'Saving...' : mode === 'create' ? 'Publish Post' : 'Update Post'}
-            </Button>
+
+            <div className="flex space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/blog')}
+                disabled={loading}
+                className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white font-bold hover:shadow-md transition-all"
+              >
+                {loading ? 'Saving...' : mode === 'create' ? 'Publish Post' : 'Update Post'}
+              </Button>
+            </div>
           </div>
         </form>
       </Card>
