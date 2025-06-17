@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Sun, Moon, Palette, Guitar } from 'lucide-react';
-import { cn } from './utils';
+import { cn } from '@/lib/utils';
 import { GuitarType } from './GuitarSoundProfiles';
 
 export type GuitarTheme = 'light' | 'dark' | 'neon' | 'vintage' | 'studio';

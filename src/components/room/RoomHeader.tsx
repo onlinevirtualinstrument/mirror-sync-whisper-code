@@ -150,7 +150,7 @@ const RoomHeader: React.FC = () => {
               onValueChange={handleInstrumentChange}
               disabled={!room.allowDifferentInstruments && !isHost}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Select instrument" />
               </SelectTrigger>
               <SelectContent>
@@ -177,7 +177,7 @@ const RoomHeader: React.FC = () => {
                   size="sm"
                   onClick={handleShare}
                 >
-                  <Share size={16} className="mr-1" /> Share
+                  <Share size={16} className="mr-0" /> Share
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -191,7 +191,7 @@ const RoomHeader: React.FC = () => {
            <Dialog>
       <DialogTrigger asChild>
         <div className="relative inline-block">
-          <Button variant="outline">Open Chat</Button>
+          <Button variant="outline"><MessageCircle size={16} className="mr-0" />Chat</Button>
           {unreadMessageCount > 0 && (
             <div className="absolute -top-1 -right-1">
               <UnreadMessageBadge count={unreadMessageCount} />
@@ -277,7 +277,7 @@ const RoomHeader: React.FC = () => {
                       size="sm"
                       onClick={() => closeRoom()}
                     >
-                      <X size={16} className="mr-1" /> Close Room
+                      <X size={16} className="mr-0" /> Close Room
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>

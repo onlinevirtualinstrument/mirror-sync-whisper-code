@@ -7,7 +7,7 @@ import GuitarSettings from './GuitarSettings';
 import NotesPopup from './NotesPopup';
 import { processAudioWithAI } from './AIAudioProcessor';
 import { GuitarType, GUITAR_TUNINGS, GUITAR_SOUND_PROFILES } from './GuitarSoundProfiles';
-import { cn } from './utils';
+import { cn } from '@/lib/utils';
 import GuitarTopControls from './GuitarTopControls';
 import Navbar from '../../layout/Navbar';
 import { lockToLandscape, toggleFullscreen } from "../../landscapeMode/lockToLandscape";

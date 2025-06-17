@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mic, Square, Play, Pause, Download, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from './utils';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 export interface Recording {
