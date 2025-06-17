@@ -31,7 +31,7 @@ const RoomChat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollToBottom();
+    // scrollToBottom();
     markChatAsRead();
   }, [messages]);
 
@@ -72,12 +72,12 @@ const RoomChat: React.FC = () => {
                       <AvatarFallback>{getInitials(msg.senderName)}</AvatarFallback>
                     </Avatar>
                   )}
-                  <div className={`p-2 rounded-lg text-sm ${isCurrentUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                  <div className={`p-2 rounded-lg text-sm ${isCurrentUser ? 'bg-gray-600 text-primary-foreground' : 'bg-muted'}`}>
                     <div className="flex items-center justify-between gap-2 mb-0.5">
                       <span className="text-xs font-medium">
                         {isCurrentUser ? 'You' : msg.senderName}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs  {isCurrentUser ? white: text-muted-foreground}">
                         {formatTime(msg.timestamp)}
                       </span>
                     </div>

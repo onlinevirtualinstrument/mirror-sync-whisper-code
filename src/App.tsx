@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,7 +13,6 @@ import { HelmetProvider } from 'react-helmet-async';
 // SEO and PWA Components
 import AdvancedSEO from '@/components/SEO/AdvancedSEO';
 import InstallPrompt from '@/components/pwa/InstallPrompt';
-
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -105,95 +103,99 @@ const queryClient = new QueryClient({
   },
 });
 
-const App = () => (
-   <HelmetProvider>
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <TooltipProvider>
-        <BrowserRouter>
-          {/* <AdvancedSEO /> */}
-          <Toaster />
+import ErrorBoundary from '@/components/ErrorBoundary';
 
-          <Sonner />
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/explore" element={<Explore />} />
-              <Route path="/categories" element={<Categories />} />
-              <Route path="/categories/:categoryId" element={<CategoryPage />} />
-              <Route path="/instruments/:instrumentId" element={<InstrumentDetail />} />
-              <Route path="/auth/login" element={<Auth.Login />} />
-              <Route path="/auth/register" element={<Auth.Register />} />
-              <Route path="/tutorial" element={<Misc.Tutorial />} />
-              <Route path="/blog/*" element={<Blog />} />
+function App() {
+  return (
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <ErrorBoundary>
+              <BrowserRouter>
+                {/* <AdvancedSEO /> */}
+                <Suspense fallback={<LoadingFallback />}>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/explore" element={<Explore />} />
+                    <Route path="/categories" element={<Categories />} />
+                    <Route path="/categories/:categoryId" element={<CategoryPage />} />
+                    <Route path="/instruments/:instrumentId" element={<InstrumentDetail />} />
+                    <Route path="/auth/login" element={<Auth.Login />} />
+                    <Route path="/auth/register" element={<Auth.Register />} />
+                    <Route path="/tutorial" element={<Misc.Tutorial />} />
+                    <Route path="/blog/*" element={<Blog />} />
 
-              {/* New routes */}
-              <Route path="/help" element={<Misc.Help />} />
-              <Route path="/about" element={<Misc.About />} />
-              <Route path="/privacy" element={<Misc.Privacy />} />
-              <Route path="/contact" element={<Misc.Contact />} />
-              <Route path="/room/:roomId" element={<Misc.MusicRoom />} />
-              <Route path="/music-rooms" element={<MusicRooms />} />
-              <Route path="/music-room-templates" element={<RoomTemplates />} />
+                    {/* New routes */}
+                    <Route path="/help" element={<Misc.Help />} />
+                    <Route path="/about" element={<Misc.About />} />
+                    <Route path="/privacy" element={<Misc.Privacy />} />
+                    <Route path="/contact" element={<Misc.Contact />} />
+                    <Route path="/room/:roomId" element={<Misc.MusicRoom />} />
+                    <Route path="/music-rooms" element={<MusicRooms />} />
+                    <Route path="/music-room-templates" element={<RoomTemplates />} />
 
-              {/* Instrument Routes */}
-              <Route path="/piano" element={<KeyboardInstruments.Piano />} />
-              <Route path="/flute" element={<WindInstruments.FluteIndex />} />
-              <Route path="/guitar" element={<StringInstruments.GuitarIndex />} />
-              <Route path="/violin" element={<StringInstruments.ViolinIndex />} />
-              <Route path="/banjo" element={<StringInstruments.BanjoIndex />} />
-              <Route path="/drums" element={<PercussionInstruments.DrumsIndex />} />
-              <Route path="/harmonica" element={<WindInstruments.HarmonicaIndex />} />
-              <Route path="/harp" element={<StringInstruments.HarpIndex />} />
-              <Route path="/saxophone" element={<WindInstruments.SaxophoneIndex />} />
-              <Route path="/sitar" element={<StringInstruments.SitarIndex />} />
-              <Route path="/trumpet" element={<WindInstruments.TrumpetIndex />} />
-              <Route path="/veena" element={<StringInstruments.VeenaIndex />} />
-              <Route path="/xylophone" element={<PercussionInstruments.XylophoneIndex />} />
-              <Route path="/kalimba" element={<PercussionInstruments.KalimbaIndex />} />
-              <Route path="/marimba" element={<PercussionInstruments.MarimbaIndex />} />
-              <Route path="/tabla" element={<PercussionInstruments.TablaIndex />} />
-              <Route path="/theremin" element={<ElectronicInstruments.ThereminIndex />} />
-              <Route path="/drummachine" element={<ElectronicInstruments.DrumsMachineIndex />} />
-              <Route path="/chordprogression" element={<ElectronicInstruments.ChordProgressionIndex />} />
+                    {/* Instrument Routes */}
+                    <Route path="/piano" element={<KeyboardInstruments.Piano />} />
+                    <Route path="/flute" element={<WindInstruments.FluteIndex />} />
+                    <Route path="/guitar" element={<StringInstruments.GuitarIndex />} />
+                    <Route path="/violin" element={<StringInstruments.ViolinIndex />} />
+                    <Route path="/banjo" element={<StringInstruments.BanjoIndex />} />
+                    <Route path="/drums" element={<PercussionInstruments.DrumsIndex />} />
+                    <Route path="/harmonica" element={<WindInstruments.HarmonicaIndex />} />
+                    <Route path="/harp" element={<StringInstruments.HarpIndex />} />
+                    <Route path="/saxophone" element={<WindInstruments.SaxophoneIndex />} />
+                    <Route path="/sitar" element={<StringInstruments.SitarIndex />} />
+                    <Route path="/trumpet" element={<WindInstruments.TrumpetIndex />} />
+                    <Route path="/veena" element={<StringInstruments.VeenaIndex />} />
+                    <Route path="/xylophone" element={<PercussionInstruments.XylophoneIndex />} />
+                    <Route path="/kalimba" element={<PercussionInstruments.KalimbaIndex />} />
+                    <Route path="/marimba" element={<PercussionInstruments.MarimbaIndex />} />
+                    <Route path="/tabla" element={<PercussionInstruments.TablaIndex />} />
+                    <Route path="/theremin" element={<ElectronicInstruments.ThereminIndex />} />
+                    <Route path="/drummachine" element={<ElectronicInstruments.DrumsMachineIndex />} />
+                    <Route path="/chordprogression" element={<ElectronicInstruments.ChordProgressionIndex />} />
 
-              {/* Alias routes for SEO and category organization */}
-              <Route path="/categories/keyboard/piano" element={<KeyboardInstruments.Piano />} />
-              <Route path="/categories/strings/guitar" element={<StringInstruments.GuitarIndex />} />
-              <Route path="/categories/strings/violin" element={<StringInstruments.ViolinIndex />} />
-              <Route path="/categories/strings/veena" element={<StringInstruments.VeenaIndex />} />
-              <Route path="/categories/strings/banjo" element={<StringInstruments.BanjoIndex />} />
-              <Route path="/categories/strings/sitar" element={<StringInstruments.SitarIndex />} />
-              <Route path="/categories/strings/harp" element={<StringInstruments.HarpIndex />} />
+                    {/* Alias routes for SEO and category organization */}
+                    <Route path="/categories/keyboard/piano" element={<KeyboardInstruments.Piano />} />
+                    <Route path="/categories/strings/guitar" element={<StringInstruments.GuitarIndex />} />
+                    <Route path="/categories/strings/violin" element={<StringInstruments.ViolinIndex />} />
+                    <Route path="/categories/strings/veena" element={<StringInstruments.VeenaIndex />} />
+                    <Route path="/categories/strings/banjo" element={<StringInstruments.BanjoIndex />} />
+                    <Route path="/categories/strings/sitar" element={<StringInstruments.SitarIndex />} />
+                    <Route path="/categories/strings/harp" element={<StringInstruments.HarpIndex />} />
 
-              <Route path="/categories/wind/flute" element={<WindInstruments.FluteIndex />} />
-              <Route path="/categories/wind/saxophone" element={<WindInstruments.SaxophoneIndex />} />
-              <Route path="/categories/wind/trumpet" element={<WindInstruments.TrumpetIndex />} />
-              <Route path="/categories/wind/harmonica" element={<WindInstruments.HarmonicaIndex />} />
+                    <Route path="/categories/wind/flute" element={<WindInstruments.FluteIndex />} />
+                    <Route path="/categories/wind/saxophone" element={<WindInstruments.SaxophoneIndex />} />
+                    <Route path="/categories/wind/trumpet" element={<WindInstruments.TrumpetIndex />} />
+                    <Route path="/categories/wind/harmonica" element={<WindInstruments.HarmonicaIndex />} />
 
-              <Route path="/categories/percussion/drums" element={<PercussionInstruments.DrumsIndex />} />
-              <Route path="/categories/percussion/xylophone" element={<PercussionInstruments.XylophoneIndex />} />
-              <Route path="/categories/percussion/kalimba" element={<PercussionInstruments.KalimbaIndex />} />
-              <Route path="/categories/percussion/marimba" element={<PercussionInstruments.MarimbaIndex />} />
-              <Route path="/categories/percussion/tabla" element={<PercussionInstruments.TablaIndex />} />
+                    <Route path="/categories/percussion/drums" element={<PercussionInstruments.DrumsIndex />} />
+                    <Route path="/categories/percussion/xylophone" element={<PercussionInstruments.XylophoneIndex />} />
+                    <Route path="/categories/percussion/kalimba" element={<PercussionInstruments.KalimbaIndex />} />
+                    <Route path="/categories/percussion/marimba" element={<PercussionInstruments.MarimbaIndex />} />
+                    <Route path="/categories/percussion/tabla" element={<PercussionInstruments.TablaIndex />} />
 
-              <Route path="/categories/electronic/theremin" element={<ElectronicInstruments.ThereminIndex />} />
-              <Route path="/categories/electronic/drummachine" element={<ElectronicInstruments.DrumsMachineIndex />} />
-              <Route path="/categories/electronic/chordprogression" element={<ElectronicInstruments.ChordProgressionIndex />} />
+                    <Route path="/categories/electronic/theremin" element={<ElectronicInstruments.ThereminIndex />} />
+                    <Route path="/categories/electronic/drummachine" element={<ElectronicInstruments.DrumsMachineIndex />} />
+                    <Route path="/categories/electronic/chordprogression" element={<ElectronicInstruments.ChordProgressionIndex />} />
 
 
-              {/* 404 route - must be the last */}
-              <Route path="*" element={<Misc.NotFound />} />
-            </Routes>
-            <OnboardingTutorial />
-          </Suspense>
-          <InstallPrompt />
-          <Toaster />
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-  </HelmetProvider>
-);
+                    {/* 404 route - must be the last */}
+                    <Route path="*" element={<Misc.NotFound />} />
+                  </Routes>
+                  <OnboardingTutorial />
+                </Suspense>
+                <InstallPrompt />
+                <Toaster />
+              </BrowserRouter>
+            </ErrorBoundary>
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
+  );
+}
 
 export default App;

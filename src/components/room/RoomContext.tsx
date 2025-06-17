@@ -136,9 +136,8 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const unsubscribers: (() => void)[] = [];
 
-    room.participants.forEach((participant: any) => {
+    Object.values(room.participants || {}).forEach((participant: any) => {
       if (participant.id === user.uid) return;
-
       const unsubscribe = listenForUnreadMessages(
         roomId,
         user.uid,
@@ -149,9 +148,10 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }));
         }
       );
-
       unsubscribers.push(unsubscribe);
     });
+
+
 
     return () => {
       unsubscribers.forEach(unsub => unsub());
@@ -278,7 +278,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isChatDisabled: disabled
       }));
 
-       addNotification({ 
+      addNotification({
 
         title: disabled ? "Chat Disabled" : "Chat Enabled",
 
@@ -340,7 +340,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
     } catch (error) {
       console.error("Error updating settings:", error);
-       addNotification({
+      addNotification({
 
         title: "Error",
 
@@ -360,7 +360,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     try {
       await handleJoinRequest(roomId, userId, approve);
-      addNotification({ 
+      addNotification({
 
         title: approve ? "User Approved" : "Request Denied",
 
@@ -471,7 +471,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     broadcastInstrumentNote,
     markChatAsRead
   };
-  
+
   return (
     <RoomContext.Provider value={value}>
       {children}

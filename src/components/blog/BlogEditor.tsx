@@ -5,11 +5,12 @@ import 'react-quill/dist/quill.snow.css';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { createBlogPost, updateBlogPost, getBlogPostById, saveDraftToFirestore, getDraftById, deleteDraftById, getUserDrafts } from '@/components/blog/blogService';
 import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { auth } from '@/utils/auth/firebase';
-import { Save, ArrowLeft, DraftingCompass } from 'lucide-react';
+import { Save, ArrowLeft, DraftingCompass, Calendar } from 'lucide-react';
 
 const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
   const [title, setTitle] = useState('');
@@ -19,6 +20,9 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
   const [initialLoading, setInitialLoading] = useState(mode === 'edit');
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
   const [isDraftMode, setIsDraftMode] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
   const navigate = useNavigate();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -122,6 +126,65 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
   const handleSaveDraft = async () => {
     await saveDraft();
     toast.success('Draft saved successfully');
+  };
+
+  const handleScheduleSubmit = async () => {
+    if (!scheduledDate || !scheduledTime) {
+      toast.error('Please select both date and time');
+      return;
+    }
+
+    const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+    if (scheduledDateTime <= new Date()) {
+      toast.error('Scheduled time must be in the future');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const user = auth.currentUser;
+
+      if (!user) {
+        toast.error('You must be logged in to schedule a post');
+        setLoading(false);
+        return;
+      }
+
+      const postData = {
+        title,
+        content,
+        imageUrl,
+        authorId: user.uid,
+        authorName: user.displayName || 'Anonymous',
+        authorPhotoURL: user.photoURL || '',
+        createdAt: Date.now(),
+        scheduledFor: scheduledDateTime.getTime(),
+        status: 'scheduled'
+      };
+
+      // Save as scheduled post
+      const postId = await createBlogPost(postData);
+
+      // If this was a draft being scheduled, delete the draft
+      if (isDraftMode && id) {
+        try {
+          await deleteDraftById(id);
+          toast.success('Blog scheduled and removed from drafts');
+        } catch (error) {
+          console.error('Error deleting draft after scheduling:', error);
+          toast.success('Blog scheduled successfully');
+        }
+      } else {
+        toast.success('Blog scheduled successfully');
+      }
+
+      navigate('/blog');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to schedule blog');
+    } finally {
+      setLoading(false);
+      setScheduleDialogOpen(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -298,15 +361,27 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
           </div>
 
           <div className="flex justify-between items-center">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSaveDraft}
-              className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF]"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save Draft
-            </Button>
+            <div className="flex space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSaveDraft}
+                className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF]"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Draft
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setScheduleDialogOpen(true)}
+                className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF]"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Schedule
+              </Button>
+            </div>
 
             <div className="flex space-x-4">
               <Button
@@ -329,6 +404,69 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
           </div>
         </form>
       </Card>
+
+      {/* Schedule Dialog */}
+      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+        <DialogContent className="sm:max-w-md animate-fade-in">
+          <DialogHeader>
+            <DialogTitle>Schedule Blog Post</DialogTitle>
+            <DialogDescription>
+              Choose when you want this blog post to be published.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="schedule-date" className="text-sm font-medium">
+                Publication Date
+              </label>
+              <Input
+                id="schedule-date"
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="schedule-time" className="text-sm font-medium">
+                Publication Time
+              </label>
+              <Input
+                id="schedule-time"
+                type="time"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                className="w-full"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setScheduleDialogOpen(false)}
+              disabled={loading}
+              className="hover:bg-muted/80 transition-colors"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleScheduleSubmit}
+              disabled={loading || !scheduledDate || !scheduledTime}
+              className="hover:bg-primary/90 transition-colors"
+            >
+              {loading ? (
+                <span className="flex items-center">
+                  <span className="animate-spin mr-2 h-4 w-4 border-2 border-primary-foreground border-opacity-50 border-t-transparent rounded-full"></span>
+                  Scheduling...
+                </span>
+              ) : (
+                'Schedule Post'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

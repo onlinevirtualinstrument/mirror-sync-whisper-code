@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Globe, Lock, Users, Music, ArrowRight, UserPlus } from 'lucide-react';
+import { Globe, Lock, Users, Music, ArrowRight, UserPlus, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/components/ui/use-toast';
 import CreateRoomModal from '@/components/room/CreateRoomModal';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { auth } from '@/utils/firebase/config';
 import { db } from '@/utils/firebase/index';
 import { doc, updateDoc, deleteDoc, collection, onSnapshot, QueryDocumentSnapshot, getDoc, Timestamp, query, orderBy } from 'firebase/firestore';
@@ -36,6 +37,8 @@ interface RoomType {
     avatar: string;
     isHost: boolean;
     status: string;
+    joinedAt: string;
+    lastSeen: string;
   }>;
 }
 
@@ -49,72 +52,144 @@ const MusicRooms = () => {
   const [joiningRoom, setJoiningRoom] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { handleFirebaseError, handleAsyncError } = useErrorHandler();
 
   function isFirestoreTimestamp(value: any): value is { toDate: () => Date } {
     return value && typeof value.toDate === 'function';
   }
 
   useEffect(() => {
-    const unsubscribe = listenToLiveRooms(
-      (liveRooms) => setRooms(liveRooms),
-      () =>
-        toast({
-          description: "Unable to fetch live rooms.",
-          variant: "destructive"
-        })
-    );
-    return () => unsubscribe();
-  }, []);
+    let unsubscribe: (() => void) | null = null;
+    
+    try {
+      console.log('MusicRooms: Setting up live rooms listener');
+      
+      unsubscribe = listenToLiveRooms(
+        (liveRooms) => {
+          console.log('MusicRooms: Received live rooms data:', liveRooms.length, 'rooms');
+          
+          // Enhanced data validation and normalization
+          const normalizedRooms = liveRooms.map(room => {
+            // Ensure participants is always an array
+            const participants = Array.isArray(room.participants) ? room.participants : [];
+            
+            // Validate room data structure
+            const normalizedRoom = {
+              ...room,
+              participants,
+              pendingRequests: Array.isArray(room.pendingRequests) ? room.pendingRequests : [],
+              participantIds: Array.isArray(room.participantIds) ? room.participantIds : [],
+              maxParticipants: typeof room.maxParticipants === 'number' ? room.maxParticipants : 3,
+              isPublic: typeof room.isPublic === 'boolean' ? room.isPublic : true,
+              hostInstrument: room.hostInstrument || 'piano',
+              allowDifferentInstruments: typeof room.allowDifferentInstruments === 'boolean' ? room.allowDifferentInstruments : true
+            };
+            
+            console.log(`Room ${room.id}: participants=${participants.length}, maxParticipants=${normalizedRoom.maxParticipants}`);
+            return normalizedRoom;
+          });
+          
+          setRooms(normalizedRooms);
+        },
+        (error) => {
+          console.error('MusicRooms: Live rooms listener error:', error);
+          handleFirebaseError(error, 'fetch live rooms', user?.uid);
+          
+          toast({
+            description: "Unable to fetch live rooms. Please refresh the page.",
+            variant: "destructive"
+          });
+        }
+      );
+    } catch (error) {
+      console.error('MusicRooms: Failed to setup live rooms listener:', error);
+      handleAsyncError(error as Error, 'setup live rooms listener', user?.uid);
+    }
+
+    return () => {
+      if (unsubscribe) {
+        console.log('MusicRooms: Cleaning up live rooms listener');
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.error('MusicRooms: Error during listener cleanup:', error);
+        }
+      }
+    };
+  }, [user, handleFirebaseError, handleAsyncError]);
 
   const joinRoom = async (room: any) => {
-    if (!user || !room.id) return;
+    if (!user || !room.id) {
+      console.warn('MusicRooms: Cannot join room - missing user or room ID');
+      return;
+    }
 
+    console.log(`MusicRooms: User ${user.uid} attempting to join room ${room.id}`);
+    
     const isHost = room.hostId === user.uid;
-    const isParticipant = (room.participantIds || []).includes(user.uid);
+    const participantIds = Array.isArray(room.participantIds) ? room.participantIds : [];
+    const isParticipant = participantIds.includes(user.uid);
+
+    console.log(`MusicRooms: Join room check - isHost: ${isHost}, isParticipant: ${isParticipant}, isPublic: ${room.isPublic}`);
 
     if (room.isPublic || isHost || isParticipant) {
       try {
+        setJoiningRoom(room.id);
+        
         const roomRef = doc(db, "musicRooms", room.id);
-        const updatedParticipants = room.participants || [];
+        const participants = Array.isArray(room.participants) ? room.participants : [];
+        const updatedParticipants = [...participants];
 
         const alreadyIn = updatedParticipants.some(p => p.id === user.uid);
+        console.log(`MusicRooms: User already in room: ${alreadyIn}`);
 
         if (!alreadyIn) {
-          updatedParticipants.push({
+          const newParticipant = {
             id: user.uid,
             name: user.displayName || "Guest",
             instrument: room.hostInstrument || "piano",
             avatar: user.photoURL || `https://i.pravatar.cc/150?u=${user.uid}`,
             isHost: false,
-            status: 'online'
-          });
+            status: 'online',
+            joinedAt: new Date().toISOString(),
+            lastSeen: new Date().toISOString()
+          };
+          
+          updatedParticipants.push(newParticipant);
+          console.log('MusicRooms: Added new participant:', newParticipant);
         }
 
-        const updatedIds = [...new Set([...(room.participantIds || []), user.uid])];
+        const updatedIds = [...new Set([...participantIds, user.uid])];
 
         await updateDoc(roomRef, {
           participants: updatedParticipants,
-          participantIds: updatedIds
+          participantIds: updatedIds,
+          lastActivity: new Date().toISOString()
         });
 
+        console.log(`MusicRooms: Successfully joined room ${room.id}`);
+        
         toast({
           title: "Joined Room",
           description: `You've joined ${room.name}`,
         });
 
-        console.log(`User ${user.uid} joined room ${room.id}`);
-
         navigate(`/room/${room.id}`);
 
       } catch (error) {
-        console.error("Failed to join room:", error);
+        console.error("MusicRooms: Failed to join room:", error);
+        handleFirebaseError(error, `join room ${room.id}`, user.uid, room.id);
+        
         toast({
           title: "Join Failed",
           description: "Could not join the room. Please try again.",
           variant: "destructive"
         });
+      } finally {
+        setJoiningRoom(null);
       }
     } else {
+      console.warn('MusicRooms: Access denied to private room');
       toast({
         title: "Access Denied",
         description: "This is a private room and you don't have access.",
@@ -124,35 +199,40 @@ const MusicRooms = () => {
   };
 
   const requestToJoinRoom = async () => {
-    if (!selectedRoom || !user) return;
+    if (!selectedRoom || !user) {
+      console.warn('MusicRooms: Cannot send join request - missing room or user');
+      return;
+    }
 
+    console.log(`MusicRooms: Sending join request for room ${selectedRoom.id}`);
     setLoadingRequest(true);
     const userId = user.uid;
 
     try {
+      const pendingRequests = Array.isArray(selectedRoom.pendingRequests) ? selectedRoom.pendingRequests : [];
       const updatedRoom = {
         ...selectedRoom,
-        pendingRequests: [...(selectedRoom.pendingRequests || []), userId],
+        pendingRequests: [...pendingRequests, userId],
       };
 
-      try {
-        await saveRoomToFirestore(updatedRoom);
-      } catch (error) {
-        toast({ title: 'Error', description: error.message });
-      }
+      await saveRoomToFirestore(updatedRoom);
+      console.log('MusicRooms: Join request sent successfully');
 
       toast({
         description: "Request to join room sent to the host.",
         variant: "default"
-      })
+      });
+      
       setRequestDialogOpen(false);
       setSelectedRoom(null);
     } catch (error) {
-      console.error("🔥 Failed to send join request:", error);
+      console.error("MusicRooms: Failed to send join request:", error);
+      handleFirebaseError(error, `send join request for room ${selectedRoom.id}`, userId, selectedRoom.id);
+      
       toast({
         description: "Failed to send request. Please try again.",
-        variant: "default"
-      })
+        variant: "destructive"
+      });
     } finally {
       setLoadingRequest(false);
     }
@@ -222,10 +302,14 @@ const MusicRooms = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRooms.map((room) => {
-              // Find the host participant
-              const hostParticipant = (room.participants || []).find(p => p.isHost);
+              // Enhanced participant data validation
+              const participants = Array.isArray(room.participants) ? room.participants : [];
+              const hostParticipant = participants.find(p => p?.isHost);
               const hostName = hostParticipant?.name || 'Room Admin';
               const isJoining = joiningRoom === room.id;
+              const maxParticipants = typeof room.maxParticipants === 'number' ? room.maxParticipants : 3;
+
+              console.log(`Rendering room ${room.id}: ${participants.length}/${maxParticipants} participants`);
 
               return (
                 <div
@@ -275,12 +359,12 @@ const MusicRooms = () => {
                     <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
                       <Users className="h-4 w-4" />
                       <span>
-                        {(room.participants?.length || 0)} / {room.maxParticipants || 0} participants
+                        {participants.length} / {maxParticipants} participants
                       </span>
                     </div>
 
                     <div className="flex -space-x-2 mb-4">
-                      {(room.participants || []).map((participant, index) => (
+                      {participants.map((participant, index) => (
                         <div
                           key={`${participant.id}-${index}`}
                           className="h-8 w-8 rounded-full border-2 border-background overflow-hidden hover:scale-110 transition-transform"
@@ -299,7 +383,7 @@ const MusicRooms = () => {
                       onClick={() => joinRoom(room)}
                       className="w-full group hover:scale-[1.02] transition-transform"
                       variant={room.isPublic ? "default" : "outline"}
-                      disabled={!user || (room.participants?.length || 0) >= (room.maxParticipants || 0) || isJoining}
+                      disabled={!user || participants.length >= maxParticipants || isJoining}
                     >
                       {isJoining ? (
                         <span className="flex items-center">
@@ -308,7 +392,7 @@ const MusicRooms = () => {
                         </span>
                       ) : !user ? (
                         'Login to Join'
-                      ) : (room.participants?.length || 0) >= (room.maxParticipants || 0) ? (
+                      ) : participants.length >= maxParticipants ? (
                         'Room Full'
                       ) : !room.isPublic ? (
                         <>

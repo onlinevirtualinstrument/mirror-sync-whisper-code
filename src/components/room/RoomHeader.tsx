@@ -102,7 +102,7 @@ const RoomHeader: React.FC = () => {
   };
 
   return (
-    <div className="p-4 bg-background border-b sticky top-0 z-10">
+    <div className="p-4 bg-background border-b">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -200,9 +200,9 @@ const RoomHeader: React.FC = () => {
         </div>
       </DialogTrigger>
 
-      <DialogContent className="max-w-2xl h-[70vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-2xl h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Room Chat</DialogTitle>
+          <DialogTitle className='flex flex-row'><MessageCircle size={16} className="mr-1 " />Room Chat</DialogTitle>
           <DialogDescription>Send messages in the room.</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-hidden border-t pt-4">
