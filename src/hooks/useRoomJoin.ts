@@ -22,7 +22,8 @@ export const useRoomJoin = () => {
         
         if (isParticipant) {
           console.log('useRoomJoin: User is already a participant');
-          return; // User is already in the room
+          // User is already in room, no need to show loading
+          return;
         }
 
         // Try to add user to room
@@ -38,6 +39,7 @@ export const useRoomJoin = () => {
           navigate('/music-rooms');
         } else {
           console.log('useRoomJoin: Successfully joined room');
+          // Success toast is handled in addUserToRoom
         }
       } catch (error) {
         console.error('useRoomJoin: Error joining room:', error);
@@ -50,6 +52,9 @@ export const useRoomJoin = () => {
       }
     };
 
-    handleRoomJoin();
-  }, [roomId, user, navigate]);
+    // Add a small delay to ensure the room data has loaded
+    const timeoutId = setTimeout(handleRoomJoin, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [roomId, user?.uid, navigate]); // Only depend on stable values
 };

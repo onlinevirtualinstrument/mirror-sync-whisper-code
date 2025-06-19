@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -156,30 +157,47 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [roomId, user, room]);
 
-  // Auto-close room when empty and navigate users when removed
+  // FIXED: Auto-close room when empty and navigate users when removed
   useEffect(() => {
-    if (!room || !user) return;
+    if (!room || !user || !roomId) return;
 
     const participants = Array.isArray(room.participants) ? room.participants : [];
+    
+    console.log('RoomContext: Checking participants:', participants.length, 'Current user:', user.uid);
     
     // Check if current user is still a participant
     const isStillParticipant = participants.some(p => p.id === user.uid);
     
-    if (!isStillParticipant && roomId) {
-      console.log('User no longer in room, navigating away');
+    console.log('RoomContext: Is still participant:', isStillParticipant);
+    
+    if (!isStillParticipant && participants.length > 0) {
+      // User was removed but room still has participants
+      console.log('RoomContext: User removed from room, navigating away');
       navigate('/music-rooms');
       addNotification({
-        title: "Left Room",
-        message: "You have been removed from the room or the room was closed",
+        title: "Removed from Room",
+        message: "You have been removed from the room",
         type: "info"
       });
       return;
     }
 
-    // Auto-close room if empty
-    if (participants.length === 0 && isHost) {
-      console.log('Room is empty, closing automatically');
-      closeRoom();
+    // Auto-close room if completely empty (no participants at all)
+    if (participants.length === 0) {
+      console.log('RoomContext: Room is completely empty');
+      if (isHost) {
+        console.log('RoomContext: Host closing empty room');
+        closeRoom();
+      } else {
+        // Non-host user in empty room should just leave
+        console.log('RoomContext: Non-host leaving empty room');
+        navigate('/music-rooms');
+        addNotification({
+          title: "Room Closed",
+          message: "The room has been closed",
+          type: "info"
+        });
+      }
     }
   }, [room, user, isHost, roomId, navigate, addNotification]);
 
@@ -187,8 +205,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!roomId || !user) return;
 
     try {
+      console.log('RoomContext: User leaving room');
       await removeUserFromRoom(roomId, user.uid);
-      navigate('/music-rooms'); // Ensure navigation happens
+      
+      // Always navigate after leaving
+      navigate('/music-rooms');
       addNotification({
         title: "Left Room",
         message: "You have left the room",
@@ -211,8 +232,9 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!roomId || !user || !isHost) return;
 
     try {
+      console.log('RoomContext: Host closing room');
       await deleteRoomFromFirestore(roomId);
-      navigate('/music-rooms'); // Redirect to home
+      navigate('/music-rooms');
       addNotification({
         title: "Room Closed",
         message: "Room has been closed",
@@ -272,11 +294,12 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Remove a user from the room (host only)
+  // FIXED: Remove a user from the room (host only)
   const removeUser = async (userId: string) => {
     if (!roomId || !user || !isHost) return;
 
     try {
+      console.log('RoomContext: Host removing user:', userId);
       await removeUserFromRoom(roomId, userId);
       addNotification({
         title: "User Removed",
@@ -488,13 +511,116 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     switchInstrument,
     muteUser,
     removeUser,
-    toggleChat,
-    toggleAutoClose,
-    updateSettings,
-    respondToJoinRequest,
-    sendPrivateMsg,
+    toggleChat: async (disabled: boolean) => {
+      if (!roomId || !user || !isHost) return;
+      try {
+        await toggleRoomChat(roomId, disabled);
+        setRoom(prev => ({ ...prev, isChatDisabled: disabled }));
+        addNotification({
+          title: disabled ? "Chat Disabled" : "Chat Enabled",
+          message: disabled ? "Chat has been disabled for all users" : "Chat has been enabled for all users",
+          type: "info"
+        });
+      } catch (error) {
+        console.error("Error toggling chat:", error);
+        addNotification({
+          title: "Error",
+          message: "Failed to update chat settings",
+          type: "error"
+        });
+      }
+    },
+    toggleAutoClose: async (enabled: boolean, timeout: number = 5) => {
+      if (!roomId || !user || !isHost) return;
+      try {
+        await toggleAutoCloseRoom(roomId, enabled, timeout);
+        addNotification({
+          title: enabled ? "Auto-Close Enabled" : "Auto-Close Disabled",
+          message: enabled ? `Room will auto-close after ${timeout} minutes of inactivity` : "Auto-close has been disabled for this room",
+          type: "info"
+        });
+      } catch (error) {
+        console.error("Error toggling auto-close:", error);
+        addNotification({
+          title: "Error",
+          message: "Failed to update auto-close settings",
+          type: "error"
+        });
+      }
+    },
+    updateSettings: async (settings: any) => {
+      if (!roomId || !user || !isHost) return;
+      try {
+        await updateRoomSettings(roomId, settings);
+        addNotification({
+          title: "Room Settings Updated",
+          message: "Room settings have been updated successfully",
+          type: "success"
+        });
+      } catch (error) {
+        console.error("Error updating settings:", error);
+        addNotification({
+          title: "Error",
+          message: "Failed to update room settings",
+          type: "error"
+        });
+      }
+    },
+    respondToJoinRequest: async (userId: string, approve: boolean) => {
+      if (!roomId || !user || !isHost) return;
+      try {
+        await handleJoinRequest(roomId, userId, approve);
+        addNotification({
+          title: approve ? "User Approved" : "Request Denied",
+          message: approve ? "User has been approved to join" : "User's request has been denied",
+          type: approve ? "success" : "info"
+        });
+      } catch (error) {
+        console.error("Error handling join request:", error);
+        addNotification({
+          title: "Error",
+          message: "Failed to process join request",
+          type: "error"
+        });
+      }
+    },
+    sendPrivateMsg: async (receiverId: string, message: string) => {
+      if (!roomId || !user || !message.trim()) return;
+      try {
+        await sendPrivateMessage(roomId, user.uid, receiverId, message);
+        addNotification({
+          title: "Private Message Sent",
+          message: "Your message has been sent",
+          type: "success"
+        });
+      } catch (error) {
+        console.error("Error sending private message:", error);
+        addNotification({
+          title: "Error",
+          message: "Failed to send private message",
+          type: "error"
+        });
+      }
+    },
     setPrivateMessagingUser,
-    requestJoin,
+    requestJoin: async (code?: string) => {
+      if (!roomId || !user) return;
+      try {
+        await requestToJoinRoom(roomId, user.uid, !!code);
+        addNotification({
+          title: "Join Request Sent",
+          message: "Your request to join has been sent",
+          type: "info"
+        });
+      } catch (error) {
+        console.error("Error requesting to join:", error);
+        addNotification({
+          title: "Error",
+          message: "Failed to send join request",
+          type: "error"
+        });
+      }
+    },
     broadcastInstrumentNote,
     markChatAsRead
   };

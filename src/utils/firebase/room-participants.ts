@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, setDoc, onSnapshot, collection, getDocs } from "firebase/firestore";
 import { toast } from '@/hooks/use-toast';
 import { db } from './config';
 
@@ -84,22 +84,21 @@ export const addUserToRoom = async (roomId: string, user: any): Promise<boolean>
     const newParticipant = {
       id: user.uid,
       name: user.displayName || 'Anonymous',
-      instrument: roomData.allowDifferentInstruments ? 'piano' : roomData.hostInstrument, // Default instrument
+      instrument: roomData.allowDifferentInstruments ? 'piano' : roomData.hostInstrument,
       avatar: user.photoURL || '',
       isHost: false,
       status: 'active',
       muted: false
     };
     
-    // First update participantIds array (crucial for security rules)
-    await updateDoc(roomRef, {
-      participantIds: arrayUnion(user.uid),
-      lastActivity: new Date().toISOString()
-    });
+    // Update both participantIds and participants arrays atomically
+    const updatedParticipants = [...participants, newParticipant];
+    const updatedParticipantIds = [...participantIds, user.uid];
     
-    // Then update participants array
     await updateDoc(roomRef, {
-      participants: arrayUnion(newParticipant)
+      participants: updatedParticipants,
+      participantIds: updatedParticipantIds,
+      lastActivity: new Date().toISOString()
     });
     
     console.log("User successfully added to room:", user.uid);
@@ -112,62 +111,73 @@ export const addUserToRoom = async (roomId: string, user: any): Promise<boolean>
   }
 };
 
-// Remove user from a room
+// Remove user from a room - FIXED VERSION
 export const removeUserFromRoom = async (roomId: string, userId: string): Promise<void> => {
   try {
+    console.log(`removeUserFromRoom: Removing user ${userId} from room ${roomId}`);
+    
     const roomRef = doc(db, "musicRooms", roomId);
     const roomSnap = await getDoc(roomRef);
     
-    if (!roomSnap.exists()) return;
+    if (!roomSnap.exists()) {
+      console.log("removeUserFromRoom: Room doesn't exist");
+      return;
+    }
     
     const roomData = roomSnap.data();
     const participants = roomData.participants || [];
+    const participantIds = roomData.participantIds || [];
     
     // Find user in participants
-    const userIndex = participants.findIndex((p: any) => p.id === userId);
+    const userParticipant = participants.find((p: any) => p.id === userId);
     
-    if (userIndex === -1) return; // User not in room
+    if (!userParticipant) {
+      console.log("removeUserFromRoom: User not found in participants");
+      return; // User not in room
+    }
+    
+    // Remove user from both arrays
+    const updatedParticipants = participants.filter((p: any) => p.id !== userId);
+    const updatedParticipantIds = participantIds.filter((id: string) => id !== userId);
+    
+    console.log(`removeUserFromRoom: Participants before: ${participants.length}, after: ${updatedParticipants.length}`);
     
     // Check if user is host
-    const isHost = participants[userIndex].isHost;
+    const isHost = userParticipant.isHost;
     
-    if (isHost && participants.length > 1) {
+    if (isHost && updatedParticipants.length > 0) {
       // If host is leaving and there are other participants, assign a new host
-      const newHost = participants.find((p: any) => p.id !== userId);
+      const newHost = updatedParticipants[0]; // Make first remaining user the host
+      newHost.isHost = true;
       
-      if (newHost) {
-        // Remove old host
-        const updatedParticipants = participants.filter((p: any) => p.id !== userId);
-        
-        // Update new host status
-        const newHostIndex = updatedParticipants.findIndex((p: any) => p.id === newHost.id);
-        if (newHostIndex !== -1) {
-          updatedParticipants[newHostIndex].isHost = true;
-        }
-        
-        // Update room with new host and without old host
-        await updateDoc(roomRef, {
-          participants: updatedParticipants,
-          participantIds: roomData.participantIds.filter((id: string) => id !== userId),
-          lastActivity: new Date().toISOString()
-        });
-      }
-    } else if (isHost) {
-      // If host is the only one or last one leaving, delete the room
+      console.log(`removeUserFromRoom: Assigning new host: ${newHost.id}`);
+      
+      // Update room with new host and without old host
+      await updateDoc(roomRef, {
+        participants: updatedParticipants,
+        participantIds: updatedParticipantIds,
+        hostId: newHost.id,
+        lastActivity: new Date().toISOString()
+      });
+    } else if (isHost && updatedParticipants.length === 0) {
+      // If host is the only one leaving, delete the room
+      console.log("removeUserFromRoom: Host leaving empty room, deleting room");
       await deleteRoomFromFirestore(roomId);
     } else {
       // Regular participant leaving
-      const updatedParticipants = participants.filter((p: any) => p.id !== userId);
-      
+      console.log("removeUserFromRoom: Regular participant leaving");
       await updateDoc(roomRef, {
         participants: updatedParticipants,
-        participantIds: roomData.participantIds.filter((id: string) => id !== userId),
+        participantIds: updatedParticipantIds,
         lastActivity: new Date().toISOString()
       });
     }
+    
+    console.log("removeUserFromRoom: Successfully removed user from room");
   } catch (error) {
     console.error("Error removing user from room:", error);
     toast({ description: "Failed to leave room properly." });
+    throw error; // Re-throw to handle in calling code
   }
 };
 
@@ -405,13 +415,11 @@ export const requestToJoinRoom = async (
 
 // Import needed for completion of function imported and used in room-participants.ts
 import { deleteRoomFromFirestore } from './rooms';
-import { collection, getDocs } from 'firebase/firestore';
-
 
 // Handle broadcasting and receiving instrument notes
 export const broadcastNote = async (roomId: string, note: any): Promise<void> => {
   try {
-    const notesRef = doc(collection(db, 'rooms', roomId, 'notes'), Date.now().toString());
+    const notesRef = doc(collection(db, 'musicRooms', roomId, 'notes'), Date.now().toString());
     await setDoc(notesRef, {
       ...note,
       timestamp: new Date().toISOString()
@@ -430,7 +438,7 @@ export const listenToInstrumentNotes = (
   onNote: (note: any) => void,
   onError: (error: any) => void
 ): (() => void) => {
-  const notesRef = collection(db, 'rooms', roomId, 'notes');
+  const notesRef = collection(db, 'musicRooms', roomId, 'notes');
   
   const unsubscribe = onSnapshot(
     notesRef,

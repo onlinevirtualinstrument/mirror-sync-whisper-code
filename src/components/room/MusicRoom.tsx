@@ -18,7 +18,7 @@ const MusicRoom: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const { user, loading } = useAuth();
   
-  // Handle room joining via shared links
+  // Handle room joining via shared links - this will handle the join logic
   useRoomJoin();
 
   // Check if user is authenticated

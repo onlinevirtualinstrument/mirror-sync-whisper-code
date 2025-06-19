@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -18,6 +18,24 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
   const [unreadMessageCount, setUnreadMessageCount] = useState<number>(0);
   const [lastSeenMessageTimestamp, setLastSeenMessageTimestamp] = useState<number>(Date.now());
   const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
+  
+  // Use ref to avoid stale closure issues
+  const messagesRef = useRef<any[]>([]);
+  const userRef = useRef(user);
+  const lastSeenRef = useRef(lastSeenMessageTimestamp);
+  
+  // Update refs when values change
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+  
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+  
+  useEffect(() => {
+    lastSeenRef.current = lastSeenMessageTimestamp;
+  }, [lastSeenMessageTimestamp]);
 
   useEffect(() => {
     if (!roomId || !user) {
@@ -38,31 +56,33 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
           return timeA.getTime() - timeB.getTime();
         });
 
+        // Force update messages immediately for real-time display
         setMessages(sortedMessages);
 
         // Calculate unread messages based on timestamp and sender
-        if (!isFirstLoad) {
+        if (!isFirstLoad && userRef.current) {
           const unreadCount = sortedMessages.filter(msg => {
             const msgTime = msg.timestamp?.toDate?.() || new Date(msg.timestamp || 0);
-            return msg.senderId !== user.uid && 
-                   msgTime.getTime() > lastSeenMessageTimestamp &&
+            return msg.senderId !== userRef.current.uid && 
+                   msgTime.getTime() > lastSeenRef.current &&
                    !msg.isRead;
           }).length;
           
           setUnreadMessageCount(unreadCount);
 
-          // Show notification for new messages
-          const latestMessage = sortedMessages[sortedMessages.length - 1];
-          if (latestMessage && 
-              latestMessage.senderId !== user.uid &&
-              sortedMessages.length > 0) {
-            const latestMsgTime = latestMessage.timestamp?.toDate?.() || new Date(latestMessage.timestamp || 0);
-            if (latestMsgTime.getTime() > lastSeenMessageTimestamp) {
-              addNotification({
-                title: "New Message",
-                message: `${latestMessage.senderName}: ${latestMessage.text.substring(0, 50)}${latestMessage.text.length > 50 ? '...' : ''}`,
-                type: "info"
-              });
+          // Show notification for new messages (only if we have previous messages)
+          if (messagesRef.current.length > 0 && sortedMessages.length > messagesRef.current.length) {
+            const latestMessage = sortedMessages[sortedMessages.length - 1];
+            if (latestMessage && 
+                latestMessage.senderId !== userRef.current.uid) {
+              const latestMsgTime = latestMessage.timestamp?.toDate?.() || new Date(latestMessage.timestamp || 0);
+              if (latestMsgTime.getTime() > lastSeenRef.current) {
+                addNotification({
+                  title: "New Message",
+                  message: `${latestMessage.senderName}: ${latestMessage.text.substring(0, 50)}${latestMessage.text.length > 50 ? '...' : ''}`,
+                  type: "info"
+                });
+              }
             }
           }
         } else {
@@ -84,7 +104,7 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
       console.log('useRoomChat: Cleaning up chat listener');
       unsubscribeChat();
     };
-  }, [roomId, user, lastSeenMessageTimestamp, addNotification, isFirstLoad]);
+  }, [roomId, user?.uid, addNotification]); // Removed dependencies that cause reconnections
 
   const sendMessage = async (message: string) => {
     if (!roomId || !user || !message.trim()) {
