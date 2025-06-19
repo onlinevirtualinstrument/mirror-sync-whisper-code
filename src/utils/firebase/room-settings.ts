@@ -1,4 +1,5 @@
-import { getFirestore, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+
+import { getFirestore, doc, updateDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import { app } from './config';
 
 const db = getFirestore(app);
@@ -10,7 +11,7 @@ const db = getFirestore(app);
  */
 export const toggleRoomChat = async (roomId: string, disabled: boolean): Promise<void> => {
   try {
-    const roomRef = doc(db, 'musicRooms', roomId); // Fixed: was 'rooms'
+    const roomRef = doc(db, 'musicRooms', roomId);
     await updateDoc(roomRef, {
       isChatDisabled: disabled,
       lastUpdated: new Date().toISOString()
@@ -33,7 +34,7 @@ export const toggleAutoCloseRoom = async (
   timeout: number = 5
 ): Promise<void> => {
   try {
-    const roomRef = doc(db, 'musicRooms', roomId); // Fixed: was 'rooms'
+    const roomRef = doc(db, 'musicRooms', roomId);
     await updateDoc(roomRef, {
       autoCloseAfterInactivity: enabled,
       inactivityTimeout: timeout,
@@ -56,7 +57,7 @@ export const updateRoomSettings = async (
   settings: any
 ): Promise<void> => {
   try {
-    const roomRef = doc(db, 'musicRooms', roomId); // Fixed: was 'rooms'
+    const roomRef = doc(db, 'musicRooms', roomId);
     await updateDoc(roomRef, {
       ...settings,
       lastUpdated: new Date().toISOString()
@@ -81,18 +82,39 @@ export const handleJoinRequest = async (
   try {
     const roomRef = doc(db, 'musicRooms', roomId);
     
+    // Get current room data
+    const roomDoc = await getDoc(roomRef);
+    if (!roomDoc.exists()) {
+      throw new Error('Room not found');
+    }
+    
+    const roomData = roomDoc.data();
+    const currentParticipants = roomData.participants || [];
+    const currentJoinRequests = roomData.joinRequests || [];
+    
     if (approve) {
       // Add user to participants
-      // You'd typically need to get user data from users collection first
-      // For simplicity, we'll just add user ID
+      const updatedParticipants = [...currentParticipants, { 
+        id: userId, 
+        joinedAt: new Date().toISOString(),
+        isHost: false,
+        muted: false
+      }];
+      
+      // Remove from join requests
+      const updatedJoinRequests = currentJoinRequests.filter((req: any) => req.userId !== userId);
+      
       await updateDoc(roomRef, {
-        participants: [...(user.participants || []), { id: userId, joinedAt: new Date().toISOString() }],
+        participants: updatedParticipants,
+        joinRequests: updatedJoinRequests,
         lastUpdated: new Date().toISOString()
       });
     } else {
-      // Remove from join requests
+      // Remove from join requests only
+      const updatedJoinRequests = currentJoinRequests.filter((req: any) => req.userId !== userId);
+      
       await updateDoc(roomRef, {
-        joinRequests: (user.joinRequests || []).filter((req: any) => req.userId !== userId),
+        joinRequests: updatedJoinRequests,
         lastUpdated: new Date().toISOString()
       });
     }
@@ -116,25 +138,38 @@ export const requestToJoinRoom = async (
   try {
     const roomRef = doc(db, 'musicRooms', roomId);
     
+    // Get current room data
+    const roomDoc = await getDoc(roomRef);
+    if (!roomDoc.exists()) {
+      throw new Error('Room not found');
+    }
+    
+    const roomData = roomDoc.data();
+    const currentParticipants = roomData.participants || [];
+    const currentJoinRequests = roomData.joinRequests || [];
+    
     if (autoApprove) {
       // Add user directly to participants if auto-approved
-      // You'd typically need to get user data from users collection first
+      const updatedParticipants = [...currentParticipants, { 
+        id: userId, 
+        joinedAt: new Date().toISOString(),
+        isHost: false,
+        muted: false
+      }];
+      
       await updateDoc(roomRef, {
-        participants: [...(user.participants || []), { 
-          id: userId, 
-          joinedAt: new Date().toISOString(),
-          isHost: false,
-          muted: false
-        }],
+        participants: updatedParticipants,
         lastUpdated: new Date().toISOString()
       });
     } else {
       // Add to join requests
+      const updatedJoinRequests = [...currentJoinRequests, { 
+        userId, 
+        requestedAt: new Date().toISOString() 
+      }];
+      
       await updateDoc(roomRef, {
-        joinRequests: [...(user.joinRequests || []), { 
-          userId, 
-          requestedAt: new Date().toISOString() 
-        }],
+        joinRequests: updatedJoinRequests,
         lastUpdated: new Date().toISOString()
       });
     }
