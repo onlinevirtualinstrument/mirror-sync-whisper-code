@@ -1,210 +1,31 @@
 
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { deleteBlogPost, getAllBlogPosts, getScheduledBlogPosts, canUserEditBlogs, getUserDrafts } from '@/components/blog/blogService';
-import { BlogPost, BlogDraft } from '@/components/blog/blog';
-import { toast } from 'sonner';
-import { FileText, Plus, DraftingCompass, Clock, Edit2 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { FileText, Plus, Edit2, Clock } from 'lucide-react';
 import BlogSearchFilter from '@/components/blog/BlogSearchFilter';
 import BlogCard from './components/BlogCard';
-
-type ViewMode = 'published' | 'scheduled' | 'drafts';
+import { useBlogList } from './hooks/useBlogList';
 
 const BlogList: React.FC = () => {
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
-  const [scheduledPosts, setScheduledPosts] = useState<BlogPost[]>([]);
-  const [draftPosts, setDraftPosts] = useState<BlogPost[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [canEdit, setCanEdit] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('published');
   const navigate = useNavigate();
-  const { user } = useAuth();
-
-  const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([]);
-  const [visibleCount, setVisibleCount] = useState(6);
-
-  const handleSearch = ({ query, sort, startDate, endDate }) => {
-    let postsToFilter: BlogPost[] = [];
-    
-    switch (viewMode) {
-      case 'published':
-        postsToFilter = blogPosts;
-        break;
-      case 'scheduled':
-        postsToFilter = scheduledPosts;
-        break;
-      case 'drafts':
-        postsToFilter = draftPosts;
-        break;
-    }
-
-    let posts = [...postsToFilter];
-
-    if (query) {
-      posts = posts.filter(
-        (post) =>
-          post.title?.toLowerCase().includes(query.toLowerCase()) ||
-          post.content?.toLowerCase().includes(query.toLowerCase()) ||
-          post.authorName?.toLowerCase().includes(query.toLowerCase())
-      );
-    }
-
-    if (startDate && endDate) {
-      posts = posts.filter((post) => {
-        const date = new Date(post.createdAt);
-        return date >= startDate && date <= endDate;
-      });
-    }
-
-    if (sort === 'newest') posts.sort((a, b) => b.createdAt - a.createdAt);
-    if (sort === 'oldest') posts.sort((a, b) => a.createdAt - b.createdAt);
-    if (sort === 'za') posts.sort((a, b) => b.title.localeCompare(a.title));
-
-    setFilteredPosts(posts);
-  };
-
-  const fetchDrafts = async () => {
-    if (!canEdit || !user) return;
-    
-    try {
-      const drafts = await getUserDrafts(user.uid);
-      // Convert BlogDraft to BlogPost format for consistency
-      const draftPosts: BlogPost[] = drafts.map(draft => ({
-        ...draft,
-        status: 'draft'
-      }));
-      setDraftPosts(draftPosts);
-      console.log('Fetched draft posts:', draftPosts);
-    } catch (error) {
-      console.error('Error fetching drafts:', error);
-      toast.error('Failed to load drafts');
-    }
-  };
-
-  const fetchScheduledPosts = async () => {
-    if (!canEdit) return;
-    
-    try {
-      const scheduled = await getScheduledBlogPosts();
-      setScheduledPosts(scheduled);
-      console.log('Fetched scheduled posts:', scheduled);
-    } catch (error) {
-      console.error('Error fetching scheduled posts:', error);
-      toast.error('Failed to load scheduled posts');
-    }
-  };
-
-  const handleViewModeChange = async (mode: ViewMode) => {
-    setViewMode(mode);
-    setVisibleCount(6);
-    
-    if (mode === 'scheduled') {
-      await fetchScheduledPosts();
-    } else if (mode === 'drafts') {
-      await fetchDrafts();
-    }
-  };
-
-  const handleDeletePost = async (postId: string, isScheduled: boolean = false, isDraft: boolean = false) => {
-    let confirmMessage = 'Are you sure you want to delete this post?';
-    if (isScheduled) confirmMessage = 'Are you sure you want to delete this scheduled post?';
-    if (isDraft) confirmMessage = 'Are you sure you want to delete this draft?';
-    
-    const confirmed = window.confirm(confirmMessage);
-    if (!confirmed) return;
-
-    try {
-      await deleteBlogPost(postId);
-      
-      if (isDraft) {
-        setDraftPosts(prev => prev.filter(p => p.id !== postId));
-        setFilteredPosts(prev => prev.filter(p => p.id !== postId));
-        toast.success('Draft deleted successfully');
-      } else if (isScheduled) {
-        setScheduledPosts(prev => prev.filter(p => p.id !== postId));
-        setFilteredPosts(prev => prev.filter(p => p.id !== postId));
-        toast.success('Scheduled post deleted successfully');
-      } else {
-        setBlogPosts(prev => prev.filter(p => p.id !== postId));
-        setFilteredPosts(prev => prev.filter(p => p.id !== postId));
-        toast.success('Blog post deleted successfully');
-      }
-    } catch (error) {
-      console.error('Error deleting post:', error);
-      toast.error('Failed to delete post');
-    }
-  };
-
-  useEffect(() => {
-    const fetchBlogPosts = async () => {
-      try {
-        const posts = await getAllBlogPosts();
-        setBlogPosts(posts);
-        setFilteredPosts(posts);
-      } catch (error) {
-        console.error('Error fetching blog posts:', error);
-        toast.error('Failed to load blog posts');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBlogPosts();
-  }, []);
-
-  useEffect(() => {
-    const checkEditPermission = async () => {
-      if (user) {
-        const hasPermission = await canUserEditBlogs();
-        setCanEdit(hasPermission);
-      } else {
-        setCanEdit(false);
-      }
-    };
-
-    checkEditPermission();
-  }, [user]);
-
-  // Update filtered posts when switching between views
-  useEffect(() => {
-    let currentPosts: BlogPost[] = [];
-    
-    switch (viewMode) {
-      case 'published':
-        currentPosts = blogPosts;
-        break;
-      case 'scheduled':
-        currentPosts = scheduledPosts;
-        break;
-      case 'drafts':
-        currentPosts = draftPosts;
-        break;
-    }
-    
-    setFilteredPosts(currentPosts);
-  }, [viewMode, blogPosts, scheduledPosts, draftPosts]);
+  const {
+    loading,
+    canEdit,
+    viewMode,
+    filteredPosts,
+    visibleCount,
+    handleViewModeChange,
+    handleDeletePost,
+    handleSearch,
+    setVisibleCount,
+    getCurrentPosts,
+    getViewTitle
+  } = useBlogList();
 
   if (loading) {
     return <div className="container mx-auto px-6 py-10 text-center animate-pulse">Loading blog posts...</div>;
   }
-
-  const getViewTitle = () => {
-    switch (viewMode) {
-      case 'scheduled': return 'Scheduled Posts';
-      case 'drafts': return 'Draft Posts';
-      default: return 'Blog Posts';
-    }
-  };
-
-  const getCurrentPosts = () => {
-    switch (viewMode) {
-      case 'scheduled': return scheduledPosts;
-      case 'drafts': return draftPosts;
-      default: return blogPosts;
-    }
-  };
 
   const displayPosts = filteredPosts.length > 0 ? filteredPosts : getCurrentPosts();
 

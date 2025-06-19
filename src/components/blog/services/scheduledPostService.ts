@@ -2,9 +2,9 @@
 import { 
   collection, 
   query, 
-  where, 
   getDocs, 
-  updateDoc 
+  updateDoc,
+  doc
 } from 'firebase/firestore';
 import { db } from '@/utils/auth/firebase';
 
@@ -15,16 +15,15 @@ export const checkAndPublishScheduledPosts = async (): Promise<void> => {
   try {
     const currentTime = Date.now();
     
-    // Simple query to get all scheduled posts
-    const q = query(
-      blogsCollection,
-      where('status', '==', 'scheduled')
-    );
-    
+    // Get all posts and filter client-side to avoid index issues
+    const q = query(blogsCollection);
     const snapshot = await getDocs(q);
-    const scheduledPosts = snapshot.docs.filter(doc => {
-      const data = doc.data();
-      return data.scheduledFor && data.scheduledFor <= currentTime;
+    
+    const scheduledPosts = snapshot.docs.filter(docSnap => {
+      const data = docSnap.data();
+      return data.status === 'scheduled' && 
+             data.scheduledFor && 
+             data.scheduledFor <= currentTime;
     });
     
     if (scheduledPosts.length > 0) {
@@ -53,14 +52,17 @@ export const checkAndPublishScheduledPosts = async (): Promise<void> => {
 class ScheduledPostService {
   private intervalId: NodeJS.Timeout | null = null;
   private readonly CHECK_INTERVAL = 60000; // Check every minute
+  private isRunning = false;
 
   start() {
-    if (this.intervalId) {
+    if (this.isRunning) {
       console.log('Scheduled post service already running');
       return;
     }
 
     console.log('Starting scheduled post service');
+    this.isRunning = true;
+    
     this.intervalId = setInterval(async () => {
       try {
         await checkAndPublishScheduledPosts();
@@ -77,6 +79,7 @@ class ScheduledPostService {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
+      this.isRunning = false;
       console.log('Scheduled post service stopped');
     }
   }
