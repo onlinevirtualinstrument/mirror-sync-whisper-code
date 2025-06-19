@@ -2,29 +2,44 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { deleteBlogPost, getAllBlogPosts, getScheduledBlogPosts, canUserEditBlogs } from '@/components/blog/blogService';
-import { BlogPost } from '@/components/blog/blog';
+import { deleteBlogPost, getAllBlogPosts, getScheduledBlogPosts, canUserEditBlogs, getUserDrafts } from '@/components/blog/blogService';
+import { BlogPost, BlogDraft } from '@/components/blog/blog';
 import { toast } from 'sonner';
-import { FileText, Plus, DraftingCompass, Clock } from 'lucide-react';
+import { FileText, Plus, DraftingCompass, Clock, Edit2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import BlogSearchFilter from '@/components/blog/BlogSearchFilter';
 import BlogCard from './components/BlogCard';
 
+type ViewMode = 'published' | 'scheduled' | 'drafts';
+
 const BlogList: React.FC = () => {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [scheduledPosts, setScheduledPosts] = useState<BlogPost[]>([]);
+  const [draftPosts, setDraftPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [canEdit, setCanEdit] = useState(false);
-  const [showScheduled, setShowScheduled] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('published');
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([]);
-  const [originalPosts, setOriginalPosts] = useState<BlogPost[]>([]);
   const [visibleCount, setVisibleCount] = useState(6);
 
   const handleSearch = ({ query, sort, startDate, endDate }) => {
-    const postsToFilter = showScheduled ? scheduledPosts : originalPosts;
+    let postsToFilter: BlogPost[] = [];
+    
+    switch (viewMode) {
+      case 'published':
+        postsToFilter = blogPosts;
+        break;
+      case 'scheduled':
+        postsToFilter = scheduledPosts;
+        break;
+      case 'drafts':
+        postsToFilter = draftPosts;
+        break;
+    }
+
     let posts = [...postsToFilter];
 
     if (query) {
@@ -50,6 +65,24 @@ const BlogList: React.FC = () => {
     setFilteredPosts(posts);
   };
 
+  const fetchDrafts = async () => {
+    if (!canEdit || !user) return;
+    
+    try {
+      const drafts = await getUserDrafts(user.uid);
+      // Convert BlogDraft to BlogPost format for consistency
+      const draftPosts: BlogPost[] = drafts.map(draft => ({
+        ...draft,
+        status: 'draft'
+      }));
+      setDraftPosts(draftPosts);
+      console.log('Fetched draft posts:', draftPosts);
+    } catch (error) {
+      console.error('Error fetching drafts:', error);
+      toast.error('Failed to load drafts');
+    }
+  };
+
   const fetchScheduledPosts = async () => {
     if (!canEdit) return;
     
@@ -63,38 +96,44 @@ const BlogList: React.FC = () => {
     }
   };
 
-  const handleViewScheduled = async () => {
-    if (!showScheduled) {
+  const handleViewModeChange = async (mode: ViewMode) => {
+    setViewMode(mode);
+    setVisibleCount(6);
+    
+    if (mode === 'scheduled') {
       await fetchScheduledPosts();
+    } else if (mode === 'drafts') {
+      await fetchDrafts();
     }
-    setShowScheduled(prev => {
-      const newState = !prev;
-      console.log('Switching to scheduled view:', newState);
-      setVisibleCount(6);
-      return newState;
-    });
   };
 
-  const handleDeletePost = async (postId: string, isScheduled: boolean = false) => {
-    const confirmed = window.confirm(`Are you sure you want to delete this ${isScheduled ? 'scheduled ' : ''}post?`);
+  const handleDeletePost = async (postId: string, isScheduled: boolean = false, isDraft: boolean = false) => {
+    let confirmMessage = 'Are you sure you want to delete this post?';
+    if (isScheduled) confirmMessage = 'Are you sure you want to delete this scheduled post?';
+    if (isDraft) confirmMessage = 'Are you sure you want to delete this draft?';
+    
+    const confirmed = window.confirm(confirmMessage);
     if (!confirmed) return;
 
     try {
       await deleteBlogPost(postId);
       
-      if (isScheduled) {
+      if (isDraft) {
+        setDraftPosts(prev => prev.filter(p => p.id !== postId));
+        setFilteredPosts(prev => prev.filter(p => p.id !== postId));
+        toast.success('Draft deleted successfully');
+      } else if (isScheduled) {
         setScheduledPosts(prev => prev.filter(p => p.id !== postId));
         setFilteredPosts(prev => prev.filter(p => p.id !== postId));
+        toast.success('Scheduled post deleted successfully');
       } else {
         setBlogPosts(prev => prev.filter(p => p.id !== postId));
-        setOriginalPosts(prev => prev.filter(p => p.id !== postId));
         setFilteredPosts(prev => prev.filter(p => p.id !== postId));
+        toast.success('Blog post deleted successfully');
       }
-      
-      toast.success(`${isScheduled ? 'Scheduled ' : ''}Blog post deleted successfully`);
     } catch (error) {
       console.error('Error deleting post:', error);
-      toast.error(`Failed to delete ${isScheduled ? 'scheduled ' : ''}blog post`);
+      toast.error('Failed to delete post');
     }
   };
 
@@ -103,7 +142,6 @@ const BlogList: React.FC = () => {
       try {
         const posts = await getAllBlogPosts();
         setBlogPosts(posts);
-        setOriginalPosts(posts);
         setFilteredPosts(posts);
       } catch (error) {
         console.error('Error fetching blog posts:', error);
@@ -131,24 +169,44 @@ const BlogList: React.FC = () => {
 
   // Update filtered posts when switching between views
   useEffect(() => {
-    console.log('Updating filtered posts, showScheduled:', showScheduled);
-    if (showScheduled) {
-      console.log('Setting filtered posts to scheduled posts:', scheduledPosts);
-      setFilteredPosts(scheduledPosts);
-    } else {
-      console.log('Setting filtered posts to original posts:', originalPosts);
-      setFilteredPosts(originalPosts);
+    let currentPosts: BlogPost[] = [];
+    
+    switch (viewMode) {
+      case 'published':
+        currentPosts = blogPosts;
+        break;
+      case 'scheduled':
+        currentPosts = scheduledPosts;
+        break;
+      case 'drafts':
+        currentPosts = draftPosts;
+        break;
     }
-  }, [showScheduled, scheduledPosts, originalPosts]);
+    
+    setFilteredPosts(currentPosts);
+  }, [viewMode, blogPosts, scheduledPosts, draftPosts]);
 
   if (loading) {
     return <div className="container mx-auto px-6 py-10 text-center animate-pulse">Loading blog posts...</div>;
   }
 
-  const currentPosts = showScheduled ? scheduledPosts : blogPosts;
-  const displayPosts = filteredPosts.length > 0 ? filteredPosts : currentPosts;
+  const getViewTitle = () => {
+    switch (viewMode) {
+      case 'scheduled': return 'Scheduled Posts';
+      case 'drafts': return 'Draft Posts';
+      default: return 'Blog Posts';
+    }
+  };
 
-  console.log('Render state:', { showScheduled, currentPosts: currentPosts.length, displayPosts: displayPosts.length });
+  const getCurrentPosts = () => {
+    switch (viewMode) {
+      case 'scheduled': return scheduledPosts;
+      case 'drafts': return draftPosts;
+      default: return blogPosts;
+    }
+  };
+
+  const displayPosts = filteredPosts.length > 0 ? filteredPosts : getCurrentPosts();
 
   return (
     <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
@@ -158,24 +216,33 @@ const BlogList: React.FC = () => {
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-[#7E69AB] animate-fade-in">
-          {showScheduled ? 'Scheduled Posts' : 'Blog Posts'}
+          {getViewTitle()}
         </h1>
         {canEdit && (
           <div className='flex flex-wrap gap-2'>
-            <Link to="/blog/drafts" className="flex items-center gap-2">
-              <Button className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm">
-                <DraftingCompass size={16} />
-                <span className="hidden sm:inline">View Drafts</span>
-                <span className="sm:hidden">Drafts</span>
-              </Button>
-            </Link>
             <Button 
-              onClick={handleViewScheduled}
-              className={`flex items-center gap-2 ${showScheduled ? 'bg-gradient-to-r from-orange-600 to-red-600' : 'bg-gradient-to-r from-orange-500 to-red-500'} text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm`}
+              onClick={() => handleViewModeChange('drafts')}
+              className={`flex items-center gap-2 ${viewMode === 'drafts' ? 'bg-gradient-to-r from-yellow-600 to-orange-600' : 'bg-gradient-to-r from-yellow-500 to-orange-500'} text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm`}
+            >
+              <Edit2 size={16} />
+              <span className="hidden sm:inline">Drafts</span>
+              <span className="sm:hidden">Drafts</span>
+            </Button>
+            <Button 
+              onClick={() => handleViewModeChange('scheduled')}
+              className={`flex items-center gap-2 ${viewMode === 'scheduled' ? 'bg-gradient-to-r from-orange-600 to-red-600' : 'bg-gradient-to-r from-orange-500 to-red-500'} text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm`}
             >
               <Clock size={16} />
-              <span className="hidden sm:inline">{showScheduled ? 'View Published' : 'View Scheduled'}</span>
-              <span className="sm:hidden">{showScheduled ? 'Published' : 'Scheduled'}</span>
+              <span className="hidden sm:inline">Scheduled</span>
+              <span className="sm:hidden">Scheduled</span>
+            </Button>
+            <Button 
+              onClick={() => handleViewModeChange('published')}
+              className={`flex items-center gap-2 ${viewMode === 'published' ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-gradient-to-r from-blue-500 to-purple-500'} text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm`}
+            >
+              <FileText size={16} />
+              <span className="hidden sm:inline">Published</span>
+              <span className="sm:hidden">Published</span>
             </Button>
             <Button onClick={() => navigate('/blog/new')} className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm" >
               <Plus size={16} />
@@ -190,17 +257,20 @@ const BlogList: React.FC = () => {
         <div className="text-center py-12 animate-fade-in bg-[#F1F0FB] rounded-lg border border-[#E5DEFF] shadow-inner">
           <FileText className="mx-auto h-12 w-12 text-[#D6BCFA] mb-4 animate-bounce" />
           <h3 className="text-xl font-medium text-[#7E69AB] mb-2">
-            {showScheduled ? 'No scheduled posts' : 'No blog posts yet'}
+            {viewMode === 'scheduled' ? 'No scheduled posts' : 
+             viewMode === 'drafts' ? 'No draft posts' : 'No blog posts yet'}
           </h3>
           <p className="text-gray-500">
-            {showScheduled 
+            {viewMode === 'scheduled' 
               ? "You don't have any posts scheduled for publication yet."
-              : canEdit
-                ? "Get started by creating your first blog post."
-                : "Check back later for new blog posts."
+              : viewMode === 'drafts'
+                ? "You don't have any draft posts yet."
+                : canEdit
+                  ? "Get started by creating your first blog post."
+                  : "Check back later for new blog posts."
             }
           </p>
-          {canEdit && !showScheduled && (
+          {canEdit && viewMode === 'published' && (
             <Button
               onClick={() => navigate('/blog/new')}
               variant="outline"
@@ -218,8 +288,8 @@ const BlogList: React.FC = () => {
               post={post}
               index={idx}
               canEdit={canEdit}
-              showScheduled={showScheduled}
-              onDelete={handleDeletePost}
+              showScheduled={viewMode === 'scheduled'}
+              onDelete={(postId, isScheduled) => handleDeletePost(postId, isScheduled, viewMode === 'drafts')}
             />
           ))}
         </div>

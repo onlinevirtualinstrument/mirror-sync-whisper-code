@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -25,6 +26,7 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [originalStatus, setOriginalStatus] = useState<string>('');
+  const [lastSavedContent, setLastSavedContent] = useState({ title: '', content: '', imageUrl: '' });
   const navigate = useNavigate();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -76,6 +78,11 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
             setTitle(postData.title || '');
             setContent(postData.content || '');
             setImageUrl(postData.imageUrl || '');
+            setLastSavedContent({
+              title: postData.title || '',
+              content: postData.content || '',
+              imageUrl: postData.imageUrl || ''
+            });
           } else {
             toast.error(isDraft ? 'Draft not found' : 'Blog post not found');
             navigate('/blog');
@@ -96,11 +103,16 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
       clearTimeout(autoSaveTimer);
     }
 
-    // Only autosave if we have content and user is actively editing
-    if ((title || content) && (mode === 'create' || isDraftMode)) {
+    // Only autosave if content has changed and user is actively editing
+    const hasContentChanged = 
+      title !== lastSavedContent.title ||
+      content !== lastSavedContent.content ||
+      imageUrl !== lastSavedContent.imageUrl;
+
+    if ((title || content) && hasContentChanged && (mode === 'create' || isDraftMode)) {
       const timer = setTimeout(() => {
         saveDraft(true); // true indicates autosave
-      }, 5000); // Increased to 5 seconds to reduce duplicates
+      }, 5000);
 
       setAutoSaveTimer(timer);
     }
@@ -108,7 +120,7 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
     return () => {
       if (autoSaveTimer) clearTimeout(autoSaveTimer);
     };
-  }, [title, content, imageUrl]);
+  }, [title, content, imageUrl, lastSavedContent]);
 
   const saveDraft = async (isAutosave = false) => {
     const user = auth.currentUser;
@@ -130,6 +142,7 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
         imageUrl,
         authorId: user.uid,
         authorName: user.displayName || 'Anonymous',
+        authorPhotoURL: user.photoURL || '',
         createdAt: Date.now(),
         updatedAt: Date.now(),
         status: 'draft',
@@ -137,8 +150,13 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
 
       await saveDraftToFirestore(draftId, draft);
       
+      // Update last saved content to prevent unnecessary autosaves
+      setLastSavedContent({ title: title.trim(), content: content.trim(), imageUrl });
+      
       if (isAutosave) {
         toast.success('Draft auto-saved', { duration: 2000 });
+      } else {
+        toast.success('Draft saved successfully');
       }
     } catch (err) {
       console.error('Error saving draft:', err);
@@ -155,7 +173,6 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
     }
 
     await saveDraft(false);
-    toast.success('Draft saved successfully');
   };
 
   const handleConvertToDraft = async () => {
@@ -173,11 +190,13 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
           content: content.trim(),
           imageUrl,
           status: 'draft',
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
+          // Remove scheduled fields if converting from scheduled
+          scheduledFor: null
         });
 
         toast.success('Post converted to draft successfully');
-        navigate('/blog/drafts');
+        navigate('/blog');
       }
     } catch (error: any) {
       console.error('Error converting to draft:', error);
@@ -220,14 +239,18 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
         authorId: user.uid,
         authorName: user.displayName || 'Anonymous',
         authorPhotoURL: user.photoURL || '',
-        createdAt: Date.now(),
         scheduledFor: scheduledDateTime.getTime(),
-        status: 'scheduled'
+        status: 'scheduled',
+        updatedAt: Date.now()
       };
 
       if (mode === 'create' || isDraftMode) {
         // Create new scheduled post
-        await createBlogPost(postData);
+        const newPostData = {
+          ...postData,
+          createdAt: Date.now()
+        };
+        await createBlogPost(newPostData);
 
         // Delete draft if it was converted from draft
         if (isDraftMode && currentDraftId) {
@@ -238,10 +261,7 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
         }
       } else if (mode === 'edit' && id) {
         // Update existing post to scheduled
-        await updateBlogPost(id, {
-          ...postData,
-          updatedAt: Date.now()
-        });
+        await updateBlogPost(id, postData);
         toast.success('Post rescheduled successfully');
       }
 
@@ -279,13 +299,19 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
         authorId: user.uid,
         authorName: user.displayName || 'Anonymous',
         authorPhotoURL: user.photoURL || '',
-        createdAt: Date.now(),
         publishedAt: Date.now(),
-        status: 'published'
+        status: 'published',
+        updatedAt: Date.now(),
+        // Remove scheduled fields when publishing
+        scheduledFor: null
       };
 
       if (mode === 'create' || isDraftMode) {
-        const postId = await createBlogPost(postData);
+        const newPostData = {
+          ...postData,
+          createdAt: Date.now()
+        };
+        const postId = await createBlogPost(newPostData);
 
         if (isDraftMode && currentDraftId) {
           await deleteBlogPost(currentDraftId);
@@ -296,10 +322,7 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
 
         navigate(`/blog/${postId}`);
       } else if (mode === 'edit' && id) {
-        await updateBlogPost(id, {
-          ...postData,
-          updatedAt: Date.now()
-        });
+        await updateBlogPost(id, postData);
         toast.success('Blog post updated successfully');
         navigate(`/blog/${id}`);
       }
@@ -313,6 +336,10 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
 
   if (initialLoading) return <p className="text-center py-20 animate-pulse">Loading blog editor...</p>;
 
+  // Determine which draft/convert button to show
+  const showSaveDraft = mode === 'create' || isDraftMode;
+  const showConvertToDraft = mode === 'edit' && !isDraftMode && originalStatus !== 'draft';
+
   return (
     <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
       <div className="mb-4 flex flex-col sm:flex-row justify-between gap-4">
@@ -322,15 +349,6 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
             <span>Back to all posts</span>
           </Link>
         </Button>
-        <div className="flex flex-wrap gap-2">
-          <Link to="/blog/drafts" className="flex items-center gap-2">
-            <Button className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm">
-              <DraftingCompass size={16} />
-              <span className="hidden sm:inline">View Drafts</span>
-              <span className="sm:hidden">Drafts</span>
-            </Button>
-          </Link>
-        </div>
       </div>
 
       <Card className="allow-copy p-4 sm:p-6 bg-gradient-to-r from-[#F1F0FB] to-[#D6BCFA] border-2 border-[#E5DEFF] shadow-lg animate-fade-in">
@@ -436,18 +454,20 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
 
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSaveDraft}
-                disabled={loading}
-                className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF] text-sm"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save Draft
-              </Button>
+              {showSaveDraft && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSaveDraft}
+                  disabled={loading}
+                  className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF] text-sm"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Draft
+                </Button>
+              )}
 
-              {(mode === 'edit' && !isDraftMode && originalStatus !== 'draft') && (
+              {showConvertToDraft && (
                 <Button
                   type="button"
                   variant="outline"

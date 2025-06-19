@@ -45,10 +45,9 @@ export const getAllBlogPosts = async (): Promise<BlogPost[]> => {
       return allPosts.filter(post => post.status === 'published' || post.status === undefined);
     }
     
-    // Admins see published and scheduled posts (not drafts in blog list)
+    // Admins see published posts only in the main list (not drafts or scheduled)
     return allPosts.filter(post => 
       post.status === 'published' || 
-      post.status === 'scheduled' || 
       post.status === undefined
     );
   } catch (error) {
@@ -259,32 +258,39 @@ export const deleteDraftById = async (draftId: string) => {
   }
 };
 
+// Simplified getUserDrafts to avoid Firebase index issues
 export const getUserDrafts = async (uid: string): Promise<BlogDraft[]> => {
   try {
     if (!uid) throw new Error('User ID is required');
     
+    // Simple query to get all user's posts, then filter client-side to avoid index issues
     const q = query(
       blogsCollection, 
       where('authorId', '==', uid),
-      where('status', '==', 'draft'),
       orderBy('updatedAt', 'desc')
     );
     const snapshot = await getDocs(q);
 
-    return snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        title: data.title || '',
-        content: data.content || '',
-        imageUrl: data.imageUrl || '',
-        authorId: data.authorId,
-        authorName: data.authorName || 'Anonymous',
-        createdAt: data.createdAt || Date.now(),
-        updatedAt: data.updatedAt || Date.now(),
-        status: 'draft',
-      };
-    });
+    // Filter for drafts client-side
+    const drafts = snapshot.docs
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.title || '',
+          content: data.content || '',
+          imageUrl: data.imageUrl || '',
+          authorId: data.authorId,
+          authorName: data.authorName || 'Anonymous',
+          authorPhotoURL: data.authorPhotoURL || '',
+          createdAt: data.createdAt || Date.now(),
+          updatedAt: data.updatedAt || Date.now(),
+          status: data.status as 'draft',
+        };
+      })
+      .filter(post => post.status === 'draft'); // Filter for drafts only
+
+    return drafts;
   } catch (error) {
     console.error('Error fetching user drafts:', error);
     throw error;
