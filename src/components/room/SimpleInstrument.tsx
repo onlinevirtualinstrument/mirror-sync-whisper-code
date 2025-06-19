@@ -5,7 +5,7 @@ import { useRoom } from './RoomContext';
 
 // Instrument Pages - grouped by instrument type for better code splitting
 const AllInstruments: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {
-  Piano: lazy(() => import("@/pages/Piano")),
+  Piano: lazy(() => import("@/components/instruments/piano/piano1/Piano")),
 
   Guitar: lazy(() => import("@/components/instruments/guitar/VirtualGuitarComponent")),
   Violin: lazy(() => import("@/components/instruments/violin/violin2/Violin")),  

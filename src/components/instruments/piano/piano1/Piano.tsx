@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import PianoKey from '@/components/instruments/piano/piano/PianoKey';
-import PianoControls from '@/components/instruments/piano/piano/PianoControls';
-import PianoTheme, { ThemeType } from '@/components/instruments/piano/piano/PianoTheme';
-import PianoTutorial from '@/components/instruments/piano/piano/PianoTutorial';
+import PianoKey from '@/components/instruments/piano/piano1/PianoKey';
+import PianoControls from '@/components/instruments/piano/piano1/PianoControls';
+import PianoTheme, { ThemeType } from '@/components/instruments/piano/piano1/PianoTheme';
+import PianoTutorial from '@/components/instruments/piano/piano1/PianoTutorial';
 import { Helmet } from "react-helmet";
 import { Music, Piano, Bookmark, ChevronDown } from "lucide-react";
 import InstrumentInterlink from '@/components/instruments/InstrumentInterlink';

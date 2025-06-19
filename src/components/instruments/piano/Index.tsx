@@ -10,7 +10,7 @@ import { lockToLandscape } from "../../landscapeMode/lockToLandscape";
 
 
 const LazyVirtualPianoComponent = lazy(() => 
-  import(/* webpackChunkName: "virtual-guitar-component" */ "@/pages/Piano")
+  import(/* webpackChunkName: "virtual-guitar-component" */ "@/components/instruments/piano/piano1/Piano")
 );
 
 

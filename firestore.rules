@@ -1,0 +1,92 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Music Rooms Security Rules
+    match /musicRooms/{roomId} {
+      // Allow read if user is authenticated and either:
+      // 1. Room is public, or
+      // 2. User is a participant (in participantIds array)
+      allow read: if request.auth != null && (
+        resource.data.isPublic == true || 
+        request.auth.uid in resource.data.participantIds
+      );
+      
+      // Allow create if user is authenticated
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.creatorId &&
+        request.resource.data.participantIds.size() <= 10 &&
+        request.resource.data.name.size() <= 100;
+      
+      // Allow update if user is authenticated and is a participant
+      allow update: if request.auth != null && 
+        request.auth.uid in resource.data.participantIds &&
+        // Prevent unauthorized field changes
+        !('creatorId' in request.resource.data.diff(resource.data).affectedKeys()) &&
+        !('id' in request.resource.data.diff(resource.data).affectedKeys());
+      
+      // Allow delete only if user is the creator/host
+      allow delete: if request.auth != null && 
+        request.auth.uid == resource.data.creatorId;
+    }
+    
+    // Room Messages Security Rules
+    match /musicRooms/{roomId}/messages/{messageId} {
+      allow read: if request.auth != null && 
+        request.auth.uid in get(/databases/$(database)/documents/musicRooms/$(roomId)).data.participantIds;
+      
+      allow create: if request.auth != null && 
+        request.auth.uid in get(/databases/$(database)/documents/musicRooms/$(roomId)).data.participantIds &&
+        request.auth.uid == request.resource.data.senderId &&
+        request.resource.data.text.size() <= 1000;
+      
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.senderId;
+    }
+    
+    // Room Instrument Notes Security Rules
+    match /musicRooms/{roomId}/instrumentNotes/{noteId} {
+      allow read: if request.auth != null && 
+        request.auth.uid in get(/databases/$(database)/documents/musicRooms/$(roomId)).data.participantIds;
+      
+      allow create: if request.auth != null && 
+        request.auth.uid in get(/databases/$(database)/documents/musicRooms/$(roomId)).data.participantIds &&
+        request.auth.uid == request.resource.data.userId;
+      
+      // Notes auto-delete after 5 seconds, no manual updates needed
+      allow update, delete: if false;
+    }
+    
+    // Private Messages Security Rules
+    match /musicRooms/{roomId}/privateMessages/{messageId} {
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.senderId || 
+         request.auth.uid == resource.data.receiverId);
+      
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.senderId &&
+        request.resource.data.text.size() <= 1000;
+      
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.receiverId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+    }
+    
+    // Blog Posts Security Rules
+    match /blogPosts/{postId} {
+      allow read: if resource.data.status == 'published' || 
+        (request.auth != null && request.auth.uid == resource.data.authorId);
+      
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.authorId &&
+        request.resource.data.title.size() <= 200 &&
+        request.resource.data.content.size() <= 50000;
+      
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.authorId;
+      
+      allow delete: if request.auth != null && 
+        request.auth.uid == resource.data.authorId;
+    }
+  }
+}

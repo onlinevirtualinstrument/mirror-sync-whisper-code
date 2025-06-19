@@ -1,33 +1,31 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { deleteBlogPost, updateBlogPost, getBlogPostById, getAllBlogPosts, canUserEditBlogs } from '@/components/blog/blogService';
+import { deleteBlogPost, getAllBlogPosts, getScheduledBlogPosts, canUserEditBlogs } from '@/components/blog/blogService';
 import { BlogPost } from '@/components/blog/blog';
 import { toast } from 'sonner';
-import { FileText, Plus, DraftingCompass, Edit, Trash2 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { FileText, Plus, DraftingCompass, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import BlogSearchFilter from '@/components/blog/BlogSearchFilter';
-import { motion } from 'framer-motion';
+import BlogCard from './components/BlogCard';
 
 const BlogList: React.FC = () => {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [scheduledPosts, setScheduledPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [canEdit, setCanEdit] = useState(false);
+  const [showScheduled, setShowScheduled] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([]);
   const [originalPosts, setOriginalPosts] = useState<BlogPost[]>([]);
-
-  const [visibleCount, setVisibleCount] = useState(1);      //.....number of post to show 
-
+  const [visibleCount, setVisibleCount] = useState(6);
 
   const handleSearch = ({ query, sort, startDate, endDate }) => {
-    let posts = [...originalPosts];
+    const postsToFilter = showScheduled ? scheduledPosts : originalPosts;
+    let posts = [...postsToFilter];
 
     if (query) {
       posts = posts.filter(
@@ -45,25 +43,72 @@ const BlogList: React.FC = () => {
       });
     }
 
-
     if (sort === 'newest') posts.sort((a, b) => b.createdAt - a.createdAt);
     if (sort === 'oldest') posts.sort((a, b) => a.createdAt - b.createdAt);
-    if (sort === 'az') posts.sort((a, b) => a.title.localeCompare(b.title));
     if (sort === 'za') posts.sort((a, b) => b.title.localeCompare(a.title));
-
 
     setFilteredPosts(posts);
   };
 
+  const fetchScheduledPosts = async () => {
+    if (!canEdit) return;
+    
+    try {
+      const scheduled = await getScheduledBlogPosts();
+      setScheduledPosts(scheduled);
+      console.log('Fetched scheduled posts:', scheduled);
+    } catch (error) {
+      console.error('Error fetching scheduled posts:', error);
+      toast.error('Failed to load scheduled posts');
+    }
+  };
+
+  const handleViewScheduled = async () => {
+    if (!showScheduled) {
+      await fetchScheduledPosts();
+    }
+    setShowScheduled(prev => {
+      const newState = !prev;
+      console.log('Switching to scheduled view:', newState);
+      setVisibleCount(6);
+      return newState;
+    });
+  };
+
+  const handleDeletePost = async (postId: string, isScheduled: boolean = false) => {
+    const confirmed = window.confirm(`Are you sure you want to delete this ${isScheduled ? 'scheduled ' : ''}post?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteBlogPost(postId);
+      
+      if (isScheduled) {
+        setScheduledPosts(prev => prev.filter(p => p.id !== postId));
+        setFilteredPosts(prev => prev.filter(p => p.id !== postId));
+      } else {
+        setBlogPosts(prev => prev.filter(p => p.id !== postId));
+        setOriginalPosts(prev => prev.filter(p => p.id !== postId));
+        setFilteredPosts(prev => prev.filter(p => p.id !== postId));
+      }
+      
+      toast.success(`${isScheduled ? 'Scheduled ' : ''}Blog post deleted successfully`);
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      toast.error(`Failed to delete ${isScheduled ? 'scheduled ' : ''}blog post`);
+    }
+  };
 
   useEffect(() => {
     const fetchBlogPosts = async () => {
       try {
         const posts = await getAllBlogPosts();
-        const validPosts = posts.filter(post => post.createdAt && !isNaN(post.createdAt));
-        setBlogPosts(validPosts);
-        setOriginalPosts(validPosts); // set initial copy
-        setFilteredPosts(validPosts); // show initially
+        // Filter out scheduled posts from main blog list - they should only appear in scheduled view for admins
+        const publishedPosts = posts.filter(post => 
+          post.status === 'published' || post.status === undefined
+        );
+        setBlogPosts(publishedPosts);
+        setOriginalPosts(publishedPosts);
+        setFilteredPosts(publishedPosts);
       } catch (error) {
         console.error('Error fetching blog posts:', error);
         toast.error('Failed to load blog posts');
@@ -72,10 +117,7 @@ const BlogList: React.FC = () => {
       }
     };
 
-
     fetchBlogPosts();
-
-
   }, []);
 
   useEffect(() => {
@@ -91,44 +133,80 @@ const BlogList: React.FC = () => {
     checkEditPermission();
   }, [user]);
 
+  // Update filtered posts when switching between views
+  useEffect(() => {
+    console.log('Updating filtered posts, showScheduled:', showScheduled);
+    if (showScheduled) {
+      console.log('Setting filtered posts to scheduled posts:', scheduledPosts);
+      setFilteredPosts(scheduledPosts);
+    } else {
+      console.log('Setting filtered posts to original posts:', originalPosts);
+      setFilteredPosts(originalPosts);
+    }
+  }, [showScheduled, scheduledPosts, originalPosts]);
+
   if (loading) {
     return <div className="container mx-auto px-6 py-10 text-center animate-pulse">Loading blog posts...</div>;
   }
 
-  return (
+  const currentPosts = showScheduled ? scheduledPosts : blogPosts;
+  const displayPosts = filteredPosts.length > 0 ? filteredPosts : currentPosts;
 
-    <div className="container mx-auto px-6 py-10">
-      <div className="container mx-auto px-6 py-10">
+  console.log('Render state:', { showScheduled, currentPosts: currentPosts.length, displayPosts: displayPosts.length });
+
+  return (
+    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <div className="mb-6 sm:mb-8">
         <BlogSearchFilter onSearch={handleSearch} />
-        {/* ... render filteredPosts here ... */}
       </div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-[#7E69AB] animate-fade-in">Blog Posts</h1>
+      
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#7E69AB] animate-fade-in">
+          {showScheduled ? 'Scheduled Posts' : 'Blog Posts'}
+        </h1>
         {canEdit && (
-          <div className='flex flexrow gap-2'>
+          <div className='flex flex-wrap gap-2'>
             <Link to="/blog/drafts" className="flex items-center gap-2">
-              <Button className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in">
+              <Button className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm">
                 <DraftingCompass size={16} />
-                View Drafts
-              </Button></Link>
-            <Button onClick={() => navigate('/blog/new')} className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in" >
-              <Plus size={16} />
-              <span>New Post</span>
+                <span className="hidden sm:inline">View Drafts</span>
+                <span className="sm:hidden">Drafts</span>
+              </Button>
+            </Link>
+            <Button 
+              onClick={handleViewScheduled}
+              className={`flex items-center gap-2 ${showScheduled ? 'bg-gradient-to-r from-orange-600 to-red-600' : 'bg-gradient-to-r from-orange-500 to-red-500'} text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm`}
+            >
+              <Clock size={16} />
+              <span className="hidden sm:inline">{showScheduled ? 'View Published' : 'View Scheduled'}</span>
+              <span className="sm:hidden">{showScheduled ? 'Published' : 'Scheduled'}</span>
             </Button>
+            {/* {!showScheduled && ( */}
+              <Button onClick={() => navigate('/blog/new')} className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm" >
+                <Plus size={16} />
+                <span className="hidden sm:inline">New Post</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            {/* )} */}
           </div>
         )}
-
       </div>
-      {blogPosts.length === 0 ? (
+
+      {displayPosts.length === 0 ? (
         <div className="text-center py-12 animate-fade-in bg-[#F1F0FB] rounded-lg border border-[#E5DEFF] shadow-inner">
           <FileText className="mx-auto h-12 w-12 text-[#D6BCFA] mb-4 animate-bounce" />
-          <h3 className="text-xl font-medium text-[#7E69AB] mb-2">No blog posts yet</h3>
-          <p className="text-gray-500">{
-            canEdit
-              ? "Get started by creating your first blog post."
-              : "Check back later for new blog posts."}
+          <h3 className="text-xl font-medium text-[#7E69AB] mb-2">
+            {showScheduled ? 'No scheduled posts' : 'No blog posts yet'}
+          </h3>
+          <p className="text-gray-500">
+            {showScheduled 
+              ? "You don't have any posts scheduled for publication yet."
+              : canEdit
+                ? "Get started by creating your first blog post."
+                : "Check back later for new blog posts."
+            }
           </p>
-          {canEdit && (
+          {canEdit && !showScheduled && (
             <Button
               onClick={() => navigate('/blog/new')}
               variant="outline"
@@ -139,127 +217,21 @@ const BlogList: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-          {filteredPosts.slice(0, visibleCount).map((post, idx) => (
-
-            <motion.div
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {displayPosts.slice(0, visibleCount).map((post, idx) => (
+            <BlogCard
               key={post.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-            >
-
-              <Card
-                key={post.id}
-                className="hover:shadow-2xl hover:scale-[1.018] transition-all duration-200 bg-gradient-to-br from-[#F1F0FB] via-white to-[#E5DEFF] border-2 border-[#E5DEFF] animate-fade-in"
-                style={{ animationDelay: `${idx * 70}ms` }}
-              >
-                <CardHeader>
-
-                  <CardTitle className="line-clamp-2 text-[#1A1F2C]">
-                    <Link to={`/blog/${post.id}`} className="hover:underline story-link">
-                      {post.title}
-                    </Link>
-                  </CardTitle>
-                  <CardDescription>
-                    <div className="flex items-center gap-2">
-                      {post.authorPhotoURL ? (
-                        <img
-                          src={post.authorPhotoURL}
-                          alt={post.authorName}
-                          className="w-5 h-5 rounded-full border-2 border-[#9b87f5]"
-                        />
-                      ) : (
-                        <div className="w-5 h-5 rounded-full bg-[#D6BCFA] text-[#7E69AB] flex items-center justify-center text-xs font-bold">
-                          {post.authorName?.charAt(0) || '?'}
-                        </div>
-                      )}
-                      <span className="text-[#7E69AB] text-sm">
-                        {post.authorName || 'Unknown'}
-                      </span>
-                    </div>
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent>
-                  {post.imageUrl && (
-                    <div className="mb-3 flex justify-center">
-                      <img
-                        src={post.imageUrl}
-                        alt="Thumbnail"
-                        className=" w-[250px] h-[150px] object-cover rounded-lg shadow-md"
-                      />
-                    </div>
-                  )}
-                  <div
-                    className="prose max-w-none"
-                    dangerouslySetInnerHTML={{
-                      __html: post.content.substring(0, 100) + '...',
-                    }}
-                  />
-                </CardContent>
-
-                <CardFooter className="flex justify-between items-center">
-                  <span className="text-xs text-[#9b87f5]">
-                    {post.createdAt
-                      ? formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })
-                      : 'Unknown date'}
-                  </span>
-
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      asChild
-                      className="text-[#1EAEDB] hover:text-[#7E69AB] border-[#D6BCFA] hover:bg-[#F3F0FF]"
-                    >
-                      <Link to={`/blog/${post.id}`}>Read more</Link>
-                    </Button>
-
-                    {canEdit && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/blog/edit/${post.id}`)}
-                          className="text-[#7E69AB] border-[#D6BCFA] hover:bg-[#F3F0FF]"
-                        >
-                          <Edit size={16} /> 
-                          {/* Edit */}
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={async () => {
-                            const confirmed = window.confirm("Are you sure you want to delete this post?");
-                            if (confirmed) {
-                              try {
-                                await deleteBlogPost(post.id); // Make sure this function is defined in your blogService
-                                setBlogPosts(prev => prev.filter(p => p.id !== post.id));
-                                toast.success("Blog post deleted");
-                              } catch (err) {
-                                toast.error("Failed to delete blog post");
-                              }
-                            }
-                          }}
-                        >
-                          <Trash2 size={16} />
-                          {/* Delete */}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </CardFooter>
-              </Card>
-            </motion.div>
+              post={post}
+              index={idx}
+              canEdit={canEdit}
+              showScheduled={showScheduled}
+              onDelete={handleDeletePost}
+            />
           ))}
-
         </div>
-
-
       )}
-      {visibleCount < filteredPosts.length && (
+
+      {visibleCount < displayPosts.length && (
         <div className="flex justify-center mt-6">
           <Button
             onClick={() => setVisibleCount(prev => prev + 3)}
@@ -269,7 +241,6 @@ const BlogList: React.FC = () => {
           </Button>
         </div>
       )}
-
     </div>
   );
 };

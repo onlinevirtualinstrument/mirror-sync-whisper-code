@@ -10,6 +10,7 @@ export interface BlogPost {
   updatedAt?: number;    
   imageUrl?:string;
   status?:string;           // optional
+  scheduledFor?: number;    // optional - timestamp for scheduled posts
   authorContactDetails?: string;   // optional (was required)
 
 }

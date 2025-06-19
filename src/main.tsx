@@ -3,9 +3,13 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { initSecurity } from './utils/security';
+import { scheduledPostService } from '@/components/blog/services/scheduledPostService';
 
-// Initialize security features before anything else
+// Initialize security features before anything else 
 initSecurity();
+
+// Start scheduled post service
+scheduledPostService.start();
 
 // Use createRoot API for better performance
 const rootElement = document.getElementById("root");

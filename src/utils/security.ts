@@ -124,14 +124,14 @@ export const allowFirebasePopups = (): void => {
 /**
  * Initializes all security features
  */
-export const initSecurity = (): void => {
-  // Wait for DOM to be fully loaded
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSecurityFeatures);
-  } else {
-    initSecurityFeatures();
-  }
-};
+// export const initSecurity = (): void => {
+//   // Wait for DOM to be fully loaded
+//   if (document.readyState === 'loading') {
+//     document.addEventListener('DOMContentLoaded', initSecurityFeatures);
+//   } else {
+//     initSecurityFeatures();
+//   }
+// };
 
 /**
  * Implements all security features
@@ -154,3 +154,105 @@ const initSecurityFeatures = (): void => {
   
   console.info('All security features initialized');
 };
+
+
+
+// Content Security Policy and security initialization
+export const initSecurity = () => {
+  // Set up Content Security Policy meta tag if not already present
+  if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
+    const cspMeta = document.createElement('meta');
+    cspMeta.httpEquiv = 'Content-Security-Policy';
+    cspMeta.content = `
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+        https://www.gstatic.com 
+        https://www.googleapis.com 
+        https://apis.google.com
+        https://securetoken.googleapis.com
+        https://identitytoolkit.googleapis.com
+        https://firebaseinstallations.googleapis.com
+        https://firebaseremoteconfig.googleapis.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data: blob: https:;
+      media-src 'self' data: blob:;
+      connect-src 'self' 
+        https://firestore.googleapis.com
+        https://identitytoolkit.googleapis.com
+        https://securetoken.googleapis.com
+        https://www.googleapis.com
+        wss://ws-*.firestore.googleapis.com;
+      frame-src 'self' https://www.google.com;
+      object-src 'none';
+      base-uri 'self';
+    `.replace(/\s+/g, ' ').trim();
+    
+    document.head.appendChild(cspMeta);
+  }
+
+  // Prevent common XSS attacks
+  if (typeof window !== 'undefined') {
+    // Clear any potentially malicious scripts
+    const scripts = document.querySelectorAll('script[src*="javascript:"]');
+    scripts.forEach(script => script.remove());
+    
+    // Set up basic security headers via meta tags
+    const securityHeaders = [
+      { name: 'X-Content-Type-Options', content: 'nosniff' },
+      { name: 'X-Frame-Options', content: 'SAMEORIGIN' },
+      { name: 'X-XSS-Protection', content: '1; mode=block' }
+    ];
+
+    securityHeaders.forEach(header => {
+      if (!document.querySelector(`meta[http-equiv="${header.name}"]`)) {
+        const meta = document.createElement('meta');
+        meta.httpEquiv = header.name;
+        meta.content = header.content;
+        document.head.appendChild(meta);
+      }
+    });
+  }
+
+  // Wait for DOM to be fully loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSecurityFeatures);
+  } else {
+    initSecurityFeatures();
+  }
+
+};
+
+// Rate limiting for API calls
+const rateLimits = new Map<string, { count: number; resetTime: number }>();
+
+export const checkRateLimit = (key: string, maxRequests: number = 10, windowMs: number = 60000): boolean => {
+  const now = Date.now();
+  const limit = rateLimits.get(key);
+
+  if (!limit || now > limit.resetTime) {
+    rateLimits.set(key, { count: 1, resetTime: now + windowMs });
+    return true;
+  }
+
+  if (limit.count >= maxRequests) {
+    return false;
+  }
+
+  limit.count++;
+  return true;
+};
+
+export const clearExpiredRateLimits = () => {
+  const now = Date.now();
+  for (const [key, limit] of rateLimits.entries()) {
+    if (now > limit.resetTime) {
+      rateLimits.delete(key);
+    }
+  }
+};
+
+// Set up periodic cleanup
+if (typeof window !== 'undefined') {
+  setInterval(clearExpiredRateLimits, 60000); // Clean up every minute
+}

@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
-import Piano from '@/components/instruments/piano/piano/Piano';
-import PianoTutorial from '@/components/instruments/piano/piano/PianoTutorial';
+import Piano from '@/components/instruments/piano/piano1/Piano';
+import PianoTutorial from '@/components/instruments/piano/piano1/PianoTutorial';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 

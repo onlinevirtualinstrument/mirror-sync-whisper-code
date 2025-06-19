@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 
 export type OrientationLockType =
@@ -12,14 +11,14 @@ export type OrientationLockType =
   | "landscape-secondary";
 
 /** Detect mobile devices */
-// const isMobileDevice = (): boolean =>
-//   typeof window !== "undefined" && window.innerWidth < 768;
-
 const isMobileDevice = (): boolean => {
   if (typeof navigator === "undefined") return false;
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
+// Global state to prevent concurrent operations
+let isLockingOrientation = false;
+let currentLockState = false;
 
 export const enterFullscreen = async (element: HTMLElement = document.documentElement): Promise<void> => {
   if (!document.fullscreenElement && element.requestFullscreen) {
@@ -31,9 +30,6 @@ export const enterFullscreen = async (element: HTMLElement = document.documentEl
   }
 };
 
-/**
- * Exit fullscreen if active
- */
 export const exitFullscreen = async (): Promise<void> => {
   if (document.fullscreenElement && document.exitFullscreen) {
     try {
@@ -44,28 +40,25 @@ export const exitFullscreen = async (): Promise<void> => {
   }
 };
 
-
-// // Inside your component or util
-// useEffect(() => {
-//   const handleOrientationChange = () => {
-//     if (screen.orientation.type.startsWith("portrait")) {
-//       lockToLandscape(); // Re-lock if user accidentally rotated
-//     }
-//   };
-
-//   window.screen.orientation.addEventListener("change", handleOrientationChange);
-//   return () => {
-//     window.screen.orientation.removeEventListener("change", handleOrientationChange);
-//   };
-// }, []);
-
-
-/**
- * Lock orientation to landscape (mobile only).
- * Should be called inside a user-initiated event (e.g. onClick).
- */
 export const lockToLandscape = async (): Promise<void> => {
-  if (!isMobileDevice() || !("orientation" in screen)) return;
+  // Prevent concurrent operations
+  if (isLockingOrientation) {
+    console.log("🔄 Orientation lock already in progress");
+    return;
+  }
+
+  // Check if already locked
+  if (currentLockState) {
+    console.log("🔒 Already locked to landscape");
+    return;
+  }
+
+  if (!isMobileDevice() || !("orientation" in screen)) {
+    console.log("📱 Not a mobile device or orientation API not available");
+    return;
+  }
+
+  isLockingOrientation = true;
 
   try {
     await enterFullscreen();
@@ -76,28 +69,24 @@ export const lockToLandscape = async (): Promise<void> => {
 
     if (orientation.lock) {
       await orientation.lock("landscape");
+      currentLockState = true;
       console.log("✅ Screen locked to landscape");
-
-      // Optional: Re-lock on change
-      // screen.orientation.addEventListener("change", () => {
-      //   if (screen.orientation.type.startsWith("portrait")) {
-      //     orientation.lock("landscape").catch(console.warn);
-      //   }
-      // });
     } else {
       console.warn("⚠️ Orientation lock not supported by this browser.");
     }
   } catch (err) {
     console.error("❌ Orientation Lock Failed:", err);
+  } finally {
+    isLockingOrientation = false;
   }
 };
 
-
-/**
- * Unlock orientation and exit fullscreen (mobile only).
- * Should be called inside user interaction (e.g. closing modal).
- */
 export const unlockOrientation = async (): Promise<void> => {
+  // Prevent unnecessary operations
+  if (!currentLockState) {
+    return;
+  }
+
   if (!isMobileDevice() || !("orientation" in screen)) return;
 
   try {
@@ -108,15 +97,15 @@ export const unlockOrientation = async (): Promise<void> => {
     };
 
     if (orientation.unlock) {
-      orientation.unlock(); // Optional, non-standard
+      orientation.unlock();
     }
 
+    currentLockState = false;
     console.log("🔓 Screen orientation unlocked");
   } catch (err) {
     console.error("❌ Orientation Unlock Failed:", err);
   }
 };
-
 
 /** Unhide focused or interactive elements to prevent aria-hidden focus errors */
 const removeAriaHiddenFromFocusedElements = () => {
@@ -167,7 +156,7 @@ const injectFullscreenStyles = () => {
     html.fullscreen-mode [data-radix-select-viewport],
     [data-fullscreen-fix] [data-radix-select-viewport] {
       background: white !important;
-      border: 1px solidrgb(9, 10, 10) !important;
+      border: 1px solid rgb(9, 10, 10) !important;
       border-radius: 8px !important;
       box-shadow: 0 10px 38px -10px rgba(22, 23, 24, 0.35),
                   0 10px 20px -15px rgba(22, 23, 24, 0.2) !important;
@@ -186,8 +175,17 @@ const removeFullscreenStyles = () => {
   document.getElementById(STYLE_ID)?.remove();
 };
 
+// Prevent multiple simultaneous fullscreen operations
+let fullscreenOperationInProgress = false;
+
 /** Toggle fullscreen and inject styles for UI compatibility */
 export const toggleFullscreen = async (element?: HTMLElement): Promise<boolean> => {
+  if (fullscreenOperationInProgress) {
+    console.log("Fullscreen operation already in progress, skipping...");
+    return document.fullscreenElement !== null;
+  }
+
+  fullscreenOperationInProgress = true;
   const el = element || document.documentElement;
 
   try {
@@ -205,14 +203,11 @@ export const toggleFullscreen = async (element?: HTMLElement): Promise<boolean> 
       if (request) {
         try {
           await request.call(el);
-        }
-        catch (err) {
+        } catch (err) {
           await el.requestFullscreen();
         }
       } else {
-
         console.warn("Fullscreen API not supported on this browser.");
-
       }
 
       return true;
@@ -227,7 +222,7 @@ export const toggleFullscreen = async (element?: HTMLElement): Promise<boolean> 
       } catch (err) {
         await document.exitFullscreen();
       }
-      document.body.classList.remove("fullscreen-mode");
+      document.documentElement.classList.remove("fullscreen-mode");
       removeFullscreenStyles();
       restoreAriaHidden();
 
@@ -236,20 +231,25 @@ export const toggleFullscreen = async (element?: HTMLElement): Promise<boolean> 
   } catch (err) {
     console.error("❌ Fullscreen toggle failed:", err);
     return false;
+  } finally {
+    fullscreenOperationInProgress = false;
   }
 };
 
+// Single event listener setup
+let fullscreenListenerAdded = false;
 
-/** 📦 Global cleanup if user exits fullscreen manually */
-document.addEventListener("fullscreenchange", () => {
-  if (!document.fullscreenElement) {
-    document.body.classList.remove("fullscreen-mode");
-    removeFullscreenStyles();
-    restoreAriaHidden();
-  }
-});
-
-
+if (!fullscreenListenerAdded && typeof document !== 'undefined') {
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.classList.remove("fullscreen-mode");
+      removeFullscreenStyles();
+      restoreAriaHidden();
+      currentLockState = false; // Reset lock state when fullscreen exits
+    }
+  });
+  fullscreenListenerAdded = true;
+}
 
 export function useFullscreenManager(containerRef: React.RefObject<HTMLElement>) {
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -267,5 +267,3 @@ export function useFullscreenManager(containerRef: React.RefObject<HTMLElement>)
 
   return { isFullscreen };
 }
-
-

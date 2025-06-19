@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog';
-import { createBlogPost, updateBlogPost, getBlogPostById, saveDraftToFirestore, getDraftById, deleteDraftById, getUserDrafts } from '@/components/blog/blogService';
+import { createBlogPost, updateBlogPost, getBlogPostById, saveDraftToFirestore, getDraftById, deleteDraftById } from '@/components/blog/blogService';
 import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { auth } from '@/utils/auth/firebase';
-import { Save, ArrowLeft, DraftingCompass, Calendar } from 'lucide-react';
+import { Save, ArrowLeft, DraftingCompass, Calendar, Clock } from 'lucide-react';
 
 const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
   const [title, setTitle] = useState('');
@@ -20,6 +20,7 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
   const [initialLoading, setInitialLoading] = useState(mode === 'edit');
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
   const [isDraftMode, setIsDraftMode] = useState(false);
+  const [isScheduledMode, setIsScheduledMode] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
@@ -52,13 +53,15 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
       const fetchData = async () => {
         try {
           let postData = null;
-          
+
           if (isDraft) {
-            // Load from drafts
             postData = await getDraftById(id);
           } else {
-            // Load from published posts
             postData = await getBlogPostById(id);
+            // Check if it's a scheduled post
+            if (postData && postData.status === 'scheduled') {
+              setIsScheduledMode(true);
+            }
           }
 
           if (postData) {
@@ -80,7 +83,6 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
     }
   }, [id, mode, navigate, searchParams]);
 
-  // Auto-save draft functionality
   useEffect(() => {
     if (autoSaveTimer) {
       clearTimeout(autoSaveTimer);
@@ -89,8 +91,9 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
     const timer = setTimeout(() => {
       if (title || content) {
         saveDraft();
+        toast.success('Autosaved draft');
       }
-    }, 3000); // Auto-save after 3 seconds of inactivity
+    }, 3000);
 
     setAutoSaveTimer(timer);
 
@@ -124,8 +127,60 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
   };
 
   const handleSaveDraft = async () => {
+    if (!title.trim() && !content.trim()) {
+      toast.error('Cannot save empty draft');
+      return;
+    }
+
     await saveDraft();
     toast.success('Draft saved successfully');
+  };
+
+  const handleConvertToDraft = async () => {
+    if (!title.trim() || !content.trim()) {
+      toast.error('Title and content are required');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        toast.error('You must be logged in');
+        setLoading(false);
+        return;
+      }
+
+      // Create new draft
+      const draftId = `draft-${user.uid}-${Date.now()}`;
+      const draftData = {
+        id: draftId,
+        title: title.trim(),
+        content: content.trim(),
+        imageUrl,
+        authorId: user.uid,
+        authorName: user.displayName || 'Anonymous',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        status: 'draft',
+      };
+
+      await saveDraftToFirestore(draftId, draftData);
+
+      // Delete from published/scheduled if editing existing post
+      if (mode === 'edit' && id && !isDraftMode) {
+        // await updateBlogPost(id, { status: 'deleted' }); // Mark as deleted instead of actual deletion
+        await deleteDraftById(id);
+      }
+
+      toast.success('Post converted to draft successfully');
+      navigate('/blog/drafts');
+    } catch (error: any) {
+      console.error('Error converting to draft:', error);
+      toast.error('Failed to convert to draft');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleScheduleSubmit = async () => {
@@ -140,10 +195,14 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
       return;
     }
 
+    if (!title.trim() || !content.trim()) {
+      toast.error('Title and content are required');
+      return;
+    }
+
     setLoading(true);
     try {
       const user = auth.currentUser;
-
       if (!user) {
         toast.error('You must be logged in to schedule a post');
         setLoading(false);
@@ -151,8 +210,8 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
       }
 
       const postData = {
-        title,
-        content,
+        title: title.trim(),
+        content: content.trim(),
         imageUrl,
         authorId: user.uid,
         authorName: user.displayName || 'Anonymous',
@@ -162,25 +221,30 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
         status: 'scheduled'
       };
 
-      // Save as scheduled post
-      const postId = await createBlogPost(postData);
+      if (mode === 'create' || isDraftMode) {
+        // Create new scheduled post
+        await createBlogPost(postData);
 
-      // If this was a draft being scheduled, delete the draft
-      if (isDraftMode && id) {
-        try {
+        // Delete from drafts if it was a draft
+        if (isDraftMode && id) {
           await deleteDraftById(id);
-          toast.success('Blog scheduled and removed from drafts');
-        } catch (error) {
-          console.error('Error deleting draft after scheduling:', error);
-          toast.success('Blog scheduled successfully');
+          toast.success('Draft scheduled for publication');
+        } else {
+          toast.success('Post scheduled successfully');
         }
-      } else {
-        toast.success('Blog scheduled successfully');
+      } else if (mode === 'edit' && id) {
+        // Update existing post to scheduled
+        await updateBlogPost(id, {
+          ...postData,
+          updatedAt: Date.now()
+        });
+        toast.success('Post rescheduled successfully');
       }
 
       navigate('/blog');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to schedule blog');
+      console.error('Error scheduling post:', error);
+      toast.error(error.message || 'Failed to schedule post');
     } finally {
       setLoading(false);
       setScheduleDialogOpen(false);
@@ -189,10 +253,15 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!title.trim() || !content.trim()) {
+      toast.error('Title and content are required');
+      return;
+    }
+
     setLoading(true);
     try {
       const user = auth.currentUser;
-
       if (!user) {
         toast.error('You must be logged in to create a post');
         setLoading(false);
@@ -200,46 +269,38 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
       }
 
       const postData = {
-        title,
-        content,
+        title: title.trim(),
+        content: content.trim(),
         imageUrl,
         authorId: user.uid,
         authorName: user.displayName || 'Anonymous',
         authorPhotoURL: user.photoURL || '',
         createdAt: Date.now(),
+        publishedAt: Date.now(),
+        status: 'published'
       };
 
       if (mode === 'create' || isDraftMode) {
-        // Creating new post or publishing a draft
         const postId = await createBlogPost(postData);
 
-        // If this was a draft being published, delete the draft
         if (isDraftMode && id) {
-          try {
-            await deleteDraftById(id);
-            toast.success('Draft published and removed from drafts');
-          } catch (error) {
-            console.error('Error deleting draft after publishing:', error);
-            toast.success('Blog post published');
-          }
+          await deleteDraftById(id);
+          toast.success('Draft published successfully');
         } else {
-          // Remove from localStorage drafts if exists
-          const existingDrafts = JSON.parse(localStorage.getItem('blog-drafts') || '[]');
-          const updatedDrafts = existingDrafts.filter((d: any) =>
-            !(d.title === title && d.authorId === user.uid)
-          );
-          localStorage.setItem('blog-drafts', JSON.stringify(updatedDrafts));
-          toast.success('Blog post created');
+          toast.success('Blog post published successfully');
         }
 
         navigate(`/blog/${postId}`);
       } else if (mode === 'edit' && id) {
-        // Updating existing published post
-        await updateBlogPost(id, postData);
-        toast.success('Blog post updated');
+        await updateBlogPost(id, {
+          ...postData,
+          updatedAt: Date.now()
+        });
+        toast.success('Blog post updated successfully');
         navigate(`/blog/${id}`);
       }
     } catch (error: any) {
+      console.error('Error saving blog:', error);
       toast.error(error.message || 'Failed to save blog');
     } finally {
       setLoading(false);
@@ -249,27 +310,36 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
   if (initialLoading) return <p className="text-center py-20 animate-pulse">Loading blog editor...</p>;
 
   return (
-    <div className="container mx-auto px-6 py-10">
-      <div className="mb-4 flex justify-between">
-        <Button variant="ghost" asChild className="mb-6 text-[#7E69AB]">
+    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <div className="mb-4 flex flex-col sm:flex-row justify-between gap-4">
+        <Button variant="ghost" asChild className="text-[#7E69AB] self-start">
           <Link to="/blog" className="flex items-center gap-2">
             <ArrowLeft size={16} />
             <span>Back to all posts</span>
           </Link>
         </Button>
-        <Link to="/blog/drafts" className="flex items-center gap-2">
-          <Button className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in">
-            <DraftingCompass size={16} />
-            View Drafts
-          </Button>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/blog/drafts" className="flex items-center gap-2">
+            <Button className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm">
+              <DraftingCompass size={16} />
+              <span className="hidden sm:inline">View Drafts</span>
+              <span className="sm:hidden">Drafts</span>
+            </Button>
+          </Link>
+        </div>
       </div>
-      
-      <Card className="allow-copy p-6 bg-gradient-to-r from-[#F1F0FB] to-[#D6BCFA] border-2 border-[#E5DEFF] shadow-lg animate-fade-in">
+
+      <Card className="allow-copy p-4 sm:p-6 bg-gradient-to-r from-[#F1F0FB] to-[#D6BCFA] border-2 border-[#E5DEFF] shadow-lg animate-fade-in">
         <form onSubmit={handleSubmit} className="space-y-6">
           {isDraftMode && (
             <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
               <strong>Editing Draft:</strong> This post will be published when you click "Publish Post" and removed from your drafts.
+            </div>
+          )}
+
+          {isScheduledMode && (
+            <div className="bg-orange-100 border border-orange-400 text-orange-700 px-4 py-3 rounded mb-4">
+              <strong>Editing Scheduled Post:</strong> You can reschedule, publish now, or convert to draft.
             </div>
           )}
 
@@ -330,7 +400,7 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
           </div>
 
           <div className="space-y-2">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
               <label htmlFor="imageUrl" className="text-sm font-medium text-[#7E69AB]">
                 Optional Blog Image URL
               </label>
@@ -341,7 +411,7 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
               )}
             </div>
 
-            <div className="flex space-x-4 items-start">
+            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-start">
               <Input
                 type="url"
                 id="imageUrl"
@@ -354,49 +424,64 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
                 <img
                   src={imageUrl}
                   alt="Preview"
-                  className="w-32 h-20 object-cover rounded border shadow hover:scale-105 transition-transform"
+                  className="w-full sm:w-32 h-20 object-cover rounded border shadow hover:scale-105 transition-transform"
                 />
               )}
             </div>
           </div>
 
-          <div className="flex justify-between items-center">
-            <div className="flex space-x-2">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleSaveDraft}
-                className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF]"
+                disabled={loading}
+                className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF] text-sm"
               >
                 <Save className="h-4 w-4 mr-2" />
                 Save Draft
               </Button>
 
+              {(mode === 'edit' && !isDraftMode) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleConvertToDraft}
+                  disabled={loading}
+                  className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF] text-sm"
+                >
+                  <DraftingCompass className="h-4 w-4 mr-2" />
+                  Convert to Draft
+                </Button>
+              )}
+
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setScheduleDialogOpen(true)}
-                className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF]"
+                disabled={loading}
+                className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF] text-sm"
               >
                 <Calendar className="h-4 w-4 mr-2" />
-                Schedule
+                {isScheduledMode ? 'Reschedule' : 'Schedule'}
               </Button>
             </div>
 
-            <div className="flex space-x-4">
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => navigate('/blog')}
                 disabled={loading}
-                className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF]"
+                className="border-[#9b87f5] text-[#7E69AB] hover:bg-[#E5DEFF] text-sm"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={loading}
-                className="bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white font-bold hover:shadow-md transition-all"
+                className="bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white font-bold hover:shadow-md transition-all text-sm"
               >
                 {loading ? 'Saving...' : (mode === 'create' || isDraftMode) ? 'Publish Post' : 'Update Post'}
               </Button>
@@ -440,6 +525,11 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
                 className="w-full"
               />
             </div>
+            {scheduledDate && scheduledTime && (
+              <p className="text-xs text-[#7E69AB] mt-1">
+                📅 Schedule for: {new Date(`${scheduledDate}T${scheduledTime}`).toLocaleString()}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button
