@@ -83,11 +83,7 @@ const PianoDetailPage: React.FC = () => {
             
             <TabsContent value="virtual" className="focus-visible:outline-none focus-visible:ring-0">
               <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg">
-                <Piano 
-                  startOctave={3} 
-                  endOctave={5} 
-                  theme="classic" 
-                />
+                <Piano />
               </div>
             </TabsContent>
             

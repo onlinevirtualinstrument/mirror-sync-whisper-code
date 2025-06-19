@@ -6,9 +6,9 @@ import {
   getAllBlogPosts, 
   getScheduledBlogPosts, 
   getUserDrafts,
-  deleteBlogPost,
-  canUserEditBlogs 
+  deleteBlogPost
 } from '../services/blogDataService';
+import { canUserEditBlogs } from '../services/authService';
 import { BlogPost } from '../blog';
 
 type ViewMode = 'published' | 'scheduled' | 'drafts';
