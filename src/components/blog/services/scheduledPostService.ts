@@ -14,19 +14,23 @@ const blogsCollection = collection(db, 'blogs');
 export const checkAndPublishScheduledPosts = async (): Promise<void> => {
   try {
     const currentTime = Date.now();
+    
+    // Simple query to get all scheduled posts
     const q = query(
       blogsCollection,
-      where('status', '==', 'scheduled'),
-      where('scheduledFor', '<=', currentTime)
+      where('status', '==', 'scheduled')
     );
     
     const snapshot = await getDocs(q);
-    const postsToPublish = snapshot.docs;
+    const scheduledPosts = snapshot.docs.filter(doc => {
+      const data = doc.data();
+      return data.scheduledFor && data.scheduledFor <= currentTime;
+    });
     
-    if (postsToPublish.length > 0) {
-      console.log(`Found ${postsToPublish.length} scheduled posts ready to publish`);
+    if (scheduledPosts.length > 0) {
+      console.log(`Found ${scheduledPosts.length} scheduled posts ready to publish`);
       
-      for (const postDoc of postsToPublish) {
+      for (const postDoc of scheduledPosts) {
         try {
           await updateDoc(postDoc.ref, {
             status: 'published',

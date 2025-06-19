@@ -102,13 +102,9 @@ const BlogList: React.FC = () => {
     const fetchBlogPosts = async () => {
       try {
         const posts = await getAllBlogPosts();
-        // Filter out scheduled posts from main blog list - they should only appear in scheduled view for admins
-        const publishedPosts = posts.filter(post => 
-          post.status === 'published' || post.status === undefined
-        );
-        setBlogPosts(publishedPosts);
-        setOriginalPosts(publishedPosts);
-        setFilteredPosts(publishedPosts);
+        setBlogPosts(posts);
+        setOriginalPosts(posts);
+        setFilteredPosts(posts);
       } catch (error) {
         console.error('Error fetching blog posts:', error);
         toast.error('Failed to load blog posts');
@@ -181,13 +177,11 @@ const BlogList: React.FC = () => {
               <span className="hidden sm:inline">{showScheduled ? 'View Published' : 'View Scheduled'}</span>
               <span className="sm:hidden">{showScheduled ? 'Published' : 'Scheduled'}</span>
             </Button>
-            {/* {!showScheduled && ( */}
-              <Button onClick={() => navigate('/blog/new')} className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm" >
-                <Plus size={16} />
-                <span className="hidden sm:inline">New Post</span>
-                <span className="sm:hidden">New</span>
-              </Button>
-            {/* )} */}
+            <Button onClick={() => navigate('/blog/new')} className="flex items-center gap-2 bg-gradient-to-r from-[#9b87f5] to-[#1EAEDB] text-white hover:brightness-110 shadow-lg transition-all animate-scale-in text-sm" >
+              <Plus size={16} />
+              <span className="hidden sm:inline">New Post</span>
+              <span className="sm:hidden">New</span>
+            </Button>
           </div>
         )}
       </div>

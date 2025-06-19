@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog';
-import { createBlogPost, updateBlogPost, getBlogPostById, saveDraftToFirestore, getDraftById, deleteDraftById } from '@/components/blog/blogService';
+import { createBlogPost, updateBlogPost, getBlogPostById, saveDraftToFirestore, getDraftById, deleteBlogPost } from '@/components/blog/blogService';
 import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { auth } from '@/utils/auth/firebase';
@@ -19,11 +18,13 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(mode === 'edit');
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [isDraftMode, setIsDraftMode] = useState(false);
   const [isScheduledMode, setIsScheduledMode] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
+  const [originalStatus, setOriginalStatus] = useState<string>('');
   const navigate = useNavigate();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -56,11 +57,18 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
 
           if (isDraft) {
             postData = await getDraftById(id);
+            setCurrentDraftId(id);
           } else {
             postData = await getBlogPostById(id);
+            setOriginalStatus(postData?.status || 'published');
             // Check if it's a scheduled post
             if (postData && postData.status === 'scheduled') {
               setIsScheduledMode(true);
+              if (postData.scheduledFor) {
+                const scheduleDate = new Date(postData.scheduledFor);
+                setScheduledDate(scheduleDate.toISOString().split('T')[0]);
+                setScheduledTime(scheduleDate.toTimeString().slice(0, 5));
+              }
             }
           }
 
@@ -88,72 +96,34 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
       clearTimeout(autoSaveTimer);
     }
 
-    const timer = setTimeout(() => {
-      if (title || content) {
-        saveDraft();
-        toast.success('Autosaved draft');
-      }
-    }, 3000);
+    // Only autosave if we have content and user is actively editing
+    if ((title || content) && (mode === 'create' || isDraftMode)) {
+      const timer = setTimeout(() => {
+        saveDraft(true); // true indicates autosave
+      }, 5000); // Increased to 5 seconds to reduce duplicates
 
-    setAutoSaveTimer(timer);
+      setAutoSaveTimer(timer);
+    }
 
     return () => {
-      if (timer) clearTimeout(timer);
+      if (autoSaveTimer) clearTimeout(autoSaveTimer);
     };
   }, [title, content, imageUrl]);
 
-  const saveDraft = async () => {
+  const saveDraft = async (isAutosave = false) => {
     const user = auth.currentUser;
     if (!user) return;
 
-    const draftId = id || `draft-${user.uid}-${Date.now()}`;
-    const draft = {
-      id: draftId,
-      title,
-      content,
-      imageUrl,
-      authorId: user.uid,
-      authorName: user.displayName || 'Anonymous',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      status: 'draft',
-    };
-
     try {
-      await saveDraftToFirestore(draftId, draft);
-    } catch (err) {
-      console.error('Error saving draft:', err);
-    }
-  };
-
-  const handleSaveDraft = async () => {
-    if (!title.trim() && !content.trim()) {
-      toast.error('Cannot save empty draft');
-      return;
-    }
-
-    await saveDraft();
-    toast.success('Draft saved successfully');
-  };
-
-  const handleConvertToDraft = async () => {
-    if (!title.trim() || !content.trim()) {
-      toast.error('Title and content are required');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const user = auth.currentUser;
-      if (!user) {
-        toast.error('You must be logged in');
-        setLoading(false);
-        return;
+      let draftId = currentDraftId;
+      
+      // Only create new draft ID if we don't have one
+      if (!draftId) {
+        draftId = id || `draft-${user.uid}-${Date.now()}`;
+        setCurrentDraftId(draftId);
       }
 
-      // Create new draft
-      const draftId = `draft-${user.uid}-${Date.now()}`;
-      const draftData = {
+      const draft = {
         id: draftId,
         title: title.trim(),
         content: content.trim(),
@@ -165,16 +135,50 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
         status: 'draft',
       };
 
-      await saveDraftToFirestore(draftId, draftData);
-
-      // Delete from published/scheduled if editing existing post
-      if (mode === 'edit' && id && !isDraftMode) {
-        // await updateBlogPost(id, { status: 'deleted' }); // Mark as deleted instead of actual deletion
-        await deleteDraftById(id);
+      await saveDraftToFirestore(draftId, draft);
+      
+      if (isAutosave) {
+        toast.success('Draft auto-saved', { duration: 2000 });
       }
+    } catch (err) {
+      console.error('Error saving draft:', err);
+      if (!isAutosave) {
+        toast.error('Failed to save draft');
+      }
+    }
+  };
 
-      toast.success('Post converted to draft successfully');
-      navigate('/blog/drafts');
+  const handleSaveDraft = async () => {
+    if (!title.trim() && !content.trim()) {
+      toast.error('Cannot save empty draft');
+      return;
+    }
+
+    await saveDraft(false);
+    toast.success('Draft saved successfully');
+  };
+
+  const handleConvertToDraft = async () => {
+    if (!title.trim() || !content.trim()) {
+      toast.error('Title and content are required');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (mode === 'edit' && id) {
+        // Update existing post to draft status
+        await updateBlogPost(id, {
+          title: title.trim(),
+          content: content.trim(),
+          imageUrl,
+          status: 'draft',
+          updatedAt: Date.now()
+        });
+
+        toast.success('Post converted to draft successfully');
+        navigate('/blog/drafts');
+      }
     } catch (error: any) {
       console.error('Error converting to draft:', error);
       toast.error('Failed to convert to draft');
@@ -225,9 +229,9 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
         // Create new scheduled post
         await createBlogPost(postData);
 
-        // Delete from drafts if it was a draft
-        if (isDraftMode && id) {
-          await deleteDraftById(id);
+        // Delete draft if it was converted from draft
+        if (isDraftMode && currentDraftId) {
+          await deleteBlogPost(currentDraftId);
           toast.success('Draft scheduled for publication');
         } else {
           toast.success('Post scheduled successfully');
@@ -283,8 +287,8 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
       if (mode === 'create' || isDraftMode) {
         const postId = await createBlogPost(postData);
 
-        if (isDraftMode && id) {
-          await deleteDraftById(id);
+        if (isDraftMode && currentDraftId) {
+          await deleteBlogPost(currentDraftId);
           toast.success('Draft published successfully');
         } else {
           toast.success('Blog post published successfully');
@@ -443,7 +447,7 @@ const BlogEditor: React.FC<{ mode: 'create' | 'edit' }> = ({ mode }) => {
                 Save Draft
               </Button>
 
-              {(mode === 'edit' && !isDraftMode) && (
+              {(mode === 'edit' && !isDraftMode && originalStatus !== 'draft') && (
                 <Button
                   type="button"
                   variant="outline"

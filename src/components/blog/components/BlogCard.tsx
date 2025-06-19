@@ -123,7 +123,7 @@ const BlogCard: React.FC<BlogCardProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigate(`/blog/edit/${post.id}${showScheduled || isScheduled ? '?isDraft=false' : ''}`)}
+                  onClick={() => navigate(`/blog/edit/${post.id}`)}
                   className="text-[#7E69AB] border-[#D6BCFA] hover:bg-[#F3F0FF] text-xs px-2 py-1"
                 >
                   <Edit size={12} />

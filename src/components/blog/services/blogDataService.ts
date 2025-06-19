@@ -41,10 +41,16 @@ export const getAllBlogPosts = async (): Promise<BlogPost[]> => {
     const isAdmin = await canUserEditBlogs();
     
     if (!isAdmin) {
+      // Regular users only see published posts
       return allPosts.filter(post => post.status === 'published' || post.status === undefined);
     }
     
-    return allPosts.filter(post => post.status !== 'scheduled');
+    // Admins see published and scheduled posts (not drafts in blog list)
+    return allPosts.filter(post => 
+      post.status === 'published' || 
+      post.status === 'scheduled' || 
+      post.status === undefined
+    );
   } catch (error) {
     console.error('Error fetching blog posts:', error);
     throw new Error('Failed to fetch blog posts');
@@ -65,7 +71,7 @@ export const getScheduledBlogPosts = async (): Promise<BlogPost[]> => {
     const q = query(
       blogsCollection, 
       where('status', '==', 'scheduled'),
-      orderBy('scheduledFor', 'asc')
+      orderBy('createdAt', 'desc')
     );
     const snapshot = await getDocs(q);
     return snapshot.docs.map((doc) => {
@@ -201,7 +207,7 @@ export const deleteBlogPost = async (id: string): Promise<void> => {
   }
 };
 
-// Draft operations
+// Save draft to the main blogs collection with 'draft' status
 export const saveDraftToFirestore = async (draftId: string, data: any) => {
   try {
     if (!draftId || !data) throw new Error('Draft ID and data are required');
@@ -210,10 +216,11 @@ export const saveDraftToFirestore = async (draftId: string, data: any) => {
       ...data,
       title: data.title?.trim() || '',
       content: data.content?.trim() || '',
+      status: 'draft',
       updatedAt: Date.now()
     };
     
-    const draftRef = doc(collection(db, 'blog-drafts'), draftId);
+    const draftRef = doc(blogsCollection, draftId);
     await setDoc(draftRef, draftData, { merge: true });
   } catch (error) {
     console.error('Error saving draft:', error);
@@ -225,9 +232,15 @@ export const getDraftById = async (draftId: string) => {
   try {
     if (!draftId) throw new Error('Draft ID is required');
     
-    const draftRef = doc(db, 'blog-drafts', draftId);
+    const draftRef = doc(db, 'blogs', draftId);
     const snap = await getDoc(draftRef);
-    return snap.exists() ? snap.data() : null;
+    if (!snap.exists()) return null;
+    
+    const data = snap.data();
+    // Only return if it's actually a draft
+    if (data.status !== 'draft') return null;
+    
+    return data;
   } catch (error) {
     console.error('Error fetching draft:', error);
     throw error;
@@ -238,7 +251,7 @@ export const deleteDraftById = async (draftId: string) => {
   try {
     if (!draftId) throw new Error('Draft ID is required');
     
-    const draftRef = doc(db, 'blog-drafts', draftId);
+    const draftRef = doc(db, 'blogs', draftId);
     await deleteDoc(draftRef);
   } catch (error) {
     console.error('Error deleting draft:', error);
@@ -250,8 +263,12 @@ export const getUserDrafts = async (uid: string): Promise<BlogDraft[]> => {
   try {
     if (!uid) throw new Error('User ID is required');
     
-    const draftsRef = collection(db, 'blog-drafts');
-    const q = query(draftsRef, where('authorId', '==', uid));
+    const q = query(
+      blogsCollection, 
+      where('authorId', '==', uid),
+      where('status', '==', 'draft'),
+      orderBy('updatedAt', 'desc')
+    );
     const snapshot = await getDocs(q);
 
     return snapshot.docs.map((doc) => {
@@ -265,7 +282,7 @@ export const getUserDrafts = async (uid: string): Promise<BlogDraft[]> => {
         authorName: data.authorName || 'Anonymous',
         createdAt: data.createdAt || Date.now(),
         updatedAt: data.updatedAt || Date.now(),
-        status: data.status || 'draft',
+        status: 'draft',
       };
     });
   } catch (error) {
