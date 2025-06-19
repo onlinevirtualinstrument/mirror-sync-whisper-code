@@ -1,7 +1,5 @@
-
 import { getFirestore, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { app } from './config';
-import { user } from './index';
 
 const db = getFirestore(app);
 
@@ -12,7 +10,7 @@ const db = getFirestore(app);
  */
 export const toggleRoomChat = async (roomId: string, disabled: boolean): Promise<void> => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId); // Fixed: was 'rooms'
     await updateDoc(roomRef, {
       isChatDisabled: disabled,
       lastUpdated: new Date().toISOString()
@@ -35,7 +33,7 @@ export const toggleAutoCloseRoom = async (
   timeout: number = 5
 ): Promise<void> => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId); // Fixed: was 'rooms'
     await updateDoc(roomRef, {
       autoCloseAfterInactivity: enabled,
       inactivityTimeout: timeout,
@@ -58,7 +56,7 @@ export const updateRoomSettings = async (
   settings: any
 ): Promise<void> => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId); // Fixed: was 'rooms'
     await updateDoc(roomRef, {
       ...settings,
       lastUpdated: new Date().toISOString()
@@ -81,7 +79,7 @@ export const handleJoinRequest = async (
   approve: boolean
 ): Promise<void> => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId);
     
     if (approve) {
       // Add user to participants
@@ -116,7 +114,7 @@ export const requestToJoinRoom = async (
   autoApprove: boolean = false
 ): Promise<void> => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId);
     
     if (autoApprove) {
       // Add user directly to participants if auto-approved
@@ -153,7 +151,7 @@ export const requestToJoinRoom = async (
  */
 export const broadcastNote = async (roomId: string, noteData: any): Promise<void> => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId);
     await updateDoc(roomRef, {
       currentNote: noteData,
       lastActivity: new Date().toISOString()
@@ -176,7 +174,7 @@ export const listenToInstrumentNotes = (
   errorCallback: (error: any) => void
 ): (() => void) => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId);
     return onSnapshot(roomRef, (snapshot) => {
       const data = snapshot.data();
       if (data && data.currentNote) {

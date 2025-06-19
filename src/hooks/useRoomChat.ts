@@ -20,11 +20,18 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
   const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
 
   useEffect(() => {
-    if (!roomId || !user) return;
+    if (!roomId || !user) {
+      console.log('useRoomChat: Missing roomId or user, skipping chat setup');
+      return;
+    }
+
+    console.log('useRoomChat: Setting up chat listener for room:', roomId);
 
     const unsubscribeChat = listenToRoomChat(
       roomId,
       (messagesData) => {
+        console.log('useRoomChat: Received messages:', messagesData.length);
+        
         const sortedMessages = [...messagesData].sort((a, b) => {
           const timeA = a.timestamp?.toDate?.() || new Date(a.timestamp || 0);
           const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp || 0);
@@ -39,7 +46,7 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
             const msgTime = msg.timestamp?.toDate?.() || new Date(msg.timestamp || 0);
             return msg.senderId !== user.uid && 
                    msgTime.getTime() > lastSeenMessageTimestamp &&
-                   !msg.isRead; // Add isRead flag if available
+                   !msg.isRead;
           }).length;
           
           setUnreadMessageCount(unreadCount);
@@ -60,22 +67,31 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
           }
         } else {
           setIsFirstLoad(false);
-          // On first load, don't count existing messages as unread
           setUnreadMessageCount(0);
         }
       },
       (error) => {
-        console.error("Chat error:", error);
+        console.error("useRoomChat: Chat error:", error);
+        addNotification({
+          title: "Chat Error",
+          message: "Failed to load chat messages",
+          type: "error"
+        });
       }
     );
 
     return () => {
+      console.log('useRoomChat: Cleaning up chat listener');
       unsubscribeChat();
     };
   }, [roomId, user, lastSeenMessageTimestamp, addNotification, isFirstLoad]);
 
   const sendMessage = async (message: string) => {
-    if (!roomId || !user || !message.trim()) return;
+    if (!roomId || !user || !message.trim()) {
+      console.log('useRoomChat: Cannot send message - missing requirements');
+      return;
+    }
+    
     if (!isParticipant) {
       addNotification({
         title: "Access Denied",
@@ -84,6 +100,7 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
       });
       return;
     }
+    
     if (room?.isChatDisabled && !isHost) {
       addNotification({
         title: "Chat Disabled",
@@ -94,22 +111,30 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
     }
 
     try {
+      console.log('useRoomChat: Sending message to room:', roomId);
+      
       await saveChatMessage(roomId, {
         text: message,
         senderId: user.uid,
         senderName: user.displayName || 'Anonymous',
         senderAvatar: user.photoURL || '',
         timestamp: new Date().toISOString(),
-        isRead: false // Add read status
+        isRead: false
       });
 
-      if (room) {
-        updateRoomSettings(roomId, {
-          lastActivity: new Date().toISOString()
-        });
+      // Only update room settings if room exists and user is participant
+      if (room && isParticipant) {
+        try {
+          await updateRoomSettings(roomId, {
+            lastActivity: new Date().toISOString()
+          });
+        } catch (settingsError) {
+          console.warn('useRoomChat: Failed to update room settings, but message sent:', settingsError);
+          // Don't throw error here as message was sent successfully
+        }
       }
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("useRoomChat: Error sending message:", error);
       addNotification({
         title: "Error",
         message: "Failed to send message",

@@ -1,8 +1,8 @@
 
-
-import React from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useRoomJoin } from '@/hooks/useRoomJoin';
 import { toast } from '@/hooks/use-toast';
 import { RoomProvider } from './RoomContext';
 import RoomHeader from './RoomHeader';
@@ -14,15 +14,20 @@ import JoinRequests from './JoinRequests';
 import JoinPrivateRoom from './JoinPrivateRoom';
 import AppLayout from '@/components/layout/AppLayout';
 
-
-
 const MusicRoom: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const { user, loading } = useAuth();
+  
+  // Handle room joining via shared links
+  useRoomJoin();
 
   // Check if user is authenticated
   if (loading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary rounded-full border-t-transparent"></div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -40,42 +45,18 @@ const MusicRoom: React.FC = () => {
       description: "No room ID provided",
       variant: "destructive",
     });
-    return <Navigate to="/" />;
+    return <Navigate to="/music-rooms" />;
   }
 
   return (
     <AppLayout>
-    <RoomProvider>
-      {/* <div className="flex flex-col h-screen overflow-hidden"> */}
-        {/* Header section with controls */}
+      <RoomProvider>
         <RoomHeader />
-        
-        {/* Join requests visible only to host when there are pending requests */}
         <JoinRequests />
-        
-        {/* Main content area: instrument, chat and participants */}
-        {/* <div className="flex-1 flex flex-col overflow-hidden"> */}
-          {/* Instrument takes full width for better usability */}
-          {/* <div className="flex-grow overflow-hidden"> */}
-            <RoomInstrument />
-          {/* </div> */}
-          
-          {/* Footer section with chat and participants */}
-          {/* <div className="h-72 md:h-64 border-t flex">
-            <div className="w-3/4 border-r">
-              <RoomChat />
-            </div>
-            <div className="w-1/4">
-              <RoomParticipants />
-            </div>
-          </div> */}
-        {/* </div> */}
-        
-        {/* Modals and overlays */}
+        <RoomInstrument />
         <PrivateMessaging />
         <JoinPrivateRoom />
-      {/* </div> */}
-    </RoomProvider>
+      </RoomProvider>
     </AppLayout>
   );
 };

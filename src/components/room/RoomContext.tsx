@@ -151,19 +151,44 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       unsubscribers.push(unsubscribe);
     });
 
-
-
     return () => {
       unsubscribers.forEach(unsub => unsub());
     };
   }, [roomId, user, room]);
+
+  // Auto-close room when empty and navigate users when removed
+  useEffect(() => {
+    if (!room || !user) return;
+
+    const participants = Array.isArray(room.participants) ? room.participants : [];
+    
+    // Check if current user is still a participant
+    const isStillParticipant = participants.some(p => p.id === user.uid);
+    
+    if (!isStillParticipant && roomId) {
+      console.log('User no longer in room, navigating away');
+      navigate('/music-rooms');
+      addNotification({
+        title: "Left Room",
+        message: "You have been removed from the room or the room was closed",
+        type: "info"
+      });
+      return;
+    }
+
+    // Auto-close room if empty
+    if (participants.length === 0 && isHost) {
+      console.log('Room is empty, closing automatically');
+      closeRoom();
+    }
+  }, [room, user, isHost, roomId, navigate, addNotification]);
 
   const leaveRoom = async () => {
     if (!roomId || !user) return;
 
     try {
       await removeUserFromRoom(roomId, user.uid);
-      navigate('/music-rooms'); // Redirect to home
+      navigate('/music-rooms'); // Ensure navigation happens
       addNotification({
         title: "Left Room",
         message: "You have left the room",
@@ -176,6 +201,8 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         message: "Failed to leave room",
         type: "error"
       });
+      // Navigate anyway if there's an error
+      navigate('/music-rooms');
     }
   };
 
