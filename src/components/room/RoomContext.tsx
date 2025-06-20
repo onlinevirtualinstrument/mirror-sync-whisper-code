@@ -157,7 +157,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [roomId, user, room]);
 
-  // FIXED: Auto-close room when empty and navigate users when removed
+  // Auto-close room when empty and navigate users when removed
   useEffect(() => {
     if (!room || !user || !roomId) return;
 
@@ -294,7 +294,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // FIXED: Remove a user from the room (host only)
+  // Remove a user from the room (host only)
   const removeUser = async (userId: string) => {
     if (!roomId || !user || !isHost) return;
 
@@ -329,31 +329,18 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }));
 
       addNotification({
-
         title: disabled ? "Chat Disabled" : "Chat Enabled",
-
         message: disabled ? "Chat has been disabled for all users" : "Chat has been enabled for all users",
-
         type: "info"
-
       });
-
     } catch (error) {
-
       console.error("Error toggling chat:", error);
-
       addNotification({
-
         title: "Error",
-
         message: "Failed to update chat settings",
-
         type: "error"
-
       });
-
     }
-
   };
 
   // Toggle auto-close after inactivity (host only)
@@ -391,17 +378,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error("Error updating settings:", error);
       addNotification({
-
         title: "Error",
-
         message: "Failed to update room settings",
-
         type: "error"
-
       });
-
     }
-
   };
 
   // Respond to join request (host only)
@@ -411,31 +392,18 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await handleJoinRequest(roomId, userId, approve);
       addNotification({
-
         title: approve ? "User Approved" : "Request Denied",
-
         message: approve ? "User has been approved to join" : "User's request has been denied",
-
         type: approve ? "success" : "info"
-
       });
-
     } catch (error) {
-
       console.error("Error handling join request:", error);
-
       addNotification({
-
         title: "Error",
-
         message: "Failed to process join request",
-
         type: "error"
-
       });
-
     }
-
   };
 
   // Send private message
@@ -452,17 +420,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error("Error sending private message:", error);
       addNotification({
-
         title: "Error",
-
         message: "Failed to send private message",
-
         type: "error"
-
       });
-
     }
-
   };
 
   // Request to join room with optional join code
@@ -479,17 +441,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error("Error requesting to join:", error);
       addNotification({
-
         title: "Error",
-
         message: "Failed to send join request",
-
         type: "error"
-
       });
-
     }
-
   };
 
   const value = {
@@ -511,116 +467,13 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     switchInstrument,
     muteUser,
     removeUser,
-    toggleChat: async (disabled: boolean) => {
-      if (!roomId || !user || !isHost) return;
-      try {
-        await toggleRoomChat(roomId, disabled);
-        setRoom(prev => ({ ...prev, isChatDisabled: disabled }));
-        addNotification({
-          title: disabled ? "Chat Disabled" : "Chat Enabled",
-          message: disabled ? "Chat has been disabled for all users" : "Chat has been enabled for all users",
-          type: "info"
-        });
-      } catch (error) {
-        console.error("Error toggling chat:", error);
-        addNotification({
-          title: "Error",
-          message: "Failed to update chat settings",
-          type: "error"
-        });
-      }
-    },
-    toggleAutoClose: async (enabled: boolean, timeout: number = 5) => {
-      if (!roomId || !user || !isHost) return;
-      try {
-        await toggleAutoCloseRoom(roomId, enabled, timeout);
-        addNotification({
-          title: enabled ? "Auto-Close Enabled" : "Auto-Close Disabled",
-          message: enabled ? `Room will auto-close after ${timeout} minutes of inactivity` : "Auto-close has been disabled for this room",
-          type: "info"
-        });
-      } catch (error) {
-        console.error("Error toggling auto-close:", error);
-        addNotification({
-          title: "Error",
-          message: "Failed to update auto-close settings",
-          type: "error"
-        });
-      }
-    },
-    updateSettings: async (settings: any) => {
-      if (!roomId || !user || !isHost) return;
-      try {
-        await updateRoomSettings(roomId, settings);
-        addNotification({
-          title: "Room Settings Updated",
-          message: "Room settings have been updated successfully",
-          type: "success"
-        });
-      } catch (error) {
-        console.error("Error updating settings:", error);
-        addNotification({
-          title: "Error",
-          message: "Failed to update room settings",
-          type: "error"
-        });
-      }
-    },
-    respondToJoinRequest: async (userId: string, approve: boolean) => {
-      if (!roomId || !user || !isHost) return;
-      try {
-        await handleJoinRequest(roomId, userId, approve);
-        addNotification({
-          title: approve ? "User Approved" : "Request Denied",
-          message: approve ? "User has been approved to join" : "User's request has been denied",
-          type: approve ? "success" : "info"
-        });
-      } catch (error) {
-        console.error("Error handling join request:", error);
-        addNotification({
-          title: "Error",
-          message: "Failed to process join request",
-          type: "error"
-        });
-      }
-    },
-    sendPrivateMsg: async (receiverId: string, message: string) => {
-      if (!roomId || !user || !message.trim()) return;
-      try {
-        await sendPrivateMessage(roomId, user.uid, receiverId, message);
-        addNotification({
-          title: "Private Message Sent",
-          message: "Your message has been sent",
-          type: "success"
-        });
-      } catch (error) {
-        console.error("Error sending private message:", error);
-        addNotification({
-          title: "Error",
-          message: "Failed to send private message",
-          type: "error"
-        });
-      }
-    },
+    toggleChat,
+    toggleAutoClose,
+    updateSettings,
+    respondToJoinRequest,
+    sendPrivateMsg,
     setPrivateMessagingUser,
-    requestJoin: async (code?: string) => {
-      if (!roomId || !user) return;
-      try {
-        await requestToJoinRoom(roomId, user.uid, !!code);
-        addNotification({
-          title: "Join Request Sent",
-          message: "Your request to join has been sent",
-          type: "info"
-        });
-      } catch (error) {
-        console.error("Error requesting to join:", error);
-        addNotification({
-          title: "Error",
-          message: "Failed to send join request",
-          type: "error"
-        });
-      }
-    },
+    requestJoin,
     broadcastInstrumentNote,
     markChatAsRead
   };

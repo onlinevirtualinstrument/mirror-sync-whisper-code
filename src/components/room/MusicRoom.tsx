@@ -2,7 +2,6 @@
 import React, { useEffect } from 'react';
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useRoomJoin } from '@/hooks/useRoomJoin';
 import { toast } from '@/hooks/use-toast';
 import { RoomProvider } from './RoomContext';
 import RoomHeader from './RoomHeader';
@@ -17,9 +16,7 @@ import AppLayout from '@/components/layout/AppLayout';
 const MusicRoom: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const { user, loading } = useAuth();
-  
-  // Handle room joining via shared links - this will handle the join logic
-  useRoomJoin();
+  const navigate = useNavigate();
 
   // Check if user is authenticated
   if (loading) {

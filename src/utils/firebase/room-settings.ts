@@ -14,7 +14,7 @@ export const toggleRoomChat = async (roomId: string, disabled: boolean): Promise
     const roomRef = doc(db, 'musicRooms', roomId);
     await updateDoc(roomRef, {
       isChatDisabled: disabled,
-      lastUpdated: new Date().toISOString()
+      lastActivity: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error toggling room chat:', error);
@@ -38,8 +38,7 @@ export const toggleAutoCloseRoom = async (
     await updateDoc(roomRef, {
       autoCloseAfterInactivity: enabled,
       inactivityTimeout: timeout,
-      lastActivity: new Date().toISOString(),
-      lastUpdated: new Date().toISOString()
+      lastActivity: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error toggling auto-close:', error);
@@ -58,9 +57,17 @@ export const updateRoomSettings = async (
 ): Promise<void> => {
   try {
     const roomRef = doc(db, 'musicRooms', roomId);
+    
+    // Check if room exists before updating
+    const roomSnap = await getDoc(roomRef);
+    if (!roomSnap.exists()) {
+      console.warn('Room does not exist, skipping settings update');
+      return;
+    }
+    
     await updateDoc(roomRef, {
       ...settings,
-      lastUpdated: new Date().toISOString()
+      lastActivity: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error updating room settings:', error);
@@ -90,32 +97,39 @@ export const handleJoinRequest = async (
     
     const roomData = roomDoc.data();
     const currentParticipants = roomData.participants || [];
-    const currentJoinRequests = roomData.joinRequests || [];
+    const currentPendingRequests = roomData.pendingRequests || [];
     
     if (approve) {
       // Add user to participants
-      const updatedParticipants = [...currentParticipants, { 
+      const newParticipant = { 
         id: userId, 
-        joinedAt: new Date().toISOString(),
+        name: 'Anonymous',
+        instrument: 'piano',
+        avatar: '',
         isHost: false,
+        status: 'active',
         muted: false
-      }];
+      };
       
-      // Remove from join requests
-      const updatedJoinRequests = currentJoinRequests.filter((req: any) => req.userId !== userId);
+      const updatedParticipants = [...currentParticipants, newParticipant];
+      const updatedParticipantIds = [...(roomData.participantIds || []), userId];
+      
+      // Remove from pending requests
+      const updatedPendingRequests = currentPendingRequests.filter((reqUserId: string) => reqUserId !== userId);
       
       await updateDoc(roomRef, {
         participants: updatedParticipants,
-        joinRequests: updatedJoinRequests,
-        lastUpdated: new Date().toISOString()
+        participantIds: updatedParticipantIds,
+        pendingRequests: updatedPendingRequests,
+        lastActivity: new Date().toISOString()
       });
     } else {
-      // Remove from join requests only
-      const updatedJoinRequests = currentJoinRequests.filter((req: any) => req.userId !== userId);
+      // Remove from pending requests only
+      const updatedPendingRequests = currentPendingRequests.filter((reqUserId: string) => reqUserId !== userId);
       
       await updateDoc(roomRef, {
-        joinRequests: updatedJoinRequests,
-        lastUpdated: new Date().toISOString()
+        pendingRequests: updatedPendingRequests,
+        lastActivity: new Date().toISOString()
       });
     }
   } catch (error) {
@@ -146,31 +160,35 @@ export const requestToJoinRoom = async (
     
     const roomData = roomDoc.data();
     const currentParticipants = roomData.participants || [];
-    const currentJoinRequests = roomData.joinRequests || [];
+    const currentPendingRequests = roomData.pendingRequests || [];
     
     if (autoApprove) {
       // Add user directly to participants if auto-approved
-      const updatedParticipants = [...currentParticipants, { 
+      const newParticipant = { 
         id: userId, 
-        joinedAt: new Date().toISOString(),
+        name: 'Anonymous',
+        instrument: 'piano',
+        avatar: '',
         isHost: false,
+        status: 'active',
         muted: false
-      }];
+      };
+      
+      const updatedParticipants = [...currentParticipants, newParticipant];
+      const updatedParticipantIds = [...(roomData.participantIds || []), userId];
       
       await updateDoc(roomRef, {
         participants: updatedParticipants,
-        lastUpdated: new Date().toISOString()
+        participantIds: updatedParticipantIds,
+        lastActivity: new Date().toISOString()
       });
     } else {
-      // Add to join requests
-      const updatedJoinRequests = [...currentJoinRequests, { 
-        userId, 
-        requestedAt: new Date().toISOString() 
-      }];
+      // Add to pending requests
+      const updatedPendingRequests = [...currentPendingRequests, userId];
       
       await updateDoc(roomRef, {
-        joinRequests: updatedJoinRequests,
-        lastUpdated: new Date().toISOString()
+        pendingRequests: updatedPendingRequests,
+        lastActivity: new Date().toISOString()
       });
     }
   } catch (error) {
