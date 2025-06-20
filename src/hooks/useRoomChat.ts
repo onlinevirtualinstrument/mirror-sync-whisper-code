@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -38,33 +38,31 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
           return timeA.getTime() - timeB.getTime();
         });
 
-        // Update messages immediately for real-time display
+        // Always update messages for real-time display
         setMessages(sortedMessages);
 
-        // Calculate unread messages based on timestamp and sender
-        if (!isFirstLoad && user) {
-          const unreadCount = sortedMessages.filter(msg => {
-            const msgTime = msg.timestamp?.toDate?.() || new Date(msg.timestamp || 0);
-            return msg.senderId !== user.uid && 
-                   msgTime.getTime() > lastSeenMessageTimestamp &&
-                   !msg.isRead;
-          }).length;
-          
-          setUnreadMessageCount(unreadCount);
+        // Handle notifications for new messages (but not on first load)
+        if (!isFirstLoad) {
+          const latestMessage = sortedMessages[sortedMessages.length - 1];
+          if (latestMessage && 
+              latestMessage.senderId !== user.uid) {
+            const latestMsgTime = latestMessage.timestamp?.toDate?.() || new Date(latestMessage.timestamp || 0);
+            if (latestMsgTime.getTime() > lastSeenMessageTimestamp) {
+              // Calculate unread count
+              const unreadCount = sortedMessages.filter(msg => {
+                const msgTime = msg.timestamp?.toDate?.() || new Date(msg.timestamp || 0);
+                return msg.senderId !== user.uid && 
+                       msgTime.getTime() > lastSeenMessageTimestamp;
+              }).length;
+              
+              setUnreadMessageCount(unreadCount);
 
-          // Show notification for new messages
-          if (sortedMessages.length > messages.length) {
-            const latestMessage = sortedMessages[sortedMessages.length - 1];
-            if (latestMessage && 
-                latestMessage.senderId !== user.uid) {
-              const latestMsgTime = latestMessage.timestamp?.toDate?.() || new Date(latestMessage.timestamp || 0);
-              if (latestMsgTime.getTime() > lastSeenMessageTimestamp) {
-                addNotification({
-                  title: "New Message",
-                  message: `${latestMessage.senderName}: ${latestMessage.text.substring(0, 50)}${latestMessage.text.length > 50 ? '...' : ''}`,
-                  type: "info"
-                });
-              }
+              // Show notification
+              addNotification({
+                title: "New Message",
+                message: `${latestMessage.senderName}: ${latestMessage.text.substring(0, 50)}${latestMessage.text.length > 50 ? '...' : ''}`,
+                type: "info"
+              });
             }
           }
         } else {
@@ -124,15 +122,14 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
         isRead: false
       });
 
-      // Only update room settings if room exists and user is participant
-      if (room && isParticipant) {
+      // Update room activity
+      if (room) {
         try {
           await updateRoomSettings(roomId, {
             lastActivity: new Date().toISOString()
           });
         } catch (settingsError) {
-          console.warn('useRoomChat: Failed to update room settings, but message sent:', settingsError);
-          // Don't throw error here as message was sent successfully
+          console.warn('useRoomChat: Failed to update room settings:', settingsError);
         }
       }
     } catch (error) {

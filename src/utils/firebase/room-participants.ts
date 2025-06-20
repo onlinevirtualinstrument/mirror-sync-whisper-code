@@ -1,3 +1,4 @@
+
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, setDoc, onSnapshot, collection, getDocs } from "firebase/firestore";
 import { toast } from '@/hooks/use-toast';
 import { db } from './config';
@@ -10,13 +11,8 @@ export const isUserRoomParticipant = async (roomId: string, userId: string): Pro
     
     if (roomSnap.exists()) {
       const roomData = roomSnap.data();
-      
-      // Check if user is in participants array
       const participantIds = roomData.participantIds || [];
-      const participants = roomData.participants || [];
-      
-      // Check both participantIds array and participants array to be safe
-      return participantIds.includes(userId) || participants.some((p: any) => p.id === userId);
+      return participantIds.includes(userId);
     }
     
     return false;
@@ -26,50 +22,50 @@ export const isUserRoomParticipant = async (roomId: string, userId: string): Pro
   }
 };
 
-// Add user as a participant to room
+// Add user as a participant to room - FIXED VERSION
 export const addUserToRoom = async (roomId: string, user: any): Promise<boolean> => {
   try {
+    console.log('addUserToRoom: Starting for user:', user.uid, 'room:', roomId);
+    
     const roomRef = doc(db, "musicRooms", roomId);
     const roomSnap = await getDoc(roomRef);
     
     if (!roomSnap.exists()) {
+      console.log('addUserToRoom: Room does not exist');
       toast({ description: "Room no longer exists." });
       return false;
     }
     
     const roomData = roomSnap.data();
-    let participants = roomData.participants || [];
+    const participants = roomData.participants || [];
     const participantIds = roomData.participantIds || [];
     
     // Check if user is already a participant
     if (participantIds.includes(user.uid)) {
-      console.log("User is already a participant of this room");
-      return true; // User is already in the room
+      console.log("addUserToRoom: User is already a participant");
+      return true;
     }
     
     // Check if room is full
-    if (participants.length >= (roomData.maxParticipants || 3)) {
+    if (participants.length >= (roomData.maxParticipants || 10)) {
       toast({ description: "Room is full." });
       return false;
     }
     
-    // For private rooms, check if user is approved or has join code
+    // For private rooms, handle join permissions
     if (!roomData.isPublic) {
+      const isHost = roomData.hostId === user.uid;
       const pendingRequests = roomData.pendingRequests || [];
       const isApproved = pendingRequests.includes(user.uid);
-      const isHost = roomData.hostId === user.uid;
       
-      // If not approved or host, check if we have a join code match
-      if (!isApproved && !isHost && user.joinCode) {
-        if (roomData.joinCode !== user.joinCode) {
-          toast({ description: "Incorrect join code for this private room." });
+      if (!isHost && !isApproved) {
+        // Check if user has correct join code
+        if (user.joinCode && roomData.joinCode === user.joinCode) {
+          console.log('addUserToRoom: Join code is correct');
+        } else {
+          toast({ description: "You need approval or correct join code to join this private room." });
           return false;
         }
-        // Join code is correct, proceed with joining
-      } else if (!isApproved && !isHost) {
-        // Neither approved nor has join code
-        toast({ description: "You need approval to join this private room." });
-        return false;
       }
       
       // Remove from pending requests if approved
@@ -80,28 +76,25 @@ export const addUserToRoom = async (roomId: string, user: any): Promise<boolean>
       }
     }
     
-    // Add user to participants
+    // Create new participant object
     const newParticipant = {
       id: user.uid,
       name: user.displayName || 'Anonymous',
-      instrument: roomData.allowDifferentInstruments ? 'piano' : roomData.hostInstrument,
+      instrument: roomData.allowDifferentInstruments ? 'piano' : (roomData.hostInstrument || 'piano'),
       avatar: user.photoURL || '',
-      isHost: false,
+      isHost: roomData.hostId === user.uid,
       status: 'active',
       muted: false
     };
     
-    // Update both participantIds and participants arrays atomically
-    const updatedParticipants = [...participants, newParticipant];
-    const updatedParticipantIds = [...participantIds, user.uid];
-    
+    // Update both arrays atomically
     await updateDoc(roomRef, {
-      participants: updatedParticipants,
-      participantIds: updatedParticipantIds,
+      participants: [...participants, newParticipant],
+      participantIds: [...participantIds, user.uid],
       lastActivity: new Date().toISOString()
     });
     
-    console.log("User successfully added to room:", user.uid);
+    console.log("addUserToRoom: Successfully added user to room");
     toast({ description: "Successfully joined room!" });
     return true;
   } catch (error) {
@@ -129,40 +122,40 @@ export const removeUserFromRoom = async (roomId: string, userId: string): Promis
     const participantIds = roomData.participantIds || [];
     
     // Find user in participants
-    const userParticipant = participants.find((p: any) => p.id === userId);
+    const userIndex = participants.findIndex((p: any) => p.id === userId);
+    const isUserParticipant = participantIds.includes(userId);
     
-    if (!userParticipant) {
+    if (!isUserParticipant || userIndex === -1) {
       console.log("removeUserFromRoom: User not found in participants");
-      return; // User not in room
+      return;
     }
+    
+    const userToRemove = participants[userIndex];
+    const isHost = userToRemove.isHost;
     
     // Remove user from both arrays
     const updatedParticipants = participants.filter((p: any) => p.id !== userId);
     const updatedParticipantIds = participantIds.filter((id: string) => id !== userId);
     
-    console.log(`removeUserFromRoom: Participants before: ${participants.length}, after: ${updatedParticipants.length}`);
+    console.log(`removeUserFromRoom: Participants count - before: ${participants.length}, after: ${updatedParticipants.length}`);
     
-    // Check if user is host
-    const isHost = userParticipant.isHost;
-    
-    if (isHost && updatedParticipants.length > 0) {
-      // If host is leaving and there are other participants, assign a new host
-      const newHost = updatedParticipants[0]; // Make first remaining user the host
+    if (updatedParticipants.length === 0) {
+      // Room is now empty, delete it
+      console.log("removeUserFromRoom: Room is empty, deleting");
+      await deleteRoomFromFirestore(roomId);
+    } else if (isHost && updatedParticipants.length > 0) {
+      // Assign new host
+      const newHost = updatedParticipants[0];
       newHost.isHost = true;
       
       console.log(`removeUserFromRoom: Assigning new host: ${newHost.id}`);
       
-      // Update room with new host and without old host
       await updateDoc(roomRef, {
         participants: updatedParticipants,
         participantIds: updatedParticipantIds,
         hostId: newHost.id,
         lastActivity: new Date().toISOString()
       });
-    } else if (isHost && updatedParticipants.length === 0) {
-      // If host is the only one leaving, delete the room
-      console.log("removeUserFromRoom: Host leaving empty room, deleting room");
-      await deleteRoomFromFirestore(roomId);
     } else {
       // Regular participant leaving
       console.log("removeUserFromRoom: Regular participant leaving");
@@ -176,8 +169,7 @@ export const removeUserFromRoom = async (roomId: string, userId: string): Promis
     console.log("removeUserFromRoom: Successfully removed user from room");
   } catch (error) {
     console.error("Error removing user from room:", error);
-    toast({ description: "Failed to leave room properly." });
-    throw error; // Re-throw to handle in calling code
+    throw error;
   }
 };
 
@@ -192,7 +184,6 @@ export const updateUserInstrument = async (roomId: string, userId: string, instr
     const roomData = roomSnap.data();
     const participants = roomData.participants || [];
     
-    // Find and update the user's instrument
     const updatedParticipants = participants.map((p: any) => {
       if (p.id === userId) {
         return { ...p, instrument };
@@ -204,11 +195,9 @@ export const updateUserInstrument = async (roomId: string, userId: string, instr
       participants: updatedParticipants,
       lastActivity: new Date().toISOString()
     });
-    
-    toast({ description: `Instrument changed to ${instrument}` });
   } catch (error) {
     console.error("Error updating instrument:", error);
-    toast({ description: "Failed to update your instrument." });
+    throw error;
   }
 };
 
@@ -223,7 +212,6 @@ export const toggleUserMute = async (roomId: string, userId: string, mute: boole
     const roomData = roomSnap.data();
     const participants = roomData.participants || [];
     
-    // Find and update the user's mute status
     const updatedParticipants = participants.map((p: any) => {
       if (p.id === userId) {
         return { ...p, muted: mute };
@@ -235,185 +223,13 @@ export const toggleUserMute = async (roomId: string, userId: string, mute: boole
       participants: updatedParticipants,
       lastActivity: new Date().toISOString()
     });
-    
-    toast({ description: mute ? `User muted` : `User unmuted` });
   } catch (error) {
     console.error("Error updating mute status:", error);
-    toast({ description: "Failed to update user mute status." });
+    throw error;
   }
 };
 
-// Toggle chat for a room
-export const toggleRoomChat = async (roomId: string, disable: boolean): Promise<void> => {
-  try {
-    const roomRef = doc(db, "musicRooms", roomId);
-    await updateDoc(roomRef, { 
-      isChatDisabled: disable,
-      lastActivity: new Date().toISOString()
-    });
-    
-    toast({ description: disable ? "Chat disabled for room" : "Chat enabled for room" });
-  } catch (error) {
-    console.error("Error toggling room chat:", error);
-    toast({ description: "Failed to update room chat settings." });
-  }
-};
-
-// Handle auto-close room functionality
-export const toggleAutoCloseRoom = async (roomId: string, enable: boolean, timeout: number = 5): Promise<void> => {
-  try {
-    const roomRef = doc(db, "musicRooms", roomId);
-    await updateDoc(roomRef, { 
-      autoCloseAfterInactivity: enable,
-      inactivityTimeout: timeout, // in minutes
-      lastActivity: new Date().toISOString()
-    });
-    
-    toast({ 
-      description: enable 
-        ? `Room will auto-close after ${timeout} minutes of inactivity` 
-        : "Auto-close disabled for room" 
-    });
-  } catch (error) {
-    console.error("Error toggling auto-close:", error);
-    toast({ description: "Failed to update auto-close settings." });
-  }
-};
-
-// Handle room settings
-export const updateRoomSettings = async (roomId: string, settings: any): Promise<void> => {
-  try {
-    const roomRef = doc(db, "musicRooms", roomId);
-    await updateDoc(roomRef, { 
-      ...settings,
-      lastActivity: new Date().toISOString() 
-    });
-    
-    toast({ description: "Room settings updated" });
-  } catch (error) {
-    console.error("Error updating room settings:", error);
-    toast({ description: "Failed to update room settings." });
-  }
-};
-
-// Handle join request for private rooms
-export const handleJoinRequest = async (roomId: string, userId: string, approve: boolean): Promise<void> => {
-  try {
-    const roomRef = doc(db, "musicRooms", roomId);
-    
-    if (approve) {
-      // If approved, first add to participantIds (critical for security rules)
-      await updateDoc(roomRef, {
-        pendingRequests: arrayRemove(userId),
-        participantIds: arrayUnion(userId),
-        lastActivity: new Date().toISOString()
-      });
-      
-      // Fetch user data to add to participants
-      const userRecord = await getDoc(doc(db, "users", userId));
-      let userData: any = { id: userId, name: 'Anonymous', avatar: '' };
-      
-      if (userRecord.exists()) {
-        userData = {
-          id: userId,
-          name: userRecord.data().displayName || 'Anonymous',
-          instrument: 'piano',
-          avatar: userRecord.data().photoURL || '',
-          isHost: false,
-          status: 'active',
-          muted: false
-        };
-      } else {
-        // If user record doesn't exist, try to get info from auth
-        const authUsers = await getDocs(collection(db, "users"));
-        const foundUser = authUsers.docs.find(doc => doc.id === userId);
-        if (foundUser) {
-          const data = foundUser.data();
-          userData = {
-            id: userId,
-            name: data.displayName || 'Anonymous',
-            instrument: 'piano',
-            avatar: data.photoURL || '',
-            isHost: false,
-            status: 'active',
-            muted: false
-          };
-        }
-      }
-      
-      // Then add to participants array
-      await updateDoc(roomRef, {
-        participants: arrayUnion(userData)
-      });
-      
-      toast({ description: "User approved to join the room" });
-    } else {
-      // If rejected, just remove from pendingRequests
-      await updateDoc(roomRef, {
-        pendingRequests: arrayRemove(userId),
-        lastActivity: new Date().toISOString()
-      });
-      
-      toast({ description: "User rejected from joining the room" });
-    }
-  } catch (error) {
-    console.error("Error handling join request:", error);
-    toast({ description: "Failed to process join request." });
-  }
-};
-
-// Request to join a private room
-export const requestToJoinRoom = async (
-  roomId: string, 
-  userId: string,
-  hasCorrectCode: boolean = false
-): Promise<boolean> => {
-  try {
-    const roomRef = doc(db, "musicRooms", roomId);
-    const roomSnap = await getDoc(roomRef);
-    
-    if (!roomSnap.exists()) {
-      toast({ description: "Room no longer exists." });
-      return false;
-    }
-    
-    const roomData = roomSnap.data();
-    
-    // Check if already a participant
-    if (roomData.participantIds.includes(userId)) {
-      toast({ description: "You're already in this room." });
-      return true; // Already a participant counts as success
-    }
-    
-    // If hasCorrectCode is true, add the user directly to the room
-    if (hasCorrectCode) {
-      // For private rooms with correct code, add user immediately
-      return await addUserToRoom(roomId, { uid: userId, joinCode: roomData.joinCode });
-    }
-    
-    // Check if already in pending requests
-    if (roomData.pendingRequests && roomData.pendingRequests.includes(userId)) {
-      toast({ description: "Your request is already pending." });
-      return false;
-    }
-    
-    // Add to pending requests
-    await updateDoc(roomRef, {
-      pendingRequests: arrayUnion(userId),
-      lastActivity: new Date().toISOString()
-    });
-    
-    toast({ description: "Join request sent. Waiting for approval." });
-    return true;
-  } catch (error) {
-    console.error("Error requesting to join room:", error);
-    toast({ description: "Failed to send join request." });
-    return false;
-  }
-};
-
-
-// Import needed for completion of function imported and used in room-participants.ts
+// Import needed for completion
 import { deleteRoomFromFirestore } from './rooms';
 
 // Handle broadcasting and receiving instrument notes
@@ -424,9 +240,6 @@ export const broadcastNote = async (roomId: string, note: any): Promise<void> =>
       ...note,
       timestamp: new Date().toISOString()
     });
-
-    // Notes older than 5 seconds will be automatically deleted by a Firestore TTL rule
-    // or you can implement a cleanup function here
   } catch (error) {
     console.error('Error broadcasting note:', error);
     throw error;
@@ -445,11 +258,9 @@ export const listenToInstrumentNotes = (
     (snapshot) => {
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added') {
-          // New note added
           const noteData = change.doc.data();
           onNote(noteData);
           
-          // Clean up old notes to prevent memory issues
           setTimeout(() => {
             deleteDoc(change.doc.ref).catch(console.error);
           }, 5000);

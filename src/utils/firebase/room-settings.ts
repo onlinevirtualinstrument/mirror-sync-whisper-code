@@ -139,65 +139,6 @@ export const handleJoinRequest = async (
 };
 
 /**
- * Request to join a room
- * @param roomId Room ID
- * @param userId User ID requesting to join
- * @param autoApprove Whether to auto-approve based on join code
- */
-export const requestToJoinRoom = async (
-  roomId: string,
-  userId: string,
-  autoApprove: boolean = false
-): Promise<void> => {
-  try {
-    const roomRef = doc(db, 'musicRooms', roomId);
-    
-    // Get current room data
-    const roomDoc = await getDoc(roomRef);
-    if (!roomDoc.exists()) {
-      throw new Error('Room not found');
-    }
-    
-    const roomData = roomDoc.data();
-    const currentParticipants = roomData.participants || [];
-    const currentPendingRequests = roomData.pendingRequests || [];
-    
-    if (autoApprove) {
-      // Add user directly to participants if auto-approved
-      const newParticipant = { 
-        id: userId, 
-        name: 'Anonymous',
-        instrument: 'piano',
-        avatar: '',
-        isHost: false,
-        status: 'active',
-        muted: false
-      };
-      
-      const updatedParticipants = [...currentParticipants, newParticipant];
-      const updatedParticipantIds = [...(roomData.participantIds || []), userId];
-      
-      await updateDoc(roomRef, {
-        participants: updatedParticipants,
-        participantIds: updatedParticipantIds,
-        lastActivity: new Date().toISOString()
-      });
-    } else {
-      // Add to pending requests
-      const updatedPendingRequests = [...currentPendingRequests, userId];
-      
-      await updateDoc(roomRef, {
-        pendingRequests: updatedPendingRequests,
-        lastActivity: new Date().toISOString()
-      });
-    }
-  } catch (error) {
-    console.error('Error requesting to join room:', error);
-    throw error;
-  }
-};
-
-/**
  * Broadcast instrument note to room
  * @param roomId Room ID
  * @param noteData Note data to broadcast

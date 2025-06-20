@@ -16,7 +16,6 @@ import {
   handleJoinRequest,
   deleteRoomFromFirestore,
   sendPrivateMessage,
-  requestToJoinRoom,
   getPrivateMessages,
   markMessageAsRead,
   listenForUnreadMessages
@@ -56,7 +55,6 @@ type RoomContextType = {
   respondToJoinRequest: (userId: string, approve: boolean) => Promise<void>;
   sendPrivateMsg: (receiverId: string, message: string) => Promise<void>;
   setPrivateMessagingUser: (userId: string | null) => void;
-  requestJoin: (code?: string) => Promise<void>;
   broadcastInstrumentNote: (note: InstrumentNote) => Promise<void>;
   markChatAsRead: () => void;
 };
@@ -133,11 +131,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Listen for unread messages from all participants
   useEffect(() => {
-    if (!roomId || !user || !room) return;
+    if (!roomId || !user || !room?.participants) return;
 
     const unsubscribers: (() => void)[] = [];
 
-    Object.values(room.participants || {}).forEach((participant: any) => {
+    room.participants.forEach((participant: any) => {
       if (participant.id === user.uid) return;
       const unsubscribe = listenForUnreadMessages(
         roomId,
@@ -155,18 +153,19 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
       unsubscribers.forEach(unsub => unsub());
     };
-  }, [roomId, user, room]);
+  }, [roomId, user, room?.participants]);
 
-  // Auto-close room when empty and navigate users when removed
+  // Monitor room state and handle removal/destruction
   useEffect(() => {
     if (!room || !user || !roomId) return;
 
-    const participants = Array.isArray(room.participants) ? room.participants : [];
+    const participants = room.participants || [];
+    const participantIds = room.participantIds || [];
     
-    console.log('RoomContext: Checking participants:', participants.length, 'Current user:', user.uid);
+    console.log('RoomContext: Monitoring room state - participants:', participants.length, 'user:', user.uid);
     
     // Check if current user is still a participant
-    const isStillParticipant = participants.some(p => p.id === user.uid);
+    const isStillParticipant = participantIds.includes(user.uid);
     
     console.log('RoomContext: Is still participant:', isStillParticipant);
     
@@ -182,24 +181,17 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    // Auto-close room if completely empty (no participants at all)
-    if (participants.length === 0) {
-      console.log('RoomContext: Room is completely empty');
-      if (isHost) {
-        console.log('RoomContext: Host closing empty room');
-        closeRoom();
-      } else {
-        // Non-host user in empty room should just leave
-        console.log('RoomContext: Non-host leaving empty room');
-        navigate('/music-rooms');
-        addNotification({
-          title: "Room Closed",
-          message: "The room has been closed",
-          type: "info"
-        });
-      }
+    // Check if room is completely empty
+    if (participants.length === 0 && participantIds.length === 0) {
+      console.log('RoomContext: Room is empty, navigating away');
+      navigate('/music-rooms');
+      addNotification({
+        title: "Room Closed",
+        message: "The room has been closed",
+        type: "info"
+      });
     }
-  }, [room, user, isHost, roomId, navigate, addNotification]);
+  }, [room, user, roomId, navigate, addNotification]);
 
   const leaveRoom = async () => {
     if (!roomId || !user) return;
@@ -208,7 +200,6 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('RoomContext: User leaving room');
       await removeUserFromRoom(roomId, user.uid);
       
-      // Always navigate after leaving
       navigate('/music-rooms');
       addNotification({
         title: "Left Room",
@@ -222,12 +213,10 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         message: "Failed to leave room",
         type: "error"
       });
-      // Navigate anyway if there's an error
       navigate('/music-rooms');
     }
   };
 
-  // Close the room (host only)
   const closeRoom = useCallback(async () => {
     if (!roomId || !user || !isHost) return;
 
@@ -250,13 +239,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [roomId, user, isHost, navigate, addNotification]);
 
-  // Switch instrument
   const switchInstrument = async (instrument: string) => {
     if (!roomId || !user) return;
 
     try {
       await updateUserInstrument(roomId, user.uid, instrument);
-      // Update local UI immediately for responsiveness
       if (userInfo) {
         setUserInfo({
           ...userInfo,
@@ -273,7 +260,6 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Mute/unmute a user (host only)
   const muteUser = async (userId: string, mute: boolean) => {
     if (!roomId || !user || !isHost) return;
 
@@ -294,7 +280,6 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Remove a user from the room (host only)
   const removeUser = async (userId: string) => {
     if (!roomId || !user || !isHost) return;
 
@@ -316,13 +301,11 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Toggle chat for the room (host only)
   const toggleChat = async (disabled: boolean) => {
     if (!roomId || !user || !isHost) return;
 
     try {
       await toggleRoomChat(roomId, disabled);
-      // Update local state immediately for UI responsiveness
       setRoom(prev => ({
         ...prev,
         isChatDisabled: disabled
@@ -343,7 +326,6 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Toggle auto-close after inactivity (host only)
   const toggleAutoClose = async (enabled: boolean, timeout: number = 5) => {
     if (!roomId || !user || !isHost) return;
 
@@ -364,7 +346,6 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Update room settings (host only)
   const updateSettings = async (settings: any) => {
     if (!roomId || !user || !isHost) return;
 
@@ -385,7 +366,6 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Respond to join request (host only)
   const respondToJoinRequest = async (userId: string, approve: boolean) => {
     if (!roomId || !user || !isHost) return;
 
@@ -406,7 +386,6 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Send private message
   const sendPrivateMsg = async (receiverId: string, message: string) => {
     if (!roomId || !user || !message.trim()) return;
 
@@ -422,27 +401,6 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       addNotification({
         title: "Error",
         message: "Failed to send private message",
-        type: "error"
-      });
-    }
-  };
-
-  // Request to join room with optional join code
-  const requestJoin = async (code?: string) => {
-    if (!roomId || !user) return;
-
-    try {
-      await requestToJoinRoom(roomId, user.uid, !!code);
-      addNotification({
-        title: "Join Request Sent",
-        message: "Your request to join has been sent",
-        type: "info"
-      });
-    } catch (error) {
-      console.error("Error requesting to join:", error);
-      addNotification({
-        title: "Error",
-        message: "Failed to send join request",
         type: "error"
       });
     }
@@ -473,7 +431,6 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     respondToJoinRequest,
     sendPrivateMsg,
     setPrivateMessagingUser,
-    requestJoin,
     broadcastInstrumentNote,
     markChatAsRead
   };
