@@ -17,7 +17,6 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
   const [messages, setMessages] = useState<any[]>([]);
   const [unreadMessageCount, setUnreadMessageCount] = useState<number>(0);
   const [lastSeenMessageTimestamp, setLastSeenMessageTimestamp] = useState<number>(Date.now());
-  const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
 
   useEffect(() => {
     if (!roomId || !user) {
@@ -38,36 +37,30 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
           return timeA.getTime() - timeB.getTime();
         });
 
-        // Always update messages for real-time display
+        // Update messages immediately for real-time display
         setMessages(sortedMessages);
 
-        // Handle notifications for new messages (but not on first load)
-        if (!isFirstLoad) {
-          const latestMessage = sortedMessages[sortedMessages.length - 1];
-          if (latestMessage && 
-              latestMessage.senderId !== user.uid) {
-            const latestMsgTime = latestMessage.timestamp?.toDate?.() || new Date(latestMessage.timestamp || 0);
-            if (latestMsgTime.getTime() > lastSeenMessageTimestamp) {
-              // Calculate unread count
-              const unreadCount = sortedMessages.filter(msg => {
-                const msgTime = msg.timestamp?.toDate?.() || new Date(msg.timestamp || 0);
-                return msg.senderId !== user.uid && 
-                       msgTime.getTime() > lastSeenMessageTimestamp;
-              }).length;
-              
-              setUnreadMessageCount(unreadCount);
+        // Calculate unread messages
+        const unreadCount = sortedMessages.filter(msg => {
+          const msgTime = msg.timestamp?.toDate?.() || new Date(msg.timestamp || 0);
+          return msg.senderId !== user.uid && 
+                 msgTime.getTime() > lastSeenMessageTimestamp;
+        }).length;
+        
+        setUnreadMessageCount(unreadCount);
 
-              // Show notification
-              addNotification({
-                title: "New Message",
-                message: `${latestMessage.senderName}: ${latestMessage.text.substring(0, 50)}${latestMessage.text.length > 50 ? '...' : ''}`,
-                type: "info"
-              });
-            }
+        // Show notification for latest message if it's from another user
+        const latestMessage = sortedMessages[sortedMessages.length - 1];
+        if (latestMessage && 
+            latestMessage.senderId !== user.uid) {
+          const latestMsgTime = latestMessage.timestamp?.toDate?.() || new Date(latestMessage.timestamp || 0);
+          if (latestMsgTime.getTime() > lastSeenMessageTimestamp) {
+            addNotification({
+              title: "New Message",
+              message: `${latestMessage.senderName}: ${latestMessage.text.substring(0, 50)}${latestMessage.text.length > 50 ? '...' : ''}`,
+              type: "info"
+            });
           }
-        } else {
-          setIsFirstLoad(false);
-          setUnreadMessageCount(0);
         }
       },
       (error) => {
@@ -84,7 +77,7 @@ export const useRoomChat = (room: any, isParticipant: boolean, isHost: boolean) 
       console.log('useRoomChat: Cleaning up chat listener');
       unsubscribeChat();
     };
-  }, [roomId, user?.uid, addNotification, lastSeenMessageTimestamp, isFirstLoad]);
+  }, [roomId, user?.uid, addNotification, lastSeenMessageTimestamp]);
 
   const sendMessage = async (message: string) => {
     if (!roomId || !user || !message.trim()) {
