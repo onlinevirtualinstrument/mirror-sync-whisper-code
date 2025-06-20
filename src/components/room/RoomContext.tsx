@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,7 +17,9 @@ import {
   sendPrivateMessage,
   getPrivateMessages,
   markMessageAsRead,
-  listenForUnreadMessages
+  listenForUnreadMessages,
+  addUserToRoom,
+  requestToJoinRoom
 } from '@/utils/firebase';
 import { useState, useEffect, useCallback } from 'react';
 
@@ -57,6 +58,7 @@ type RoomContextType = {
   setPrivateMessagingUser: (userId: string | null) => void;
   broadcastInstrumentNote: (note: InstrumentNote) => Promise<void>;
   markChatAsRead: () => void;
+  requestJoin: (joinCode?: string) => Promise<void>;
 };
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -406,6 +408,42 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const requestJoin = async (joinCode?: string) => {
+    if (!roomId || !user) return;
+
+    try {
+      if (joinCode) {
+        // Try to join with code
+        const userWithCode = { ...user, joinCode };
+        const success = await addUserToRoom(roomId, userWithCode);
+        if (!success) {
+          addNotification({
+            title: "Join Failed",
+            message: "Invalid join code or unable to join room",
+            type: "error"
+          });
+        }
+      } else {
+        // Send join request
+        const success = await requestToJoinRoom(roomId, user.uid);
+        if (success) {
+          addNotification({
+            title: "Request Sent",
+            message: "Your join request has been sent to the host",
+            type: "info"
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error requesting to join:", error);
+      addNotification({
+        title: "Error",
+        message: "Failed to process join request",
+        type: "error"
+      });
+    }
+  };
+
   const value = {
     room,
     isLoading,
@@ -432,7 +470,8 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     sendPrivateMsg,
     setPrivateMessagingUser,
     broadcastInstrumentNote,
-    markChatAsRead
+    markChatAsRead,
+    requestJoin
   };
 
   return (

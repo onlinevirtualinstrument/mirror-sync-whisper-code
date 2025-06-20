@@ -1,4 +1,3 @@
-
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, setDoc, onSnapshot, collection, getDocs } from "firebase/firestore";
 import { toast } from '@/hooks/use-toast';
 import { db } from './config';
@@ -225,6 +224,135 @@ export const toggleUserMute = async (roomId: string, userId: string, mute: boole
     });
   } catch (error) {
     console.error("Error updating mute status:", error);
+    throw error;
+  }
+};
+
+// Request to join a room (for private rooms)
+export const requestToJoinRoom = async (roomId: string, userId: string): Promise<boolean> => {
+  try {
+    const roomRef = doc(db, "musicRooms", roomId);
+    const roomSnap = await getDoc(roomRef);
+    
+    if (!roomSnap.exists()) {
+      toast({ description: "Room not found." });
+      return false;
+    }
+    
+    const roomData = roomSnap.data();
+    const pendingRequests = roomData.pendingRequests || [];
+    
+    if (pendingRequests.includes(userId)) {
+      toast({ description: "Join request already sent." });
+      return false;
+    }
+    
+    await updateDoc(roomRef, {
+      pendingRequests: arrayUnion(userId),
+      lastActivity: new Date().toISOString()
+    });
+    
+    toast({ description: "Join request sent to host." });
+    return true;
+  } catch (error) {
+    console.error("Error requesting to join room:", error);
+    toast({ description: "Failed to send join request." });
+    return false;
+  }
+};
+
+// Handle join request for a room
+export const handleJoinRequest = async (roomId: string, userId: string, approve: boolean): Promise<void> => {
+  try {
+    const roomRef = doc(db, "musicRooms", roomId);
+    const roomSnap = await getDoc(roomRef);
+    
+    if (!roomSnap.exists()) {
+      throw new Error('Room not found');
+    }
+    
+    const roomData = roomSnap.data();
+    const pendingRequests = roomData.pendingRequests || [];
+    
+    if (approve) {
+      // Add user to room
+      const newParticipant = {
+        id: userId,
+        name: 'Anonymous',
+        instrument: 'piano',
+        avatar: '',
+        isHost: false,
+        status: 'active',
+        muted: false
+      };
+      
+      const updatedParticipants = [...(roomData.participants || []), newParticipant];
+      const updatedParticipantIds = [...(roomData.participantIds || []), userId];
+      
+      await updateDoc(roomRef, {
+        participants: updatedParticipants,
+        participantIds: updatedParticipantIds,
+        pendingRequests: arrayRemove(userId),
+        lastActivity: new Date().toISOString()
+      });
+    } else {
+      await updateDoc(roomRef, {
+        pendingRequests: arrayRemove(userId),
+        lastActivity: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error("Error handling join request:", error);
+    throw error;
+  }
+};
+
+// Toggle chat functionality in a room
+export const toggleRoomChat = async (roomId: string, disabled: boolean): Promise<void> => {
+  try {
+    const roomRef = doc(db, "musicRooms", roomId);
+    await updateDoc(roomRef, {
+      isChatDisabled: disabled,
+      lastActivity: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error toggling room chat:', error);
+    throw error;
+  }
+};
+
+// Toggle auto-close after inactivity for a room
+export const toggleAutoCloseRoom = async (roomId: string, enabled: boolean, timeout: number = 5): Promise<void> => {
+  try {
+    const roomRef = doc(db, "musicRooms", roomId);
+    await updateDoc(roomRef, {
+      autoCloseAfterInactivity: enabled,
+      inactivityTimeout: timeout,
+      lastActivity: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error toggling auto-close:', error);
+    throw error;
+  }
+};
+
+// Update room settings
+export const updateRoomSettings = async (roomId: string, settings: any): Promise<void> => {
+  try {
+    const roomRef = doc(db, "musicRooms", roomId);
+    const roomSnap = await getDoc(roomRef);
+    
+    if (!roomSnap.exists()) {
+      console.warn('Room does not exist, skipping settings update');
+      return;
+    }
+    
+    await updateDoc(roomRef, {
+      ...settings,
+      lastActivity: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error updating room settings:', error);
     throw error;
   }
 };
