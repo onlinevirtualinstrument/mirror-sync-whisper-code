@@ -41,10 +41,15 @@ export const getAllBlogPosts = async (): Promise<BlogPost[]> => {
     const isAdmin = await canUserEditBlogs();
     
     if (!isAdmin) {
+      // Regular users only see published posts
       return allPosts.filter(post => post.status === 'published' || post.status === undefined);
     }
     
-    return allPosts.filter(post => post.status !== 'scheduled');
+    // Admins see only published posts in the main list
+    return allPosts.filter(post => 
+      post.status === 'published' || 
+      post.status === undefined
+    );
   } catch (error) {
     console.error('Error fetching blog posts:', error);
     throw new Error('Failed to fetch blog posts');
@@ -62,22 +67,25 @@ export const getScheduledBlogPosts = async (): Promise<BlogPost[]> => {
     
     await checkAndPublishScheduledPosts();
     
-    const q = query(
-      blogsCollection, 
-      where('status', '==', 'scheduled'),
-      orderBy('scheduledFor', 'asc')
-    );
+    // Simple query without compound index
+    const q = query(blogsCollection, orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return { 
-        id: doc.id, 
-        ...data,
-        createdAt: data.createdAt || Date.now(),
-        updatedAt: data.updatedAt || Date.now(),
-        scheduledFor: data.scheduledFor || Date.now()
-      } as BlogPost;
-    });
+    
+    // Filter scheduled posts client-side
+    const scheduledPosts = snapshot.docs
+      .map((doc) => {
+        const data = doc.data();
+        return { 
+          id: doc.id, 
+          ...data,
+          createdAt: data.createdAt || Date.now(),
+          updatedAt: data.updatedAt || Date.now(),
+          scheduledFor: data.scheduledFor || Date.now()
+        } as BlogPost;
+      })
+      .filter(post => post.status === 'scheduled');
+
+    return scheduledPosts;
   } catch (error) {
     console.error('Error fetching scheduled posts:', error);
     throw error;
@@ -201,19 +209,53 @@ export const deleteBlogPost = async (id: string): Promise<void> => {
   }
 };
 
-// Draft operations
-export const saveDraftToFirestore = async (draftId: string, data: any) => {
+// Get user drafts - simplified to avoid compound index issues
+export const getUserDrafts = async (uid: string): Promise<BlogDraft[]> => {
   try {
-    if (!draftId || !data) throw new Error('Draft ID and data are required');
+    if (!uid) throw new Error('User ID is required');
     
+    // Simple query to get all user's posts
+    const q = query(blogsCollection, where('authorId', '==', uid));
+    const snapshot = await getDocs(q);
+
+    // Filter for drafts client-side and sort by updatedAt
+    const drafts = snapshot.docs
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.title || '',
+          content: data.content || '',
+          imageUrl: data.imageUrl || '',
+          authorId: data.authorId,
+          authorName: data.authorName || 'Anonymous',
+          authorPhotoURL: data.authorPhotoURL || '',
+          createdAt: data.createdAt || Date.now(),
+          updatedAt: data.updatedAt || Date.now(),
+          status: data.status as 'draft',
+        };
+      })
+      .filter(post => post.status === 'draft')
+      .sort((a, b) => b.updatedAt - a.updatedAt); // Sort by most recent first
+
+    return drafts;
+  } catch (error) {
+    console.error('Error fetching user drafts:', error);
+    throw error;
+  }
+};
+
+// Legacy functions for backward compatibility
+export const saveDraftToFirestore = async (draftId: string, data: any) => {
+  console.warn('saveDraftToFirestore is deprecated, use createBlogPost or updateBlogPost instead');
+  try {
     const draftData = {
       ...data,
-      title: data.title?.trim() || '',
-      content: data.content?.trim() || '',
+      status: 'draft',
       updatedAt: Date.now()
     };
     
-    const draftRef = doc(collection(db, 'blog-drafts'), draftId);
+    const draftRef = doc(blogsCollection, draftId);
     await setDoc(draftRef, draftData, { merge: true });
   } catch (error) {
     console.error('Error saving draft:', error);
@@ -222,54 +264,11 @@ export const saveDraftToFirestore = async (draftId: string, data: any) => {
 };
 
 export const getDraftById = async (draftId: string) => {
-  try {
-    if (!draftId) throw new Error('Draft ID is required');
-    
-    const draftRef = doc(db, 'blog-drafts', draftId);
-    const snap = await getDoc(draftRef);
-    return snap.exists() ? snap.data() : null;
-  } catch (error) {
-    console.error('Error fetching draft:', error);
-    throw error;
-  }
+  console.warn('getDraftById is deprecated, use getBlogPostById instead');
+  return getBlogPostById(draftId);
 };
 
 export const deleteDraftById = async (draftId: string) => {
-  try {
-    if (!draftId) throw new Error('Draft ID is required');
-    
-    const draftRef = doc(db, 'blog-drafts', draftId);
-    await deleteDoc(draftRef);
-  } catch (error) {
-    console.error('Error deleting draft:', error);
-    throw error;
-  }
-};
-
-export const getUserDrafts = async (uid: string): Promise<BlogDraft[]> => {
-  try {
-    if (!uid) throw new Error('User ID is required');
-    
-    const draftsRef = collection(db, 'blog-drafts');
-    const q = query(draftsRef, where('authorId', '==', uid));
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        title: data.title || '',
-        content: data.content || '',
-        imageUrl: data.imageUrl || '',
-        authorId: data.authorId,
-        authorName: data.authorName || 'Anonymous',
-        createdAt: data.createdAt || Date.now(),
-        updatedAt: data.updatedAt || Date.now(),
-        status: data.status || 'draft',
-      };
-    });
-  } catch (error) {
-    console.error('Error fetching user drafts:', error);
-    throw error;
-  }
+  console.warn('deleteDraftById is deprecated, use deleteBlogPost instead');
+  return deleteBlogPost(draftId);
 };

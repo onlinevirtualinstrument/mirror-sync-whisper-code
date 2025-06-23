@@ -28,6 +28,7 @@ const BlogCard: React.FC<BlogCardProps> = ({
   const navigate = useNavigate();
   const displayStatus = getDisplayStatus(post);
   const isScheduled = post.status === 'scheduled';
+  const isDraft = post.status === 'draft';
 
   return (
     <motion.div
@@ -41,9 +42,13 @@ const BlogCard: React.FC<BlogCardProps> = ({
         <CardHeader className="flex-shrink-0">
           <div className="flex justify-between items-start mb-2">
             <CardTitle className="line-clamp-2 text-[#1A1F2C] flex-1 text-sm sm:text-base">
-              <Link to={`/blog/${post.id}`} className="hover:underline story-link">
-                {post.title}
-              </Link>
+              {isDraft ? (
+                <span className="cursor-default">{post.title}</span>
+              ) : (
+                <Link to={`/blog/${post.id}`} className="hover:underline story-link">
+                  {post.title}
+                </Link>
+              )}
             </CardTitle>
             <div className="ml-2 flex flex-col items-end gap-1">
               {canEdit && post.status === 'scheduled' && (
@@ -58,6 +63,12 @@ const BlogCard: React.FC<BlogCardProps> = ({
                     </span>
                   )}
                 </>
+              )}
+              {canEdit && post.status === 'draft' && (
+                <Badge variant="outline" className="flex items-center gap-1 text-yellow-600 border-yellow-300 text-xs">
+                  <Edit size={10} />
+                  Draft
+                </Badge>
               )}
             </div>
           </div>
@@ -107,7 +118,18 @@ const BlogCard: React.FC<BlogCardProps> = ({
           </span>
 
           <div className="flex gap-1 sm:gap-2">
-            {!showScheduled && !isScheduled && (
+            {/* {isDraft && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/blog/edit/${post.id}?isDraft=true`)}
+                className="text-[#1EAEDB] hover:text-[#7E69AB] border-[#D6BCFA] hover:bg-[#F3F0FF] text-xs px-2 py-1"
+              >
+                Continue
+              </Button>
+            )} */}
+
+            {!showScheduled && !isScheduled && !isDraft && (
               <Button
                 variant="outline"
                 size="sm"
@@ -123,7 +145,7 @@ const BlogCard: React.FC<BlogCardProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigate(`/blog/edit/${post.id}${showScheduled || isScheduled ? '?isDraft=false' : ''}`)}
+                  onClick={() => navigate(`/blog/edit/${post.id}${isDraft ? '?isDraft=true' : ''}`)}
                   className="text-[#7E69AB] border-[#D6BCFA] hover:bg-[#F3F0FF] text-xs px-2 py-1"
                 >
                   <Edit size={12} />

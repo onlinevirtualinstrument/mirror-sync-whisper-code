@@ -1,7 +1,6 @@
 
-import { getFirestore, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, updateDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import { app } from './config';
-import { user } from './index';
 
 const db = getFirestore(app);
 
@@ -12,10 +11,10 @@ const db = getFirestore(app);
  */
 export const toggleRoomChat = async (roomId: string, disabled: boolean): Promise<void> => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId);
     await updateDoc(roomRef, {
       isChatDisabled: disabled,
-      lastUpdated: new Date().toISOString()
+      lastActivity: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error toggling room chat:', error);
@@ -35,12 +34,11 @@ export const toggleAutoCloseRoom = async (
   timeout: number = 5
 ): Promise<void> => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId);
     await updateDoc(roomRef, {
       autoCloseAfterInactivity: enabled,
       inactivityTimeout: timeout,
-      lastActivity: new Date().toISOString(),
-      lastUpdated: new Date().toISOString()
+      lastActivity: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error toggling auto-close:', error);
@@ -58,10 +56,18 @@ export const updateRoomSettings = async (
   settings: any
 ): Promise<void> => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId);
+    
+    // Check if room exists before updating
+    const roomSnap = await getDoc(roomRef);
+    if (!roomSnap.exists()) {
+      console.warn('Room does not exist, skipping settings update');
+      return;
+    }
+    
     await updateDoc(roomRef, {
       ...settings,
-      lastUpdated: new Date().toISOString()
+      lastActivity: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error updating room settings:', error);
@@ -81,67 +87,53 @@ export const handleJoinRequest = async (
   approve: boolean
 ): Promise<void> => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId);
+    
+    // Get current room data
+    const roomDoc = await getDoc(roomRef);
+    if (!roomDoc.exists()) {
+      throw new Error('Room not found');
+    }
+    
+    const roomData = roomDoc.data();
+    const currentParticipants = roomData.participants || [];
+    const currentPendingRequests = roomData.pendingRequests || [];
     
     if (approve) {
       // Add user to participants
-      // You'd typically need to get user data from users collection first
-      // For simplicity, we'll just add user ID
+      const newParticipant = { 
+        id: userId, 
+        name: 'Anonymous',
+        instrument: 'piano',
+        avatar: '',
+        isHost: false,
+        status: 'active',
+        muted: false
+      };
+      
+      const updatedParticipants = [...currentParticipants, newParticipant];
+      const updatedParticipantIds = [...(roomData.participantIds || []), userId];
+      
+      // Remove from pending requests
+      const updatedPendingRequests = currentPendingRequests.filter((reqUserId: string) => reqUserId !== userId);
+      
       await updateDoc(roomRef, {
-        participants: [...(user.participants || []), { id: userId, joinedAt: new Date().toISOString() }],
-        lastUpdated: new Date().toISOString()
+        participants: updatedParticipants,
+        participantIds: updatedParticipantIds,
+        pendingRequests: updatedPendingRequests,
+        lastActivity: new Date().toISOString()
       });
     } else {
-      // Remove from join requests
+      // Remove from pending requests only
+      const updatedPendingRequests = currentPendingRequests.filter((reqUserId: string) => reqUserId !== userId);
+      
       await updateDoc(roomRef, {
-        joinRequests: (user.joinRequests || []).filter((req: any) => req.userId !== userId),
-        lastUpdated: new Date().toISOString()
+        pendingRequests: updatedPendingRequests,
+        lastActivity: new Date().toISOString()
       });
     }
   } catch (error) {
     console.error('Error handling join request:', error);
-    throw error;
-  }
-};
-
-/**
- * Request to join a room
- * @param roomId Room ID
- * @param userId User ID requesting to join
- * @param autoApprove Whether to auto-approve based on join code
- */
-export const requestToJoinRoom = async (
-  roomId: string,
-  userId: string,
-  autoApprove: boolean = false
-): Promise<void> => {
-  try {
-    const roomRef = doc(db, 'rooms', roomId);
-    
-    if (autoApprove) {
-      // Add user directly to participants if auto-approved
-      // You'd typically need to get user data from users collection first
-      await updateDoc(roomRef, {
-        participants: [...(user.participants || []), { 
-          id: userId, 
-          joinedAt: new Date().toISOString(),
-          isHost: false,
-          muted: false
-        }],
-        lastUpdated: new Date().toISOString()
-      });
-    } else {
-      // Add to join requests
-      await updateDoc(roomRef, {
-        joinRequests: [...(user.joinRequests || []), { 
-          userId, 
-          requestedAt: new Date().toISOString() 
-        }],
-        lastUpdated: new Date().toISOString()
-      });
-    }
-  } catch (error) {
-    console.error('Error requesting to join room:', error);
     throw error;
   }
 };
@@ -153,7 +145,7 @@ export const requestToJoinRoom = async (
  */
 export const broadcastNote = async (roomId: string, noteData: any): Promise<void> => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId);
     await updateDoc(roomRef, {
       currentNote: noteData,
       lastActivity: new Date().toISOString()
@@ -176,7 +168,7 @@ export const listenToInstrumentNotes = (
   errorCallback: (error: any) => void
 ): (() => void) => {
   try {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'musicRooms', roomId);
     return onSnapshot(roomRef, (snapshot) => {
       const data = snapshot.data();
       if (data && data.currentNote) {

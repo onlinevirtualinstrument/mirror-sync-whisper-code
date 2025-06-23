@@ -62,14 +62,24 @@ const RoomChat: React.FC = () => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
 
   useEffect(() => {
+    // scrollToBottom();
     markChatAsRead();
   }, [messages, markChatAsRead]);
 
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100); // slight delay to ensure DOM is rendered
   };
+
 
   const handleSendMessage = async (e?: React.FormEvent, overrideMessage?: string) => {
     if (e) e.preventDefault();
@@ -129,6 +139,7 @@ const RoomChat: React.FC = () => {
     setNewMessage(sanitizedValue.substring(0, 1000)); // Limit length
   };
 
+  
   return (
     <div className="flex flex-col h-full">
       <ScrollArea className="flex-1 px-4">
@@ -146,8 +157,8 @@ const RoomChat: React.FC = () => {
                   )}
                   {/* <div className={`p-2 rounded-lg text-sm ${isCurrentUser ? 'bg-gray-600 text-primary-foreground' : 'bg-muted'}`}> */}
                   <div className={`p-2 rounded-lg text-sm border ${isCurrentUser
-                      ? 'bg-gray-600 text-primary-foreground border-gray-700'
-                      : `${getUserColor(msg.senderId)} ${getUserBorderColor(msg.senderId)} text-gray-900`
+                    ? 'bg-gray-600 text-primary-foreground border-gray-700'
+                    : `${getUserColor(msg.senderId)} ${getUserBorderColor(msg.senderId)} text-gray-900`
                     }`}>
 
 
@@ -216,6 +227,7 @@ const RoomChat: React.FC = () => {
             </Popover>
 
             <Input
+              ref={inputRef}
               value={newMessage}
               onChange={handleInputChange}
               placeholder="Type your message..."

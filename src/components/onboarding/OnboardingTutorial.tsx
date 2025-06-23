@@ -71,7 +71,7 @@ export const OnboardingTutorial = () => {
           {tutorialContent[step - 1].icon}
           <button 
             onClick={handleSkip} 
-            className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+            className="absolute top-0 right-0 h-8 w-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
           >
             <X className="h-4 w-4 text-white" />
           </button>
