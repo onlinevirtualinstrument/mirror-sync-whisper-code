@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,9 +15,11 @@ import {
   toggleRoomChat,
   toggleAutoCloseRoom,
   updateRoomSettings,
-  handleJoinRequest
+  handleJoinRequest,
+  deleteRoomFromFirestore
 } from '@/utils/firebase';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface InstrumentNote {
   note: string;
@@ -43,6 +44,7 @@ type RoomContextType = {
   remotePlaying: InstrumentNote | null;
   sendMessage: (message: string) => Promise<void>;
   leaveRoom: () => Promise<void>;
+  closeRoom: () => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
   muteUser: (userId: string, mute: boolean) => Promise<void>;
   switchInstrument: (instrument: string) => Promise<void>;
@@ -63,6 +65,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { roomId } = useParams<{ roomId: string }>();
   const { user } = useAuth();
   const { addNotification } = useNotifications();
+  const navigate = useNavigate();
 
   const {
     room,
@@ -101,6 +104,29 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [privateMessages, setPrivateMessages] = useState<any[]>([]);
   const [privateMessagingUser, setPrivateMessagingUser] = useState<string | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
+  // Close room function for hosts
+  const closeRoom = async (): Promise<void> => {
+    if (!roomId || !user || !isHost) return;
+
+    try {
+      console.log('RoomContext: Host closing room');
+      await deleteRoomFromFirestore(roomId);
+      navigate('/music-rooms');
+      addNotification({
+        title: "Room Closed",
+        message: "Room has been closed",
+        type: "info"
+      });
+    } catch (error) {
+      console.error("RoomContext: Error closing room:", error);
+      addNotification({
+        title: "Error",
+        message: "Failed to close room",
+        type: "error"
+      });
+    }
+  };
 
   // Room settings management
   const toggleChat = async (disabled: boolean): Promise<void> => {
@@ -277,6 +303,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     remotePlaying,
     sendMessage,
     leaveRoom,
+    closeRoom,
     removeUser,
     muteUser,
     switchInstrument,
