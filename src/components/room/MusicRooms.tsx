@@ -49,6 +49,8 @@ const MusicRooms = () => {
   const { user, loading } = useAuth();
   const { handleFirebaseError, handleAsyncError } = useErrorHandler();
 
+  console.log('MusicRooms: Component initialized, user:', user?.uid);
+
   function isFirestoreTimestamp(value: any): value is { toDate: () => Date } {
     return value && typeof value.toDate === 'function';
   }
@@ -77,7 +79,7 @@ const MusicRooms = () => {
               allowDifferentInstruments: typeof room.allowDifferentInstruments === 'boolean' ? room.allowDifferentInstruments : true
             };
             
-            console.log(`Room ${room.id}: participants=${participants.length}, maxParticipants=${normalizedRoom.maxParticipants}`);
+            console.log(`MusicRooms: Room ${room.id} - participants: ${participants.length}/${normalizedRoom.maxParticipants}, isPublic: ${normalizedRoom.isPublic}`);
             return normalizedRoom;
           });
           
@@ -108,7 +110,7 @@ const MusicRooms = () => {
         }
       }
     };
-  }, [user, handleFirebaseError, handleAsyncError]);
+  }, [user?.uid, handleFirebaseError, handleAsyncError]);
 
   const joinRoom = async (room: any) => {
     if (!user || !room.id) {
@@ -116,58 +118,73 @@ const MusicRooms = () => {
       return;
     }
 
-    console.log(`MusicRooms: User ${user.uid} attempting to join room ${room.id}`);
+    console.log(`MusicRooms: User ${user.uid} attempting to join room ${room.id} (${room.name})`);
     
     const isHost = room.hostId === user.uid;
     const participantIds = Array.isArray(room.participantIds) ? room.participantIds : [];
-    const isParticipant = participantIds.includes(user.uid);
+    const isAlreadyParticipant = participantIds.includes(user.uid);
 
-    console.log(`MusicRooms: Join room check - isHost: ${isHost}, isParticipant: ${isParticipant}, isPublic: ${room.isPublic}`);
+    console.log(`MusicRooms: Join room analysis - isHost: ${isHost}, isAlreadyParticipant: ${isAlreadyParticipant}, isPublic: ${room.isPublic}, participants: ${participantIds.length}/${room.maxParticipants}`);
 
-    if (room.isPublic || isHost || isParticipant) {
-      try {
-        setJoiningRoom(room.id);
-        
-        // Use the robust addUserToRoom function
-        const success = await addUserToRoom(room.id, user);
-        
-        if (success) {
-          console.log(`MusicRooms: Successfully joined room ${room.id}`);
-          
-          toast({
-            title: "Joined Room",
-            description: `You've joined ${room.name}`,
-          });
+    // Check if room is full
+    if (participantIds.length >= room.maxParticipants && !isAlreadyParticipant) {
+      console.log('MusicRooms: Room is full, cannot join');
+      toast({
+        title: "Room Full",
+        description: "This room has reached its maximum capacity.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-          navigate(`/room/${room.id}`);
-        } else {
-          console.error('MusicRooms: Failed to join room');
-          toast({
-            title: "Join Failed",
-            description: "Could not join the room. Please try again.",
-            variant: "destructive"
-          });
-        }
-
-      } catch (error) {
-        console.error("MusicRooms: Failed to join room:", error);
-        handleFirebaseError(error, `join room ${room.id}`, user.uid, room.id);
-        
-        toast({
-          title: "Join Failed",
-          description: "Could not join the room. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setJoiningRoom(null);
-      }
-    } else {
-      console.warn('MusicRooms: Access denied to private room');
+    // Check access permissions
+    if (!room.isPublic && !isHost && !isAlreadyParticipant) {
+      console.log('MusicRooms: Private room access denied');
       toast({
         title: "Access Denied",
         description: "This is a private room and you don't have access.",
         variant: "destructive"
       });
+      return;
+    }
+
+    try {
+      setJoiningRoom(room.id);
+      console.log(`MusicRooms: Starting join process for room ${room.id}`);
+      
+      // Use the robust addUserToRoom function
+      const success = await addUserToRoom(room.id, user);
+      
+      if (success) {
+        console.log(`MusicRooms: Successfully joined room ${room.id}, navigating to room`);
+        
+        toast({
+          title: "Joined Room",
+          description: `You've joined ${room.name}`,
+        });
+
+        // Navigate to room
+        navigate(`/room/${room.id}`);
+      } else {
+        console.error('MusicRooms: Failed to join room - addUserToRoom returned false');
+        toast({
+          title: "Join Failed",
+          description: "Could not join the room. Please try again.",
+          variant: "destructive"
+        });
+      }
+
+    } catch (error) {
+      console.error("MusicRooms: Failed to join room:", error);
+      handleFirebaseError(error, `join room ${room.id}`, user.uid, room.id);
+      
+      toast({
+        title: "Join Failed",
+        description: "Could not join the room. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setJoiningRoom(null);
     }
   };
 
@@ -240,6 +257,7 @@ const MusicRooms = () => {
               const hostName = hostParticipant?.name || 'Room Admin';
               const isJoining = joiningRoom === room.id;
               const maxParticipants = typeof room.maxParticipants === 'number' ? room.maxParticipants : 3;
+              const participantCount = room.participantIds?.length || participants.length;
 
               return (
                 <div
@@ -289,7 +307,7 @@ const MusicRooms = () => {
                     <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
                       <Users className="h-4 w-4" />
                       <span>
-                        {participants.length} / {maxParticipants} participants
+                        {participantCount} / {maxParticipants} participants
                       </span>
                     </div>
 
@@ -318,7 +336,7 @@ const MusicRooms = () => {
                       onClick={() => joinRoom(room)}
                       className="w-full group hover:scale-[1.02] transition-transform"
                       variant={room.isPublic ? "default" : "outline"}
-                      disabled={!user || participants.length >= maxParticipants || isJoining}
+                      disabled={!user || participantCount >= maxParticipants || isJoining}
                     >
                       {isJoining ? (
                         <span className="flex items-center">
@@ -327,7 +345,7 @@ const MusicRooms = () => {
                         </span>
                       ) : !user ? (
                         'Login to Join'
-                      ) : participants.length >= maxParticipants ? (
+                      ) : participantCount >= maxParticipants ? (
                         'Room Full'
                       ) : (
                         <>

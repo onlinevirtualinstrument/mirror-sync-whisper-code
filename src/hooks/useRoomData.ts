@@ -62,6 +62,9 @@ export const useRoomData = () => {
   const [userInfo, setUserInfo] = useState<RoomParticipant | null>(null);
   const [lastActivityTime, setLastActivityTime] = useState<number>(Date.now());
   const [lastInstrumentPlayTime, setLastInstrumentPlayTime] = useState<number>(Date.now());
+  const [roomDestructionTimeout, setRoomDestructionTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  console.log(`useRoomData: Hook initialized for room ${roomId}, user: ${user?.uid}`);
 
   const normalizeRoomData = useCallback((rawRoomData: any): RoomData => {
     console.log('useRoomData: Normalizing room data:', rawRoomData);
@@ -115,35 +118,55 @@ export const useRoomData = () => {
       joinCode: rawRoomData.joinCode
     };
 
-    console.log('useRoomData: Normalized room data:', normalizedRoom);
+    console.log('useRoomData: Normalized room data:', {
+      id: normalizedRoom.id,
+      participantCount: participants.length,
+      participantIds: participantIds,
+      hostId: normalizedRoom.hostId
+    });
     return normalizedRoom;
   }, []);
 
   const checkRoomForDestruction = useCallback(async (currentRoom: RoomData) => {
     if (!roomId || !currentRoom) return;
 
+    // Clear any existing timeout
+    if (roomDestructionTimeout) {
+      clearTimeout(roomDestructionTimeout);
+      setRoomDestructionTimeout(null);
+    }
+
     const activeParticipants = currentRoom.participants.filter(p => 
       p.status === 'active' && p.isInRoom !== false
     );
 
-    console.log(`useRoomData: Room ${roomId} has ${activeParticipants.length} active participants`);
+    console.log(`useRoomData: Room ${roomId} destruction check - ${activeParticipants.length} active participants`);
 
     if (activeParticipants.length === 0) {
-      console.log('useRoomData: No active participants, destroying room');
-      try {
-        await deleteRoomFromFirestore(roomId);
-        navigate('/music-rooms');
-        addNotification({
-          title: "Room Closed",
-          message: "Room was closed as all participants have left",
-          type: "info"
-        });
-      } catch (error) {
-        console.error('useRoomData: Error destroying empty room:', error);
-        handleFirebaseError(error, 'destroy empty room', user?.uid, roomId);
-      }
+      console.log('useRoomData: No active participants, scheduling room destruction in 5 seconds');
+      
+      // Add a delay before destroying to prevent immediate destruction during joins
+      const timeout = setTimeout(async () => {
+        try {
+          console.log('useRoomData: Executing room destruction after delay');
+          await deleteRoomFromFirestore(roomId);
+          navigate('/music-rooms');
+          addNotification({
+            title: "Room Closed",
+            message: "Room was closed as all participants have left",
+            type: "info"
+          });
+        } catch (error) {
+          console.error('useRoomData: Error destroying empty room:', error);
+          handleFirebaseError(error, 'destroy empty room', user?.uid, roomId);
+        }
+      }, 5000); // 5 second delay
+
+      setRoomDestructionTimeout(timeout);
+    } else {
+      console.log(`useRoomData: Room has ${activeParticipants.length} active participants, not destroying`);
     }
-  }, [roomId, navigate, addNotification, handleFirebaseError, user]);
+  }, [roomId, navigate, addNotification, handleFirebaseError, user, roomDestructionTimeout]);
 
   const updateInstrumentPlayTime = useCallback(() => {
     const now = Date.now();
@@ -152,7 +175,10 @@ export const useRoomData = () => {
   }, []);
 
   useEffect(() => {
-    if (!roomId || !user) return;
+    if (!roomId || !user) {
+      console.log(`useRoomData: Missing requirements - roomId: ${roomId}, user: ${!!user}`);
+      return;
+    }
 
     console.log(`useRoomData: Setting up room data listener for room ${roomId}`);
     setIsLoading(true);
@@ -172,7 +198,7 @@ export const useRoomData = () => {
             return;
           }
 
-          console.log('useRoomData: Received raw room data:', rawRoomData);
+          console.log('useRoomData: Processing room data update');
           
           const normalizedRoom = normalizeRoomData(rawRoomData);
           setRoom(normalizedRoom);
@@ -194,7 +220,7 @@ export const useRoomData = () => {
           const participantInfo = normalizedRoom.participants.find((p: RoomParticipant) => p.id === user.uid);
           
           if (participantInfo) {
-            console.log(`useRoomData: User found in participants - isHost: ${participantInfo.isHost}`);
+            console.log(`useRoomData: User found in participants - isHost: ${participantInfo.isHost}, status: ${participantInfo.status}`);
             setIsParticipant(true);
             setIsHost(participantInfo.isHost);
             setUserInfo(participantInfo);
@@ -205,8 +231,11 @@ export const useRoomData = () => {
             setUserInfo(null);
           }
 
-          // Check if room should be destroyed
-          checkRoomForDestruction(normalizedRoom);
+          // Only check for room destruction if room has been loaded for a while
+          // This prevents immediate destruction during room creation/joining
+          setTimeout(() => {
+            checkRoomForDestruction(normalizedRoom);
+          }, 2000);
 
         } catch (error) {
           console.error('useRoomData: Error processing room data:', error);
@@ -225,9 +254,12 @@ export const useRoomData = () => {
 
     return () => {
       console.log('useRoomData: Cleaning up room data listener');
+      if (roomDestructionTimeout) {
+        clearTimeout(roomDestructionTimeout);
+      }
       unsubscribeRoom();
     };
-  }, [roomId, user, navigate, addNotification, handleFirebaseError, handleAsyncError, normalizeRoomData, checkRoomForDestruction]);
+  }, [roomId, user?.uid, navigate, addNotification, handleFirebaseError, handleAsyncError, normalizeRoomData, checkRoomForDestruction]);
 
   useUserPresence(roomId, isParticipant);
 
