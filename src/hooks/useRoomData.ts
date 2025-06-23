@@ -1,19 +1,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEnhancedAuth } from './useEnhancedAuth';
+import { useAuth } from './useAuth';
 import { useUserPresence } from './useUserPresence';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/utils/firebase/config';
 import {
   listenToRoomData,
-  isUserRoomParticipant,
   deleteRoomFromFirestore
 } from '@/utils/firebase';
 
-// Enhanced room data structure with proper typing
 interface RoomParticipant {
   id: string;
   name: string;
@@ -35,6 +31,7 @@ interface RoomData {
   description?: string;
   isPublic: boolean;
   maxParticipants: number;
+  hostId: string;
   hostInstrument: string;
   participants: RoomParticipant[];
   participantIds: string[];
@@ -52,7 +49,7 @@ interface RoomData {
 
 export const useRoomData = () => {
   const { roomId } = useParams<{ roomId: string }>();
-  const { user } = useEnhancedAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { addNotification } = useNotifications();
   const { handleFirebaseError, handleAsyncError } = useErrorHandler();
@@ -66,7 +63,6 @@ export const useRoomData = () => {
   const [lastActivityTime, setLastActivityTime] = useState<number>(Date.now());
   const [lastInstrumentPlayTime, setLastInstrumentPlayTime] = useState<number>(Date.now());
 
-  // Enhanced data normalization to prevent array/object mismatch
   const normalizeRoomData = useCallback((rawRoomData: any): RoomData => {
     console.log('useRoomData: Normalizing room data:', rawRoomData);
 
@@ -87,30 +83,12 @@ export const useRoomData = () => {
         isInRoom: p.isInRoom !== false,
         heartbeatTimestamp: p.heartbeatTimestamp || Date.now()
       }));
-    } else if (rawRoomData.participants && typeof rawRoomData.participants === 'object') {
-      // Convert object to array if needed
-      participants = Object.values(rawRoomData.participants).map((p: any) => ({
-        id: p.id || '',
-        name: p.name || 'Anonymous',
-        instrument: p.instrument || 'piano',
-        avatar: p.avatar || '',
-        isHost: p.isHost || false,
-        status: p.status || 'active',
-        muted: p.muted || false,
-        lastSeen: p.lastSeen,
-        joinedAt: p.joinedAt,
-        leftAt: p.leftAt,
-        isInRoom: p.isInRoom !== false,
-        heartbeatTimestamp: p.heartbeatTimestamp || Date.now()
-      }));
     }
 
-    // Ensure participantIds is always an array
     const participantIds = Array.isArray(rawRoomData.participantIds) 
       ? rawRoomData.participantIds 
       : participants.map(p => p.id);
 
-    // Ensure pendingRequests is always an array
     const pendingRequests = Array.isArray(rawRoomData.pendingRequests) 
       ? rawRoomData.pendingRequests 
       : [];
@@ -121,6 +99,7 @@ export const useRoomData = () => {
       description: rawRoomData.description || '',
       isPublic: rawRoomData.isPublic !== false,
       maxParticipants: rawRoomData.maxParticipants || 3,
+      hostId: rawRoomData.hostId || rawRoomData.creatorId || '',
       hostInstrument: rawRoomData.hostInstrument || 'piano',
       participants,
       participantIds,
@@ -140,75 +119,31 @@ export const useRoomData = () => {
     return normalizedRoom;
   }, []);
 
-  // Enhanced auto-close logic with comprehensive logging
-  const checkInactivityAndClose = useCallback(async () => {
-    if (!room || !isHost || !room.autoCloseAfterInactivity || !roomId) {
-      return;
-    }
+  const checkRoomForDestruction = useCallback(async (currentRoom: RoomData) => {
+    if (!roomId || !currentRoom) return;
 
-    console.log('useRoomData: Checking room inactivity for auto-close');
-    
-    const now = Date.now();
-    const creationTime = room.createdAt ? new Date(room.createdAt).getTime() : now;
-    
-    // Skip if room is less than 30 seconds old
-    if (now - creationTime < 30000) {
-      console.log('useRoomData: Room too new for auto-close check');
-      return;
-    }
-    
-    const inactivityTimeout = room.inactivityTimeout * 60 * 1000; // Convert to milliseconds
-    
-    // Check active participants with enhanced logic
-    const activeParticipants = room.participants.filter((p: RoomParticipant) => {
-      const lastSeen = p.lastSeen ? new Date(p.lastSeen).getTime() : 0;
-      const timeSinceLastSeen = now - lastSeen;
-      const heartbeatTimestamp = p.heartbeatTimestamp || 0;
-      const timeSinceHeartbeat = now - heartbeatTimestamp;
+    const activeParticipants = currentRoom.participants.filter(p => 
+      p.status === 'active' && p.isInRoom !== false
+    );
 
-      const isActive = timeSinceLastSeen <= 45000 && // Last seen within 45 seconds
-                      timeSinceHeartbeat <= 45000 && // Heartbeat within 45 seconds
-                      p.status === 'active' &&
-                      p.isInRoom !== false;
+    console.log(`useRoomData: Room ${roomId} has ${activeParticipants.length} active participants`);
 
-      console.log(`useRoomData: Participant ${p.id} - active: ${isActive}, lastSeen: ${timeSinceLastSeen}ms ago, heartbeat: ${timeSinceHeartbeat}ms ago`);
-      return isActive;
-    });
-
-    const allUsersLeft = activeParticipants.length === 0;
-    const timeSinceLastActivity = now - lastActivityTime;
-    const timeSinceLastInstrument = now - lastInstrumentPlayTime;
-
-    console.log(`useRoomData: Room ${roomId} status - Active participants: ${activeParticipants.length}/${room.participants.length}, All users left: ${allUsersLeft}, Time since activity: ${Math.round(timeSinceLastActivity / 1000)}s, Time since instrument: ${Math.round(timeSinceLastInstrument / 1000)}s`);
-
-    let shouldClose = false;
-    let closeReason = '';
-
-    if (allUsersLeft) {
-      shouldClose = true;
-      closeReason = 'all users have left';
-    } else if (timeSinceLastActivity > inactivityTimeout && timeSinceLastInstrument > inactivityTimeout) {
-      shouldClose = true;
-      closeReason = `inactivity timeout reached (${inactivityTimeout / 60000} minutes)`;
-    }
-
-    if (shouldClose) {
-      console.log(`useRoomData: Auto-closing room: ${closeReason}`);
-      
+    if (activeParticipants.length === 0) {
+      console.log('useRoomData: No active participants, destroying room');
       try {
         await deleteRoomFromFirestore(roomId);
         navigate('/music-rooms');
         addNotification({
-          title: "Room Auto-Closed",
-          message: `Room was automatically closed because ${closeReason}`,
+          title: "Room Closed",
+          message: "Room was closed as all participants have left",
           type: "info"
         });
       } catch (error) {
-        console.error('useRoomData: Error auto-closing room:', error);
-        handleFirebaseError(error, 'auto-close room', user?.uid, roomId);
+        console.error('useRoomData: Error destroying empty room:', error);
+        handleFirebaseError(error, 'destroy empty room', user?.uid, roomId);
       }
     }
-  }, [room, isHost, roomId, navigate, addNotification, lastActivityTime, lastInstrumentPlayTime, handleFirebaseError, user]);
+  }, [roomId, navigate, addNotification, handleFirebaseError, user]);
 
   const updateInstrumentPlayTime = useCallback(() => {
     const now = Date.now();
@@ -216,7 +151,6 @@ export const useRoomData = () => {
     setLastInstrumentPlayTime(now);
   }, []);
 
-  // Enhanced room data listener with better error handling
   useEffect(() => {
     if (!roomId || !user) return;
 
@@ -240,7 +174,6 @@ export const useRoomData = () => {
 
           console.log('useRoomData: Received raw room data:', rawRoomData);
           
-          // Normalize and validate room data
           const normalizedRoom = normalizeRoomData(rawRoomData);
           setRoom(normalizedRoom);
           setIsLoading(false);
@@ -272,6 +205,9 @@ export const useRoomData = () => {
             setUserInfo(null);
           }
 
+          // Check if room should be destroyed
+          checkRoomForDestruction(normalizedRoom);
+
         } catch (error) {
           console.error('useRoomData: Error processing room data:', error);
           handleAsyncError(error as Error, 'process room data', user.uid, roomId);
@@ -291,29 +227,9 @@ export const useRoomData = () => {
       console.log('useRoomData: Cleaning up room data listener');
       unsubscribeRoom();
     };
-  }, [roomId, user, navigate, addNotification, handleFirebaseError, handleAsyncError, normalizeRoomData]);
+  }, [roomId, user, navigate, addNotification, handleFirebaseError, handleAsyncError, normalizeRoomData, checkRoomForDestruction]);
 
   useUserPresence(roomId, isParticipant);
-
-  // Enhanced auto-close monitoring
-  useEffect(() => {
-    if (!room || !isHost || !room.autoCloseAfterInactivity) return;
-    
-    console.log('useRoomData: Setting up auto-close monitoring');
-    const interval = setInterval(() => {
-      try {
-        checkInactivityAndClose();
-      } catch (error) {
-        console.error('useRoomData: Error in auto-close check:', error);
-        handleAsyncError(error as Error, 'auto-close check', user?.uid, roomId);
-      }
-    }, 10000); // Check every 10 seconds
-    
-    return () => {
-      console.log('useRoomData: Cleaning up auto-close monitoring');
-      clearInterval(interval);
-    };
-  }, [room, isHost, checkInactivityAndClose, handleAsyncError, user, roomId]);
 
   return {
     room,

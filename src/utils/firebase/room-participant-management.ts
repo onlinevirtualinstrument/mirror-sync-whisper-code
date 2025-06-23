@@ -89,55 +89,51 @@ export const removeUserFromRoom = async (roomId: string, userId: string): Promis
     }
     
     const roomData = roomSnap.data();
-    const participants = roomData.participants || [];
-    const participantIds = roomData.participantIds || [];
+    const participants = Array.isArray(roomData.participants) ? roomData.participants : [];
+    const participantIds = Array.isArray(roomData.participantIds) ? roomData.participantIds : [];
     
-    // Find user in participants
-    const userIndex = participants.findIndex((p: any) => p.id === userId);
-    const isUserParticipant = participantIds.includes(userId);
-    
-    if (!isUserParticipant || userIndex === -1) {
+    // Find the user to remove
+    const userToRemove = participants.find((p: any) => p.id === userId);
+    if (!userToRemove) {
       console.log("removeUserFromRoom: User not found in participants");
       return;
     }
-    
-    const userToRemove = participants[userIndex];
-    const isHost = userToRemove.isHost;
-    
-    // Remove user from both arrays
+
+    // Remove ONLY the specified user from arrays
     const updatedParticipants = participants.filter((p: any) => p.id !== userId);
     const updatedParticipantIds = participantIds.filter((id: string) => id !== userId);
     
     console.log(`removeUserFromRoom: Participants count - before: ${participants.length}, after: ${updatedParticipants.length}`);
-    
+    console.log(`removeUserFromRoom: Removing user: ${userId}, isHost: ${userToRemove.isHost}`);
+
     if (updatedParticipants.length === 0) {
       // Room is now empty, delete it
       console.log("removeUserFromRoom: Room is empty, deleting");
       await deleteRoomFromFirestore(roomId);
-    } else if (isHost && updatedParticipants.length > 0) {
-      // Assign new host (first remaining participant)
+      return;
+    }
+
+    // Handle host transfer if needed
+    let updateData: any = {
+      participants: updatedParticipants,
+      participantIds: updatedParticipantIds,
+      lastActivity: new Date().toISOString()
+    };
+
+    if (userToRemove.isHost && updatedParticipants.length > 0) {
+      // Assign new host to first remaining participant
       const newHost = updatedParticipants[0];
       newHost.isHost = true;
       
-      console.log(`removeUserFromRoom: Assigning new host: ${newHost.id}`);
+      updateData.hostId = newHost.id;
+      updateData.participants = updatedParticipants; // Already updated above
       
-      await updateDoc(roomRef, {
-        participants: updatedParticipants,
-        participantIds: updatedParticipantIds,
-        hostId: newHost.id,
-        lastActivity: new Date().toISOString()
-      });
-    } else {
-      // Regular participant leaving
-      console.log("removeUserFromRoom: Regular participant leaving");
-      await updateDoc(roomRef, {
-        participants: updatedParticipants,
-        participantIds: updatedParticipantIds,
-        lastActivity: new Date().toISOString()
-      });
+      console.log(`removeUserFromRoom: Assigning new host: ${newHost.id}`);
     }
-    
+
+    await updateDoc(roomRef, updateData);
     console.log("removeUserFromRoom: Successfully removed user from room");
+
   } catch (error) {
     console.error("Error removing user from room:", error);
     throw error;
@@ -158,8 +154,8 @@ export const addUserToRoom = async (roomId: string, user: any): Promise<boolean>
     }
     
     const roomData = roomSnap.data();
-    const participants = roomData.participants || [];
-    const participantIds = roomData.participantIds || [];
+    const participants = Array.isArray(roomData.participants) ? roomData.participants : [];
+    const participantIds = Array.isArray(roomData.participantIds) ? roomData.participantIds : [];
     
     // Check if user is already a participant
     if (participantIds.includes(user.uid)) {
@@ -176,7 +172,7 @@ export const addUserToRoom = async (roomId: string, user: any): Promise<boolean>
     // For private rooms, handle join permissions
     if (!roomData.isPublic) {
       const isHost = roomData.hostId === user.uid;
-      const pendingRequests = roomData.pendingRequests || [];
+      const pendingRequests = Array.isArray(roomData.pendingRequests) ? roomData.pendingRequests : [];
       const isApproved = pendingRequests.includes(user.uid);
       
       if (!isHost && !isApproved) {
@@ -191,8 +187,9 @@ export const addUserToRoom = async (roomId: string, user: any): Promise<boolean>
       
       // Remove from pending requests if approved
       if (isApproved) {
+        const updatedPendingRequests = pendingRequests.filter((id: string) => id !== user.uid);
         await updateDoc(roomRef, {
-          pendingRequests: roomData.pendingRequests.filter((id: string) => id !== user.uid)
+          pendingRequests: updatedPendingRequests
         });
       }
     }
@@ -205,7 +202,11 @@ export const addUserToRoom = async (roomId: string, user: any): Promise<boolean>
       avatar: user.photoURL || '',
       isHost: roomData.hostId === user.uid,
       status: 'active',
-      muted: false
+      muted: false,
+      joinedAt: new Date().toISOString(),
+      lastSeen: new Date().toISOString(),
+      isInRoom: true,
+      heartbeatTimestamp: Date.now()
     };
     
     // Update both arrays atomically
