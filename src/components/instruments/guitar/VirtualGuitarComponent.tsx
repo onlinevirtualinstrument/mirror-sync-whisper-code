@@ -578,10 +578,14 @@ const VirtualGuitarComponent: React.FC<VirtualGuitarComponentProps> = ({ classNa
 
 
   const [open, setOpen] = useState(false);
-    const handleOpen = async () => {
+  const handleOpen = async () => {
+    setOpen(true); // Open modal first
+    // Wait for modal animation/frame to complete
+    requestAnimationFrame(async () => {
+      await new Promise(res => setTimeout(res, 150)); // delay stabilizes layout
       await lockToLandscape();
-      setOpen(true);
-    };
+    });
+  };
 
   return (
     <div className={cn("relative h-full w-full flex flex-col bg-gradient-to-b from-background to-background/80 overflow-auto", className)}>
@@ -650,8 +654,8 @@ const VirtualGuitarComponent: React.FC<VirtualGuitarComponentProps> = ({ classNa
                     Click here to expand
                   </strong>
                 </p>
-              </div> */} 
-               <div className="text-center text-xs text-muted-foreground bg-purple-100 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-2">
+              </div> */}
+              <div className="text-center text-xs text-muted-foreground bg-purple-100 border border-purple-400 dark:bg-white/5 p-2 rounded-md mb-2">
                 <p>For the best experience, expand to full screen.
                   <strong onClick={handleOpen} className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent ">
                     Click here to expand
@@ -659,34 +663,34 @@ const VirtualGuitarComponent: React.FC<VirtualGuitarComponentProps> = ({ classNa
                 </p>
                 <LandscapeInstrumentModal isOpen={open} onClose={() => setOpen(false)}>
                   <GuitarBody
-                guitarType={guitarType}
-                colors={THEME_COLORS[guitarTheme][guitarType]}
-                numStrings={getCurrentTuning().length || 6}
-                numFrets={13}
-                activeStrings={activeStrings}
-                activeFrets={activeFrets}
-                onStringPluck={pluckString} 
-                showNoteNames={showNoteNames}
-                showFretNumbers={showFretNumbers}
-                noteNames={generateNoteNames()}
-              />
+                    guitarType={guitarType}
+                    colors={THEME_COLORS[guitarTheme][guitarType]}
+                    numStrings={getCurrentTuning().length || 6}
+                    numFrets={13}
+                    activeStrings={activeStrings}
+                    activeFrets={activeFrets}
+                    onStringPluck={pluckString}
+                    showNoteNames={showNoteNames}
+                    showFretNumbers={showFretNumbers}
+                    noteNames={generateNoteNames()}
+                  />
                 </LandscapeInstrumentModal>
               </div>
             </div>
-            
+
             {/* <div ref={containerRef} className="flex items-center justify-center bg-white animate-scale-in" style={{ animationDelay: '200ms' }}> */}
-              <GuitarBody
-                guitarType={guitarType}
-                colors={THEME_COLORS[guitarTheme][guitarType]}
-                numStrings={getCurrentTuning().length || 6}
-                numFrets={13}
-                activeStrings={activeStrings}
-                activeFrets={activeFrets}
-                onStringPluck={pluckString} 
-                showNoteNames={showNoteNames}
-                showFretNumbers={showFretNumbers}
-                noteNames={generateNoteNames()}
-              />
+            <GuitarBody
+              guitarType={guitarType}
+              colors={THEME_COLORS[guitarTheme][guitarType]}
+              numStrings={getCurrentTuning().length || 6}
+              numFrets={13}
+              activeStrings={activeStrings}
+              activeFrets={activeFrets}
+              onStringPluck={pluckString}
+              showNoteNames={showNoteNames}
+              showFretNumbers={showFretNumbers}
+              noteNames={generateNoteNames()}
+            />
             {/* </div> */}
           </div>
 

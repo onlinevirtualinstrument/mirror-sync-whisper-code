@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Globe, Lock, Users, Music, ArrowRight, UserPlus, Calendar } from 'lucide-react';
+import { Globe, Lock, Users, Music, ArrowRight, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/components/ui/use-toast';
 import CreateRoomModal from '@/components/room/CreateRoomModal';
@@ -10,19 +10,17 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
-import { auth } from '@/utils/firebase/config';
 import { db } from '@/utils/firebase/index';
-import { doc, updateDoc, deleteDoc, collection, onSnapshot, QueryDocumentSnapshot, getDoc, Timestamp, query, orderBy } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import {
   listenToLiveRooms,
-  saveRoomToFirestore,
-  addUserToRoom,
-  isUserRoomParticipant
+  addUserToRoom
 } from "@/utils/firebase/index";
 
 interface RoomType {
   id: string;
   name: string;
+  hostId: string;
   hostInstrument: string;
   allowDifferentInstruments: boolean;
   maxParticipants: number;
@@ -45,14 +43,12 @@ interface RoomType {
 const MusicRooms = () => {
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [activeTab, setActiveTab] = useState<string>('all');
-  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<RoomType | null>(null);
-  const [loadingRequest, setLoadingRequest] = useState(false);
-  const [loginAlertOpen, setLoginAlertOpen] = useState(false);
   const [joiningRoom, setJoiningRoom] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { handleFirebaseError, handleAsyncError } = useErrorHandler();
+
+  console.log('MusicRooms: Component initialized, user:', user?.uid);
 
   function isFirestoreTimestamp(value: any): value is { toDate: () => Date } {
     return value && typeof value.toDate === 'function';
@@ -68,24 +64,23 @@ const MusicRooms = () => {
         (liveRooms) => {
           console.log('MusicRooms: Received live rooms data:', liveRooms.length, 'rooms');
           
-          // Enhanced data validation and normalization
           const normalizedRooms = liveRooms.map(room => {
-            // Ensure participants is always an array
             const participants = Array.isArray(room.participants) ? room.participants : [];
             
-            // Validate room data structure
-            const normalizedRoom = {
+            const normalizedRoom: RoomType = {
               ...room,
+              hostId: room.hostId || room.creatorId || '',
               participants,
               pendingRequests: Array.isArray(room.pendingRequests) ? room.pendingRequests : [],
               participantIds: Array.isArray(room.participantIds) ? room.participantIds : [],
               maxParticipants: typeof room.maxParticipants === 'number' ? room.maxParticipants : 3,
               isPublic: typeof room.isPublic === 'boolean' ? room.isPublic : true,
               hostInstrument: room.hostInstrument || 'piano',
-              allowDifferentInstruments: typeof room.allowDifferentInstruments === 'boolean' ? room.allowDifferentInstruments : true
+              allowDifferentInstruments: typeof room.allowDifferentInstruments === 'boolean' ? room.allowDifferentInstruments : true,
+              createdAt: room.createdAt ? (isFirestoreTimestamp(room.createdAt) ? room.createdAt.toDate().toISOString() : typeof room.createdAt === 'string' ? room.createdAt : new Date().toISOString()) : new Date().toISOString()
             };
             
-            console.log(`Room ${room.id}: participants=${participants.length}, maxParticipants=${normalizedRoom.maxParticipants}`);
+            console.log(`MusicRooms: Room ${room.id} - participants: ${participants.length}/${normalizedRoom.maxParticipants}, isPublic: ${normalizedRoom.isPublic}, hostId: ${normalizedRoom.hostId}`);
             return normalizedRoom;
           });
           
@@ -116,7 +111,7 @@ const MusicRooms = () => {
         }
       }
     };
-  }, [user, handleFirebaseError, handleAsyncError]);
+  }, [user?.uid, handleFirebaseError, handleAsyncError]);
 
   const joinRoom = async (room: any) => {
     if (!user || !room.id) {
@@ -124,117 +119,73 @@ const MusicRooms = () => {
       return;
     }
 
-    console.log(`MusicRooms: User ${user.uid} attempting to join room ${room.id}`);
+    console.log(`MusicRooms: User ${user.uid} attempting to join room ${room.id} (${room.name})`);
     
     const isHost = room.hostId === user.uid;
     const participantIds = Array.isArray(room.participantIds) ? room.participantIds : [];
-    const isParticipant = participantIds.includes(user.uid);
+    const isAlreadyParticipant = participantIds.includes(user.uid);
 
-    console.log(`MusicRooms: Join room check - isHost: ${isHost}, isParticipant: ${isParticipant}, isPublic: ${room.isPublic}`);
+    console.log(`MusicRooms: Join room analysis - isHost: ${isHost}, isAlreadyParticipant: ${isAlreadyParticipant}, isPublic: ${room.isPublic}, participants: ${participantIds.length}/${room.maxParticipants}`);
 
-    if (room.isPublic || isHost || isParticipant) {
-      try {
-        setJoiningRoom(room.id);
-        
-        const roomRef = doc(db, "musicRooms", room.id);
-        const participants = Array.isArray(room.participants) ? room.participants : [];
-        const updatedParticipants = [...participants];
+    // Check if room is full
+    if (participantIds.length >= room.maxParticipants && !isAlreadyParticipant) {
+      console.log('MusicRooms: Room is full, cannot join');
+      toast({
+        title: "Room Full",
+        description: "This room has reached its maximum capacity.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-        const alreadyIn = updatedParticipants.some(p => p.id === user.uid);
-        console.log(`MusicRooms: User already in room: ${alreadyIn}`);
+    // Check access permissions
+    if (!room.isPublic && !isHost && !isAlreadyParticipant) {
+      console.log('MusicRooms: Private room access denied');
+      toast({
+        title: "Access Denied",
+        description: "This is a private room and you don't have access.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-        if (!alreadyIn) {
-          const newParticipant = {
-            id: user.uid,
-            name: user.displayName || "Guest",
-            instrument: room.hostInstrument || "piano",
-            avatar: user.photoURL || `https://i.pravatar.cc/150?u=${user.uid}`,
-            isHost: false,
-            status: 'online',
-            joinedAt: new Date().toISOString(),
-            lastSeen: new Date().toISOString()
-          };
-          
-          updatedParticipants.push(newParticipant);
-          console.log('MusicRooms: Added new participant:', newParticipant);
-        }
-
-        const updatedIds = [...new Set([...participantIds, user.uid])];
-
-        await updateDoc(roomRef, {
-          participants: updatedParticipants,
-          participantIds: updatedIds,
-          lastActivity: new Date().toISOString()
-        });
-
-        console.log(`MusicRooms: Successfully joined room ${room.id}`);
+    try {
+      setJoiningRoom(room.id);
+      console.log(`MusicRooms: Starting join process for room ${room.id}`);
+      
+      // Use the robust addUserToRoom function
+      const success = await addUserToRoom(room.id, user);
+      
+      if (success) {
+        console.log(`MusicRooms: Successfully joined room ${room.id}, navigating to room`);
         
         toast({
           title: "Joined Room",
           description: `You've joined ${room.name}`,
         });
 
+        // Navigate to room
         navigate(`/room/${room.id}`);
-
-      } catch (error) {
-        console.error("MusicRooms: Failed to join room:", error);
-        handleFirebaseError(error, `join room ${room.id}`, user.uid, room.id);
-        
+      } else {
+        console.error('MusicRooms: Failed to join room - addUserToRoom returned false');
         toast({
           title: "Join Failed",
           description: "Could not join the room. Please try again.",
           variant: "destructive"
         });
-      } finally {
-        setJoiningRoom(null);
       }
-    } else {
-      console.warn('MusicRooms: Access denied to private room');
-      toast({
-        title: "Access Denied",
-        description: "This is a private room and you don't have access.",
-        variant: "destructive"
-      });
-    }
-  };
 
-  const requestToJoinRoom = async () => {
-    if (!selectedRoom || !user) {
-      console.warn('MusicRooms: Cannot send join request - missing room or user');
-      return;
-    }
-
-    console.log(`MusicRooms: Sending join request for room ${selectedRoom.id}`);
-    setLoadingRequest(true);
-    const userId = user.uid;
-
-    try {
-      const pendingRequests = Array.isArray(selectedRoom.pendingRequests) ? selectedRoom.pendingRequests : [];
-      const updatedRoom = {
-        ...selectedRoom,
-        pendingRequests: [...pendingRequests, userId],
-      };
-
-      await saveRoomToFirestore(updatedRoom);
-      console.log('MusicRooms: Join request sent successfully');
-
-      toast({
-        description: "Request to join room sent to the host.",
-        variant: "default"
-      });
-      
-      setRequestDialogOpen(false);
-      setSelectedRoom(null);
     } catch (error) {
-      console.error("MusicRooms: Failed to send join request:", error);
-      handleFirebaseError(error, `send join request for room ${selectedRoom.id}`, userId, selectedRoom.id);
+      console.error("MusicRooms: Failed to join room:", error);
+      handleFirebaseError(error, `join room ${room.id}`, user.uid, room.id);
       
       toast({
-        description: "Failed to send request. Please try again.",
+        title: "Join Failed",
+        description: "Could not join the room. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setLoadingRequest(false);
+      setJoiningRoom(null);
     }
   };
 
@@ -279,9 +230,9 @@ const MusicRooms = () => {
         <div className="mb-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
-              <TabsTrigger value="all" className="hover:bg-primary/10 transition-colors">All Rooms</TabsTrigger>
-              <TabsTrigger value="public" className="hover:bg-primary/10 transition-colors">Public Rooms</TabsTrigger>
-              <TabsTrigger value="private" className="hover:bg-primary/10 transition-colors">Private Rooms</TabsTrigger>
+              <TabsTrigger value="all">All Rooms</TabsTrigger>
+              <TabsTrigger value="public">Public Rooms</TabsTrigger>
+              <TabsTrigger value="private">Private Rooms</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -302,19 +253,17 @@ const MusicRooms = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRooms.map((room) => {
-              // Enhanced participant data validation
               const participants = Array.isArray(room.participants) ? room.participants : [];
               const hostParticipant = participants.find(p => p?.isHost);
               const hostName = hostParticipant?.name || 'Room Admin';
               const isJoining = joiningRoom === room.id;
               const maxParticipants = typeof room.maxParticipants === 'number' ? room.maxParticipants : 3;
-
-              console.log(`Rendering room ${room.id}: ${participants.length}/${maxParticipants} participants`);
+              const participantCount = room.participantIds?.length || participants.length;
 
               return (
                 <div
                   key={room.id}
-                  className="border rounded-xl overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-1 bg-card animate-scale-in"
+                  className="border rounded-xl overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-1 bg-card"
                 >
                   <div className="p-6">
                     <div className="flex justify-between mb-2">
@@ -332,11 +281,7 @@ const MusicRooms = () => {
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {isFirestoreTimestamp(room.createdAt)
-                          ? format(room.createdAt.toDate(), 'MMM d, h:mm a')
-                          : typeof room.createdAt === 'string'
-                            ? format(new Date(room.createdAt), 'MMM d, h:mm a')
-                            : 'Date unknown'}
+                        {format(new Date(room.createdAt), 'MMM d, h:mm a')}
                       </div>
                     </div>
 
@@ -359,12 +304,12 @@ const MusicRooms = () => {
                     <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
                       <Users className="h-4 w-4" />
                       <span>
-                        {participants.length} / {maxParticipants} participants
+                        {participantCount} / {maxParticipants} participants
                       </span>
                     </div>
 
                     <div className="flex -space-x-2 mb-4">
-                      {participants.map((participant, index) => (
+                      {participants.slice(0, 5).map((participant, index) => (
                         <div
                           key={`${participant.id}-${index}`}
                           className="h-8 w-8 rounded-full border-2 border-background overflow-hidden hover:scale-110 transition-transform"
@@ -377,13 +322,18 @@ const MusicRooms = () => {
                           />
                         </div>
                       ))}
+                      {participants.length > 5 && (
+                        <div className="h-8 w-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-xs">
+                          +{participants.length - 5}
+                        </div>
+                      )}
                     </div>
 
                     <Button
                       onClick={() => joinRoom(room)}
                       className="w-full group hover:scale-[1.02] transition-transform"
                       variant={room.isPublic ? "default" : "outline"}
-                      disabled={!user || participants.length >= maxParticipants || isJoining}
+                      disabled={!user || participantCount >= maxParticipants || isJoining}
                     >
                       {isJoining ? (
                         <span className="flex items-center">
@@ -392,13 +342,8 @@ const MusicRooms = () => {
                         </span>
                       ) : !user ? (
                         'Login to Join'
-                      ) : participants.length >= maxParticipants ? (
+                      ) : participantCount >= maxParticipants ? (
                         'Room Full'
-                      ) : !room.isPublic ? (
-                        <>
-                          Request to Join
-                          <UserPlus className="ml-1 h-4 w-4 group-hover:scale-110 transition-transform" />
-                        </>
                       ) : (
                         <>
                           Join Session
@@ -412,88 +357,6 @@ const MusicRooms = () => {
             })}
           </div>
         )}
-
-        {/* Join Request Dialog */}
-        <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
-          <DialogContent className="sm:max-w-md animate-fade-in">
-            <DialogHeader>
-              <DialogTitle>Request to Join Private Room</DialogTitle>
-              <DialogDescription>
-                This is a private music room. Send a request to the host to join this session.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              <p className="text-sm mb-2">Room: <span className="font-medium">{selectedRoom?.name}</span></p>
-              <p className="text-sm">
-                The host will need to approve your request before you can join this room.
-              </p>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="secondary"
-                onClick={() => setRequestDialogOpen(false)}
-                disabled={loadingRequest}
-                className="hover:bg-muted/80 transition-colors"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={requestToJoinRoom}
-                disabled={loadingRequest || !user}
-                className="hover:bg-primary/90 transition-colors"
-              >
-                {loadingRequest ? (
-                  <span className="flex items-center">
-                    <span className="animate-spin mr-2 h-4 w-4 border-2 border-primary-foreground border-opacity-50 border-t-transparent rounded-full"></span>
-                    Sending...
-                  </span>
-                ) : (
-                  'Send Request'
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Login Alert Dialog */}
-        <Dialog open={loginAlertOpen} onOpenChange={setLoginAlertOpen}>
-          <DialogContent className="sm:max-w-md animate-scale-in">
-            <DialogHeader>
-              <DialogTitle>Login Required</DialogTitle>
-              <DialogDescription>
-                You need to be logged in to join a music room. Please log in or create an account.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
-              <Button
-                variant="outline"
-                onClick={() => setLoginAlertOpen(false)}
-                className="w-full sm:w-auto hover:bg-muted/80 transition-colors"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  setLoginAlertOpen(false);
-                  navigate('/auth/login');
-                }}
-                className="w-full sm:w-auto hover:bg-primary/90 transition-colors"
-              >
-                Log In
-              </Button>
-              <Button
-                onClick={() => {
-                  setLoginAlertOpen(false);
-                  navigate('/auth/register');
-                }}
-                variant="default"
-                className="w-full sm:w-auto hover:bg-primary/90 transition-colors"
-              >
-                Sign Up
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </AppLayout>
   );

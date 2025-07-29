@@ -1,24 +1,8 @@
 
 import { useCallback, useEffect, useRef } from 'react';
-import { useInstrumentBroadcast } from './rooms/useInstrumentBroadcast';
-import { useRemoteNotePlayer } from './rooms/useRemoteNotePlayer';
-import { useInstrumentListener } from './rooms/useInstrumentListener';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-
-interface InstrumentNote {
-  note: string;
-  instrument: string;
-  userId: string;
-  userName: string;
-  timestamp?: string;
-  velocity?: number;
-  duration?: number;
-  sessionId?: string;
-  serverTimestamp?: number;
-  clientId?: string;
-  roomId?: string;
-}
+import ToneAudioEngine from '@/utils/audio/toneAudioEngine';
 
 export const useRoomInstruments = (
   room: any, 
@@ -28,39 +12,40 @@ export const useRoomInstruments = (
   const { roomId } = useParams<{ roomId: string }>();
   const { user } = useAuth();
   
-  const {
-    remotePlaying,
-    activeNotes,
-    playRemoteNote,
-    setRemotePlayingWithCleanup,
-    mountedRef,
-    echoPreventionRef
-  } = useRemoteNotePlayer(roomId, user?.uid);
+  const audioInitializedRef = useRef<boolean>(false);
 
-  const { broadcastInstrumentNote } = useInstrumentBroadcast(room, setLastActivityTime);
-
-  useInstrumentListener(
-    playRemoteNote,
-    setRemotePlayingWithCleanup,
-    updateInstrumentPlayTime,
-    mountedRef
-  );
-
-  // Periodic cleanup of echo prevention cache
+  // Initialize Tone.js audio system when component mounts
   useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      if (mountedRef.current && echoPreventionRef.current.size > 100) {
-        console.log('useRoomInstruments: Cleaning echo prevention cache');
-        echoPreventionRef.current.clear();
+    const initAudio = async () => {
+      if (!audioInitializedRef.current) {
+        try {
+          console.log('useRoomInstruments: Initializing Tone.js audio system');
+          const audioEngine = ToneAudioEngine.getInstance();
+          await audioEngine.initialize();
+          audioEngine.setMasterVolume(0.8);
+          
+          audioInitializedRef.current = true;
+          console.log('useRoomInstruments: Tone.js audio system ready for collaboration');
+        } catch (error) {
+          console.error('useRoomInstruments: Failed to initialize Tone.js audio system:', error);
+        }
       }
-    }, 30000);
+    };
 
-    return () => clearInterval(cleanupInterval);
-  }, [mountedRef, echoPreventionRef]);
+    initAudio();
+  }, []);
+
+  // Simplified function that just updates activity time
+  const simpleBroadcastNote = useCallback(async (): Promise<void> => {
+    // Just update activity - actual audio sharing happens through system audio
+    setLastActivityTime(Date.now());
+    updateInstrumentPlayTime();
+  }, [setLastActivityTime, updateInstrumentPlayTime]);
 
   return {
-    remotePlaying,
-    broadcastInstrumentNote,
-    activeNotes
+    remotePlaying: null, // Removed complex remote playing logic
+    broadcastInstrumentNote: simpleBroadcastNote,
+    activeNotes: [],
+    audioInitialized: audioInitializedRef.current
   };
 };

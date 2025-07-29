@@ -27,6 +27,16 @@ const RoomSettings: React.FC = () => {
 
   if (!room || !isHost) return null;
 
+  const handleAutoCloseToggle = (enabled: boolean) => {
+    const timeout = enabled ? (room.inactivityTimeout || 2) : 10;
+    toggleAutoClose(enabled, timeout);
+  };
+
+  const handleTimeoutChange = (values: number[]) => {
+    const newTimeout = values[0];
+    toggleAutoClose(room.autoCloseAfterInactivity, newTimeout);
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <TooltipProvider>
@@ -67,7 +77,6 @@ const RoomSettings: React.FC = () => {
                 checked={room.isChatDisabled}
                 onCheckedChange={(value) => {
                   toggleChat(value);
-                  // Close sheet on mobile for better UX
                   if (window.innerWidth < 768) setOpen(false);
                 }}
               />
@@ -83,36 +92,43 @@ const RoomSettings: React.FC = () => {
               <div className="space-y-0.5">
                 <Label htmlFor="auto-close">Auto-Close After Inactivity</Label>
                 <p className="text-xs text-muted-foreground">
-                  Room will close after period of inactivity
+                  Room will close after period of inactivity (Default: 2 min if enabled, 10 min if disabled)
                 </p>
               </div>
               <Switch
                 id="auto-close"
                 checked={room.autoCloseAfterInactivity}
-                onCheckedChange={(value) => {
-                  toggleAutoClose(value, room.inactivityTimeout || 5);
-                }}
+                onCheckedChange={handleAutoCloseToggle}
               />
             </div>
             
-            {room.autoCloseAfterInactivity && (
-              <div className="space-y-2 pt-2">
-                <div className="flex justify-between">
-                  <Label htmlFor="timeout">Inactivity Timeout (minutes)</Label>
-                  <span className="text-sm">{room.inactivityTimeout || 5} min</span>
-                </div>
+            <div className="space-y-2 pt-2">
+              <div className="flex justify-between">
+                <Label htmlFor="timeout">
+                  Inactivity Timeout 
+                  {room.autoCloseAfterInactivity ? ' (Enabled)' : ' (Disabled - 10 min fixed)'}
+                </Label>
+                <span className="text-sm">
+                  {room.autoCloseAfterInactivity ? (room.inactivityTimeout || 2) : 10} min
+                </span>
+              </div>
+              {room.autoCloseAfterInactivity && (
                 <Slider
                   id="timeout"
                   min={1}
                   max={60}
                   step={1}
-                  value={[room.inactivityTimeout || 5]}
-                  onValueChange={(values) => {
-                    toggleAutoClose(true, values[0]);
-                  }}
+                  value={[room.inactivityTimeout || 2]}
+                  onValueChange={handleTimeoutChange}
                 />
-              </div>
-            )}
+              )}
+              <p className="text-xs text-muted-foreground">
+                {room.autoCloseAfterInactivity 
+                  ? `Room will close after ${room.inactivityTimeout || 2} minutes of no activity`
+                  : "Auto-close is disabled. Room will only close after 10 minutes of complete inactivity"
+                }
+              </p>
+            </div>
           </div>
           
           {/* Room Privacy */}
@@ -141,7 +157,6 @@ const RoomSettings: React.FC = () => {
                 onCheckedChange={(value) => {
                   updateSettings({ 
                     isPublic: value,
-                    // Generate join code if switching to private
                     ...(value ? {} : {
                       joinCode: room.joinCode || Math.floor(100000 + Math.random() * 900000).toString()
                     })

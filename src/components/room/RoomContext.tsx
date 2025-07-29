@@ -3,11 +3,11 @@ import React, { createContext, useContext, ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
-import { useRoomData } from '@/hooks/useRoomData';
-import { useRoomChat } from '@/hooks/useRoomChat';
-import { useRoomInstruments } from '@/hooks/useRoomInstruments';
-import { useRoomActions } from '@/hooks/useRoomActions';
+import { useRoomData } from '@/hooks/room/useRoomData';
+import { useRoomChat } from '@/hooks/room/useRoomChat';
+import { useParticipantManagement } from '@/hooks/useParticipantManagement';
 import { useRoomJoin } from '@/hooks/useRoomJoin';
+import { useRoomActions } from '@/hooks/useRoomActions';
 import {
   sendPrivateMessage,
   getPrivateMessages,
@@ -15,14 +15,6 @@ import {
   listenForUnreadMessages
 } from '@/utils/firebase';
 import { useState, useEffect } from 'react';
-
-interface InstrumentNote {
-  note: string;
-  instrument: string;
-  userId: string;
-  userName: string;
-  timestamp?: string;
-}
 
 type RoomContextType = {
   room: any;
@@ -36,20 +28,18 @@ type RoomContextType = {
   privateMessagingUser: string | null;
   unreadCounts: Record<string, number>;
   unreadMessageCount: number;
-  remotePlaying: InstrumentNote | null;
   sendMessage: (message: string) => Promise<void>;
   leaveRoom: () => Promise<void>;
   closeRoom: () => Promise<void>;
-  switchInstrument: (instrument: string) => Promise<void>;
-  muteUser: (userId: string, mute: boolean) => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
+  muteUser: (userId: string, mute: boolean) => Promise<void>;
+  switchInstrument: (instrument: string) => Promise<void>;
   toggleChat: (disabled: boolean) => Promise<void>;
   toggleAutoClose: (enabled: boolean, timeout?: number) => Promise<void>;
   updateSettings: (settings: any) => Promise<void>;
   respondToJoinRequest: (userId: string, approve: boolean) => Promise<void>;
   sendPrivateMsg: (receiverId: string, message: string) => Promise<void>;
   setPrivateMessagingUser: (userId: string | null) => void;
-  broadcastInstrumentNote: (note: InstrumentNote) => Promise<void>;
   markChatAsRead: () => void;
   requestJoin: (joinCode?: string) => Promise<void>;
 };
@@ -79,19 +69,17 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     unreadMessageCount,
     sendMessage,
     markChatAsRead
-  } = useRoomChat(room, isParticipant, isHost);
-
-  const {
-    remotePlaying,
-    broadcastInstrumentNote
-  } = useRoomInstruments(room, setLastActivityTime, updateInstrumentPlayTime);
+  } = useRoomChat(roomId, isParticipant, isHost, room);
 
   const {
     leaveRoom,
-    closeRoom,
-    switchInstrument,
-    muteUser,
     removeUser,
+    muteUser,
+    switchInstrument
+  } = useParticipantManagement(roomId, room, isHost);
+
+  const {
+    closeRoom,
     toggleChat,
     toggleAutoClose,
     updateSettings,
@@ -195,20 +183,18 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     privateMessagingUser,
     unreadCounts,
     unreadMessageCount,
-    remotePlaying,
     sendMessage,
     leaveRoom,
     closeRoom,
-    switchInstrument,
-    muteUser,
     removeUser,
+    muteUser,
+    switchInstrument,
     toggleChat,
     toggleAutoClose,
     updateSettings,
     respondToJoinRequest,
     sendPrivateMsg,
     setPrivateMessagingUser,
-    broadcastInstrumentNote,
     markChatAsRead,
     requestJoin
   };

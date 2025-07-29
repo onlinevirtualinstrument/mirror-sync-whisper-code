@@ -92,7 +92,7 @@ const Flute = () => {
   const fluteStyles = getFluteStyles();
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto w-full">
       <div className="flex justify-between items-center mb-6">
         <InstrumentVariantSelector
           currentVariant={fluteVariant}

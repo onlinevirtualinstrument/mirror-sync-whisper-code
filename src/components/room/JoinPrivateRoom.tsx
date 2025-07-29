@@ -1,28 +1,53 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRoom } from './RoomContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from '@/components/ui/alert-dialog';
-import { Lock } from 'lucide-react';
+import { Lock, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const JoinPrivateRoom: React.FC = () => {
   const { room, isParticipant, requestJoin } = useRoom();
   const [joinCode, setJoinCode] = useState('');
   const [isRequesting, setIsRequesting] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
 
-  if (!room || isParticipant || room.isPublic) return null;
+  // Control dialog visibility more carefully
+  useEffect(() => {
+    if (room && !isParticipant && !room.isPublic) {
+      console.log('JoinPrivateRoom: Private room detected, showing join dialog');
+      setShowDialog(true);
+    } else {
+      setShowDialog(false);
+    }
+  }, [room, isParticipant]);
 
   const handleJoinRequest = async () => {
-    setIsRequesting(true);
-    try {
-      await requestJoin(joinCode);
-    } catch (error) {
-      console.error("Error requesting to join:", error);
+    if (!joinCode.trim()) {
       toast({ 
         variant: "destructive",
-        description: "Failed to send join request. Please try again." 
+        description: "Please enter a valid join code" 
+      });
+      return;
+    }
+
+    setIsRequesting(true);
+    console.log('JoinPrivateRoom: Attempting to join with code:', joinCode);
+    
+    try {
+      await requestJoin(joinCode);
+      setRequestSent(true);
+      
+      // Keep dialog open for a bit to show success state
+      setTimeout(() => {
+        setShowDialog(false);
+      }, 2000);
+    } catch (error) {
+      console.error("JoinPrivateRoom: Error requesting to join:", error);
+      toast({ 
+        variant: "destructive",
+        description: "Failed to join with the provided code. Please check the code and try again." 
       });
     } finally {
       setIsRequesting(false);
@@ -31,10 +56,21 @@ const JoinPrivateRoom: React.FC = () => {
 
   const handleRequestWithoutCode = async () => {
     setIsRequesting(true);
+    console.log('JoinPrivateRoom: Requesting to join without code');
+    
     try {
       await requestJoin();
+      setRequestSent(true);
+      toast({ 
+        description: "Join request sent to the host. Please wait for approval." 
+      });
+      
+      // Keep dialog open to show request sent state
+      setTimeout(() => {
+        setShowDialog(false);
+      }, 3000);
     } catch (error) {
-      console.error("Error requesting to join:", error);
+      console.error("JoinPrivateRoom: Error requesting to join:", error);
       toast({ 
         variant: "destructive",
         description: "Failed to send join request. Please try again." 
@@ -44,56 +80,81 @@ const JoinPrivateRoom: React.FC = () => {
     }
   };
 
+  if (!room || isParticipant || room.isPublic) return null;
+
   return (
-    <AlertDialog open={!isParticipant && !room.isPublic} onOpenChange={() => {}}>
-      <AlertDialogContent>
+    <AlertDialog open={showDialog} onOpenChange={() => {}}>
+      <AlertDialogContent className="sm:max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center">
-            <Lock className="h-5 w-5 mr-2" /> Private Room
+            <Lock className="h-5 w-5 mr-2" /> Private Room Access Required
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This room requires a join code or host approval.
+            {requestSent 
+              ? "Your request has been sent. Please wait for the host to approve your access."
+              : "This room requires a join code or host approval to enter."
+            }
           </AlertDialogDescription>
         </AlertDialogHeader>
         
-        <div className="py-4">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="join-code" className="text-sm font-medium">
-                Enter Join Code
-              </label>
-              <Input
-                id="join-code"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value)}
-                placeholder="e.g. 123456"
-                className="text-center font-mono"
-              />
+        {!requestSent && (
+          <div className="py-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="join-code" className="text-sm font-medium">
+                  Enter Join Code (Optional)
+                </label>
+                <Input
+                  id="join-code"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.trim())}
+                  placeholder="e.g. 123456"
+                  className="text-center font-mono"
+                  maxLength={6}
+                  disabled={isRequesting}
+                />
+              </div>
+              
+              <p className="text-sm text-muted-foreground">
+                If you don't have a code, you can request to join and wait for approval from the host.
+              </p>
             </div>
-            
-            <p className="text-sm text-muted-foreground">
-              If you don't have a code, you can request to join and wait for approval from the host.
-            </p>
           </div>
-        </div>
+        )}
         
-        <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
-          <Button
-            variant="outline"
-            className="sm:flex-1"
-            onClick={handleRequestWithoutCode}
-            disabled={isRequesting}
-          >
-            {isRequesting ? 'Sending...' : 'Request to Join'}
-          </Button>
-          <Button
-            className="sm:flex-1"
-            onClick={handleJoinRequest}
-            disabled={isRequesting || !joinCode.trim()}
-          >
-            {isRequesting ? 'Processing...' : 'Join with Code'}
-          </Button>
-        </AlertDialogFooter>
+        {!requestSent && (
+          <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="sm:flex-1"
+              onClick={handleRequestWithoutCode}
+              disabled={isRequesting}
+            >
+              {isRequesting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                'Request to Join'
+              )}
+            </Button>
+            <Button
+              className="sm:flex-1"
+              onClick={handleJoinRequest}
+              disabled={isRequesting || !joinCode.trim()}
+            >
+              {isRequesting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Join with Code'
+              )}
+            </Button>
+          </AlertDialogFooter>
+        )}
       </AlertDialogContent>
     </AlertDialog>
   );

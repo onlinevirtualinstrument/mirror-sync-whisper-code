@@ -50,7 +50,7 @@ const FlutePage = () => {
         <RecordingControlsShared instrumentName="Flute" primaryColor="bg-blue-500" />
         </div> */}
 
-      <div className=" bg-white animate-scale-in" style={{ animationDelay: '200ms' }}>
+      <div className="w-full bg-white animate-scale-in" style={{ animationDelay: '200ms' }}>
         <Flute />
       </div>
     </InstrumentPageWrapper>

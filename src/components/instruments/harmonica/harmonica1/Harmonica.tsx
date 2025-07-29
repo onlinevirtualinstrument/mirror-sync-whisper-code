@@ -83,7 +83,7 @@ const Harmonica = ({ variant = 'standard' }: HarmonicaProps) => {
 
       </div>
 
-      <FullscreenWrapper ref={containerRef} instrumentName="banjo">
+      <FullscreenWrapper ref={containerRef} instrumentName="harmonica">
         <HarmonicaBody
           harmonicaVariant={harmonicaVariant}
           activeHole={activeHole}

@@ -23,16 +23,6 @@ self.addEventListener('install', event => {
         console.log('Opened app cache');
         return cache.addAll(urlsToCache);
       }),
-      // Cache instrument sounds
-      caches.open(INSTRUMENTS_CACHE).then(cache => {
-        console.log('Opened instruments cache');
-        return cache.addAll(instrumentSounds.filter(url => {
-          // Only cache if the sound file exists
-          return fetch(url, { method: 'HEAD' })
-            .then(response => response.ok)
-            .catch(() => false);
-        }));
-      })
     ])
   );
   self.skipWaiting();
@@ -59,26 +49,6 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => caches.match(request))
-    );
-    return;
-  }
-
-  // Instrument sounds - cache first, then network
-  if (instrumentSounds.some(sound => url.pathname.includes(sound.split('/').pop()))) {
-    event.respondWith(
-      caches.match(request)
-        .then(response => {
-          if (response) {
-            return response;
-          }
-          return fetch(request)
-            .then(fetchResponse => {
-              const responseClone = fetchResponse.clone();
-              caches.open(INSTRUMENTS_CACHE)
-                .then(cache => cache.put(request, responseClone));
-              return fetchResponse;
-            });
-        })
     );
     return;
   }

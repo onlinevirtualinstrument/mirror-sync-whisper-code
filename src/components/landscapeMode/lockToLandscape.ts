@@ -19,6 +19,7 @@ const isMobileDevice = (): boolean => {
 // Global state to prevent concurrent operations
 let isLockingOrientation = false;
 let currentLockState = false;
+let lockTimeout: NodeJS.Timeout | null = null;
 
 export const enterFullscreen = async (element: HTMLElement = document.documentElement): Promise<void> => {
   if (!document.fullscreenElement && element.requestFullscreen) {
@@ -61,7 +62,19 @@ export const lockToLandscape = async (): Promise<void> => {
   isLockingOrientation = true;
 
   try {
+    // Clear any existing timeout
+    if (lockTimeout) {
+      clearTimeout(lockTimeout);
+      lockTimeout = null;
+    }
+
+    // Enter fullscreen first and wait for it to be stable
     await enterFullscreen();
+    await new Promise(resolve => setTimeout(resolve, 500)); // give extra room for stability
+
+
+    // Wait a moment for fullscreen to stabilize
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     const orientation = screen.orientation as ScreenOrientation & {
       lock: (orientation: OrientationLockType) => Promise<void>;
@@ -71,6 +84,13 @@ export const lockToLandscape = async (): Promise<void> => {
       await orientation.lock("landscape");
       currentLockState = true;
       console.log("✅ Screen locked to landscape");
+      
+      // Set a timeout to ensure the lock persists
+      lockTimeout = setTimeout(() => {
+        if (currentLockState && orientation.lock) {
+          orientation.lock("landscape").catch(console.warn);
+        }
+      }, 1000);
     } else {
       console.warn("⚠️ Orientation lock not supported by this browser.");
     }
@@ -82,6 +102,12 @@ export const lockToLandscape = async (): Promise<void> => {
 };
 
 export const unlockOrientation = async (): Promise<void> => {
+  // Clear timeout
+  if (lockTimeout) {
+    clearTimeout(lockTimeout);
+    lockTimeout = null;
+  }
+
   // Prevent unnecessary operations
   if (!currentLockState) {
     return;
@@ -246,6 +272,10 @@ if (!fullscreenListenerAdded && typeof document !== 'undefined') {
       removeFullscreenStyles();
       restoreAriaHidden();
       currentLockState = false; // Reset lock state when fullscreen exits
+      if (lockTimeout) {
+        clearTimeout(lockTimeout);
+        lockTimeout = null;
+      }
     }
   });
   fullscreenListenerAdded = true;

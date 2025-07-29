@@ -128,11 +128,16 @@ const ViolinExperience: React.FC<ViolinExperienceProps> = memo(({ initialViolinT
     };
   }, [stopNote]);
 
+  
   const [open, setOpen] = useState(false);
-    const handleOpen = async () => {
-      await lockToLandscape();
-      setOpen(true);
-    };
+  const handleOpen = async () => {
+  setOpen(true); // Open modal first
+  // Wait for modal animation/frame to complete
+  requestAnimationFrame(async () => {
+    await new Promise(res => setTimeout(res, 150)); // delay stabilizes layout
+    await lockToLandscape();
+  });
+};
 
   return (
     <div className="max-w-7xl mx-auto min-h-screen flex flex-col items-center">

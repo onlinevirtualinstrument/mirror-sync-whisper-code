@@ -56,7 +56,8 @@ export const joinRoomWithCode = async (roomId: string, user: any, joinCode?: str
       }
     }
     
-    // Create new participant object
+    // Create new participant object with proper timestamps
+    const now = new Date().toISOString();
     const newParticipant = {
       id: user.uid,
       name: user.displayName || 'Anonymous',
@@ -64,14 +65,18 @@ export const joinRoomWithCode = async (roomId: string, user: any, joinCode?: str
       avatar: user.photoURL || '',
       isHost: roomData.hostId === user.uid,
       status: 'active',
-      muted: false
+      muted: false,
+      joinedAt: now,
+      lastSeen: now,
+      isInRoom: true,
+      heartbeatTimestamp: Date.now()
     };
     
     // Update both arrays atomically
     await updateDoc(roomRef, {
       participants: [...participants, newParticipant],
       participantIds: [...participantIds, user.uid],
-      lastActivity: new Date().toISOString()
+      lastActivity: now
     });
     
     console.log("joinRoomWithCode: Successfully added user to room");

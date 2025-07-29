@@ -191,9 +191,14 @@ const VirtualGuitarComponent: React.FC = () => {
 
   const [open, setOpen] = useState(false);
   const handleOpen = async () => {
-    await lockToLandscape();
-    setOpen(true);
+    setOpen(true); // Open modal first
+    // Wait for modal animation/frame to complete
+    requestAnimationFrame(async () => {
+      await new Promise(res => setTimeout(res, 150)); // delay stabilizes layout
+      await lockToLandscape();
+    });
   };
+
 
   return (
     <div className="space-y-6">

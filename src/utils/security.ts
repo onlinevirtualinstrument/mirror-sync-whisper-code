@@ -1,5 +1,3 @@
-
-
 const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
 
@@ -166,13 +164,20 @@ export const initSecurity = () => {
     cspMeta.content = `
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+        https://cdn.gpteng.co
+        https://www.googletagmanager.com
+        https://www.google-analytics.com
         https://www.gstatic.com 
         https://www.googleapis.com 
         https://apis.google.com
         https://securetoken.googleapis.com
         https://identitytoolkit.googleapis.com
         https://firebaseinstallations.googleapis.com
-        https://firebaseremoteconfig.googleapis.com;
+        https://firebaseremoteconfig.googleapis.com
+        https://*.firebaseapp.com
+        https://*.facebook.com
+        blob:;
+      worker-src 'self' blob:;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com;
       img-src 'self' data: blob: https:;
@@ -182,6 +187,7 @@ export const initSecurity = () => {
         https://identitytoolkit.googleapis.com
         https://securetoken.googleapis.com
         https://www.googleapis.com
+        https://www.google-analytics.com
         wss://ws-*.firestore.googleapis.com;
       frame-src 'self' https://www.google.com;
       object-src 'none';
@@ -191,36 +197,15 @@ export const initSecurity = () => {
     document.head.appendChild(cspMeta);
   }
 
-  // Prevent common XSS attacks
-  if (typeof window !== 'undefined') {
-    // Clear any potentially malicious scripts
-    const scripts = document.querySelectorAll('script[src*="javascript:"]');
-    scripts.forEach(script => script.remove());
-    
-    // Set up basic security headers via meta tags
-    const securityHeaders = [
-      { name: 'X-Content-Type-Options', content: 'nosniff' },
-      { name: 'X-Frame-Options', content: 'SAMEORIGIN' },
-      { name: 'X-XSS-Protection', content: '1; mode=block' }
-    ];
-
-    securityHeaders.forEach(header => {
-      if (!document.querySelector(`meta[http-equiv="${header.name}"]`)) {
-        const meta = document.createElement('meta');
-        meta.httpEquiv = header.name;
-        meta.content = header.content;
-        document.head.appendChild(meta);
-      }
-    });
-  }
-
+  // Don't set X-Frame-Options via meta tag as it's not supported
+  // This should be set by the server instead
+  
   // Wait for DOM to be fully loaded
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initSecurityFeatures);
   } else {
     initSecurityFeatures();
   }
-
 };
 
 // Rate limiting for API calls
