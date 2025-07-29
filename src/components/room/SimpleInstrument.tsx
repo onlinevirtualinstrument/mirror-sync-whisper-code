@@ -6,7 +6,7 @@ import { playInstrumentNote } from '@/utils/instruments/instrumentUtils';
 
 // Instrument Pages - grouped by instrument type for better code splitting
 const AllInstruments: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {
-  Piano: lazy(() => import("@/components/instruments/piano/piano1/Piano")),
+  Piano: lazy(() => import("@/components/instruments/piano/PianoWithFallingNotes")),
   Guitar: lazy(() => import("@/components/instruments/guitar/VirtualGuitarComponent")),
   Violin: lazy(() => import("@/components/instruments/violin/violin2/Violin")),  
   Veena: lazy(() => import("@/components/instruments/veena/Veena1/Veena")),

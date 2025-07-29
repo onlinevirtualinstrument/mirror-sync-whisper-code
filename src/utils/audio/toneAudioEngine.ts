@@ -1,18 +1,14 @@
 
-import * as Tone from 'tone';
+// import * as Tone from 'tone'; // Commented out to avoid dependency issues
 
 class ToneAudioEngine {
   private static instance: ToneAudioEngine;
   private initialized = false;
-  private synths: Map<string, Tone.PolySynth> = new Map();
-  private masterVolume: Tone.Volume;
-  private reverb: Tone.Reverb;
-  private compressor: Tone.Compressor;
+  private audioContext: AudioContext | null = null;
+  private masterVolume = 0.7;
 
   private constructor() {
-    this.masterVolume = new Tone.Volume(-10).toDestination();
-    this.reverb = new Tone.Reverb(1.2);
-    this.compressor = new Tone.Compressor(-30, 3);
+    // Placeholder implementation without Tone.js dependency
   }
 
   public static getInstance(): ToneAudioEngine {
@@ -26,77 +22,19 @@ class ToneAudioEngine {
     if (this.initialized) return;
 
     try {
-      // Ensure audio context is running
-      if (Tone.context.state !== 'running') {
-        await Tone.start();
-        console.log('ToneAudioEngine: Audio context started');
-      }
-
-      // Connect effects chain
-      await this.reverb.generate();
-      this.reverb.connect(this.compressor);
-      this.compressor.connect(this.masterVolume);
-
-      // Create instrument-specific synthesizers
-      this.createInstrumentSynths();
-
+      // Initialize basic audio context
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      this.audioContext = new AudioContextClass();
+      
       this.initialized = true;
-      console.log('ToneAudioEngine: Successfully initialized');
+      console.log('ToneAudioEngine: Successfully initialized (basic mode)');
     } catch (error) {
       console.error('ToneAudioEngine: Failed to initialize:', error);
       throw error;
     }
   }
 
-  private createInstrumentSynths(): void {
-    // Piano synthesizer
-    const pianoSynth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 1 }
-    });
-    pianoSynth.connect(this.reverb);
-    this.synths.set('piano', pianoSynth);
-
-    // Guitar synthesizer
-    const guitarSynth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'sawtooth' },
-      envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.8 }
-    });
-    guitarSynth.connect(this.reverb);
-    this.synths.set('guitar', guitarSynth);
-
-    // Violin synthesizer
-    const violinSynth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'sawtooth' },
-      envelope: { attack: 0.1, decay: 0.1, sustain: 0.8, release: 0.5 }
-    });
-    violinSynth.connect(this.reverb);
-    this.synths.set('violin', violinSynth);
-
-    // Flute synthesizer
-    const fluteSynth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'sine' },
-      envelope: { attack: 0.05, decay: 0.1, sustain: 0.6, release: 0.3 }
-    });
-    fluteSynth.connect(this.reverb);
-    this.synths.set('flute', fluteSynth);
-
-    // Drums (use MonoSynth with pulse wave for percussive sound)
-    const drumSynth = new Tone.PolySynth(Tone.MonoSynth, {
-      oscillator: { type: 'pulse' },
-      envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
-    });
-    drumSynth.connect(this.reverb);
-    this.synths.set('drums', drumSynth);
-
-    // Default synthesizer for other instruments
-    const defaultSynth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 0.5 }
-    });
-    defaultSynth.connect(this.reverb);
-    this.synths.set('default', defaultSynth);
-  }
+  // Placeholder method - not used in basic mode
 
   public async playNote(
     instrument: string,
@@ -109,41 +47,41 @@ class ToneAudioEngine {
       await this.initialize();
     }
 
+    if (!this.audioContext) return;
+
     try {
-      // Get appropriate synthesizer for the instrument
-      let synth = this.synths.get(instrument.toLowerCase());
-      if (!synth) {
-        synth = this.synths.get('default')!;
-      }
-
-      // Convert frequency to note name for Tone.js
-      const note = Tone.Frequency(frequency).toNote();
+      // Simple oscillator-based note playing
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
       
-      // Adjust velocity for better remote audio experience
-      const adjustedVelocity = Math.min(Math.max(velocity * 0.8, 0.1), 1.0);
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency;
       
-      // Play the note with duration
-      const durationInSeconds = duration / 1000;
-      synth.triggerAttackRelease(note, durationInSeconds, Tone.now(), adjustedVelocity);
+      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(velocity * this.masterVolume, this.audioContext.currentTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration / 1000);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      oscillator.start();
+      oscillator.stop(this.audioContext.currentTime + duration / 1000);
 
-      console.log(`ToneAudioEngine: Playing ${instrument} note ${note} (${frequency}Hz) for ${duration}ms from user ${userId || 'local'}`);
+      console.log(`ToneAudioEngine: Playing ${instrument} note at ${frequency}Hz for ${duration}ms from user ${userId || 'local'}`);
     } catch (error) {
       console.error('ToneAudioEngine: Error playing note:', error);
     }
   }
 
   public setMasterVolume(volume: number): void {
-    // Convert 0-1 range to dB (-60 to 0)
-    const dbVolume = Math.max(-60, Math.log10(Math.max(0.001, volume)) * 20);
-    this.masterVolume.volume.value = dbVolume;
+    this.masterVolume = Math.max(0, Math.min(1, volume));
   }
 
   public dispose(): void {
-    this.synths.forEach(synth => synth.dispose());
-    this.synths.clear();
-    this.reverb.dispose();
-    this.compressor.dispose();
-    this.masterVolume.dispose();
+    if (this.audioContext) {
+      this.audioContext.close();
+      this.audioContext = null;
+    }
     this.initialized = false;
   }
 }

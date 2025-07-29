@@ -13,10 +13,10 @@ export const useRoomCleanup = (roomId: string | undefined) => {
   const scheduleRoomDestruction = useCallback(async (currentRoom: any) => {
     if (!roomId || !currentRoom) return;
 
-    // Prevent too frequent cleanup checks (minimum 10 seconds between checks)
+    // Prevent too frequent cleanup checks (minimum 30 seconds between checks for stability)
     const now = Date.now();
-    if (now - lastCleanupCheckRef.current < 10000) {
-      console.log('useRoomCleanup: Skipping cleanup check - too frequent');
+    if (now - lastCleanupCheckRef.current < 30000) {
+      console.log('useRoomCleanup: Skipping cleanup check - too frequent (30s cooldown)');
       return;
     }
     lastCleanupCheckRef.current = now;
@@ -56,11 +56,18 @@ export const useRoomCleanup = (roomId: string | undefined) => {
 
     // Only destroy if there are absolutely no active participants and no participant IDs
     if (activeParticipants.length === 0 && participantIds.length === 0) {
-      console.log('useRoomCleanup: No active participants detected, scheduling destruction in 15 seconds');
+      console.log('useRoomCleanup: No active participants detected, scheduling destruction in 45 seconds for stability');
       
       destructionTimeoutRef.current = setTimeout(async () => {
         try {
-          // Double-check before destruction
+          // Triple-check before destruction to prevent premature closure
+          console.log('useRoomCleanup: Final check before room destruction');
+          const finalCheck = currentRoom.participants?.length > 0 || currentRoom.participantIds?.length > 0;
+          if (finalCheck) {
+            console.log('useRoomCleanup: Room has participants again, canceling destruction');
+            return;
+          }
+          
           console.log('useRoomCleanup: Executing room destruction due to complete inactivity');
           await deleteRoomFromFirestore(roomId);
           navigate('/music-rooms');
@@ -72,7 +79,7 @@ export const useRoomCleanup = (roomId: string | undefined) => {
         } catch (error) {
           console.error('useRoomCleanup: Error destroying empty room:', error);
         }
-      }, 15000); // 15 seconds delay to allow for reconnections
+      }, 45000); // 45 seconds delay for better stability
     } else {
       console.log(`useRoomCleanup: Room has ${activeParticipants.length} active participants, not scheduling destruction`);
     }
