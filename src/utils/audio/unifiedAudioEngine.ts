@@ -1,7 +1,10 @@
 /**
- * Unified Audio Engine - Phase 1 Implementation
- * Centralized audio management for all instruments with consistent performance
+ * Unified Audio Engine - Phase 2 Enhanced Implementation
+ * Advanced audio management with WebRTC, MIDI, and visual effects integration
  */
+
+import WebRTCManager from '../webrtc/WebRTCManager';
+import MIDIManager, { MIDINoteEvent } from '../midi/MIDIManager';
 
 export interface NoteEvent {
   instrument: string;
@@ -34,10 +37,17 @@ class UnifiedAudioEngine {
   };
   private noteEventListeners: ((event: NoteEvent) => void)[] = [];
   private scheduledCleanup: number | null = null;
+  private webrtcManager: WebRTCManager | null = null;
+  private midiManager: MIDIManager | null = null;
+  private isWebRTCEnabled: boolean = false;
+  private isMIDIEnabled: boolean = false;
+  private audioBufferCache: Map<string, AudioBuffer> = new Map();
+  private compressionNode: DynamicsCompressorNode | null = null;
 
   private constructor() {
     this.initializeAudioContext();
     this.setupPeriodicCleanup();
+    this.initializeAdvancedFeatures();
   }
 
   public static getInstance(): UnifiedAudioEngine {
@@ -63,10 +73,13 @@ class UnifiedAudioEngine {
       // Setup reverb
       await this.setupReverb();
 
+      // Setup compression for better audio quality
+      this.setupCompression();
+
       // Handle autoplay policy
       this.handleAutoplayPolicy();
 
-      console.log('UnifiedAudioEngine: Initialized successfully');
+      console.log('UnifiedAudioEngine: Initialized successfully with advanced features');
     } catch (error) {
       console.error('UnifiedAudioEngine: Failed to initialize:', error);
     }
@@ -315,14 +328,152 @@ class UnifiedAudioEngine {
     }
   }
 
+  private async initializeAdvancedFeatures(): Promise<void> {
+    // Initialize WebRTC for real-time audio sharing
+    try {
+      this.webrtcManager = WebRTCManager.getInstance();
+      await this.webrtcManager.initialize();
+      this.isWebRTCEnabled = true;
+      console.log('UnifiedAudioEngine: WebRTC initialized');
+    } catch (error) {
+      console.warn('UnifiedAudioEngine: WebRTC initialization failed:', error);
+    }
+
+    // Initialize MIDI support
+    try {
+      this.midiManager = MIDIManager.getInstance();
+      const midiSupported = await this.midiManager.initialize();
+      this.isMIDIEnabled = midiSupported;
+      
+      if (midiSupported) {
+        this.setupMIDIHandlers();
+        console.log('UnifiedAudioEngine: MIDI support enabled');
+      }
+    } catch (error) {
+      console.warn('UnifiedAudioEngine: MIDI initialization failed:', error);
+    }
+  }
+
+  private setupCompression(): void {
+    if (!this.audioContext || !this.masterGain) return;
+
+    this.compressionNode = this.audioContext.createDynamicsCompressor();
+    this.compressionNode.threshold.value = -24;
+    this.compressionNode.knee.value = 30;
+    this.compressionNode.ratio.value = 12;
+    this.compressionNode.attack.value = 0.003;
+    this.compressionNode.release.value = 0.25;
+
+    // Insert compression before master gain
+    this.masterGain.disconnect();
+    this.masterGain.connect(this.compressionNode);
+    this.compressionNode.connect(this.audioContext.destination);
+  }
+
+  private setupMIDIHandlers(): void {
+    if (!this.midiManager) return;
+
+    this.midiManager.setEventHandlers({
+      onMIDIMessage: (event: MIDINoteEvent) => {
+        this.handleMIDIInput(event);
+      },
+      onDeviceConnected: (device) => {
+        console.log('UnifiedAudioEngine: MIDI device connected:', device.name);
+      },
+      onDeviceDisconnected: (device) => {
+        console.log('UnifiedAudioEngine: MIDI device disconnected:', device.name);
+      }
+    });
+  }
+
+  private handleMIDIInput(event: MIDINoteEvent): void {
+    if (event.type === 'noteon' && event.note !== undefined && event.velocity !== undefined) {
+      const frequency = MIDIManager.noteNumberToFrequency(event.note);
+      const noteName = MIDIManager.noteNumberToName(event.note);
+      
+      this.playNote('piano', noteName, frequency, event.velocity, 1000);
+    } else if (event.type === 'noteoff' && event.note !== undefined) {
+      // Handle note off if needed
+    }
+  }
+
+  public enableWebRTC(): boolean {
+    if (!this.webrtcManager) return false;
+    this.isWebRTCEnabled = true;
+    return true;
+  }
+
+  public disableWebRTC(): void {
+    this.isWebRTCEnabled = false;
+  }
+
+  public getMIDIDevices(): { inputs: any[], outputs: any[] } {
+    if (!this.midiManager || !this.isMIDIEnabled) {
+      return { inputs: [], outputs: [] };
+    }
+    
+    return {
+      inputs: this.midiManager.getInputDevices(),
+      outputs: this.midiManager.getOutputDevices()
+    };
+  }
+
+  public async cacheInstrumentSample(instrument: string, note: string, audioData: ArrayBuffer): Promise<void> {
+    if (!this.audioContext) return;
+
+    try {
+      const audioBuffer = await this.audioContext.decodeAudioData(audioData.slice(0));
+      const cacheKey = `${instrument}-${note}`;
+      this.audioBufferCache.set(cacheKey, audioBuffer);
+      console.log(`UnifiedAudioEngine: Cached sample for ${cacheKey}`);
+    } catch (error) {
+      console.error('UnifiedAudioEngine: Failed to cache audio sample:', error);
+    }
+  }
+
+  public getAudioAnalyzer(): AnalyserNode | null {
+    if (!this.audioContext) return null;
+
+    const analyzer = this.audioContext.createAnalyser();
+    analyzer.fftSize = 2048;
+    analyzer.minDecibels = -90;
+    analyzer.maxDecibels = -10;
+    analyzer.smoothingTimeConstant = 0.85;
+
+    // Connect master gain to analyzer
+    if (this.masterGain) {
+      this.masterGain.connect(analyzer);
+    }
+
+    return analyzer;
+  }
+
+  public getLatency(): number {
+    if (!this.audioContext) return 0;
+    return this.audioContext.baseLatency + this.audioContext.outputLatency;
+  }
+
   public dispose(): void {
     if (this.scheduledCleanup) {
       clearInterval(this.scheduledCleanup);
     }
+    
     this.stopAllNotes();
+    
+    if (this.webrtcManager) {
+      this.webrtcManager.dispose();
+    }
+    
+    if (this.midiManager) {
+      this.midiManager.dispose();
+    }
+    
+    this.audioBufferCache.clear();
+    
     if (this.audioContext) {
       this.audioContext.close();
     }
+    
     this.noteEventListeners = [];
   }
 }
