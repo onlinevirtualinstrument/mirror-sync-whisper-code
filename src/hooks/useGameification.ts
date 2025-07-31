@@ -14,7 +14,7 @@ export interface GameStats {
   missedHits: number;
 }
 
-export type GameMode = 'freeplay' | 'challenge' | 'rhythm';
+export type GameMode = 'freeplay' | 'challenge' | 'rhythm' | 'educational';
 export type HitTiming = 'perfect' | 'good' | 'miss';
 
 interface UseGameificationOptions {

@@ -99,20 +99,43 @@
 }
 
 @layer components {
+  /* Glassmorphism Effects */
   .glass-card {
-    @apply bg-white/70 dark:bg-black/40 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-sm;
+    @apply bg-white/80 dark:bg-black/50 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-lg shadow-black/5 dark:shadow-black/20;
   }
   
   .glass-card-dark {
-    @apply bg-black/10 backdrop-blur-md border border-white/10 shadow-md;
+    @apply bg-black/20 backdrop-blur-xl border border-white/20 shadow-xl shadow-black/10;
   }
   
+  .glass-surface {
+    @apply bg-gradient-to-br from-white/90 to-white/70 dark:from-black/70 dark:to-black/50 backdrop-blur-2xl border border-white/40 dark:border-white/30 shadow-2xl;
+  }
+  
+  /* Neumorphism Effects */
   .neo-morphism {
-    @apply shadow-[8px_8px_16px_0px_rgba(0,0,0,0.05),-8px_-8px_16px_0px_rgba(255,255,255,0.9)] bg-[#f0f0f3] dark:bg-gray-800 dark:shadow-[5px_5px_10px_0px_rgba(0,0,0,0.5),_-5px_-5px_10px_0px_rgba(255,255,255,0.05)];
+    @apply shadow-[12px_12px_24px_0px_rgba(0,0,0,0.08),-12px_-12px_24px_0px_rgba(255,255,255,0.9)] bg-gradient-to-br from-[#f0f0f3] to-[#e8e8eb] dark:from-gray-800 dark:to-gray-900 dark:shadow-[8px_8px_16px_0px_rgba(0,0,0,0.6),_-8px_-8px_16px_0px_rgba(255,255,255,0.08)];
   }
   
+  .neo-inset {
+    @apply shadow-[inset_8px_8px_16px_0px_rgba(0,0,0,0.06),inset_-8px_-8px_16px_0px_rgba(255,255,255,0.9)] bg-gradient-to-br from-[#e8e8eb] to-[#f0f0f3] dark:from-gray-900 dark:to-gray-800 dark:shadow-[inset_6px_6px_12px_0px_rgba(0,0,0,0.7),inset_-6px_-6px_12px_0px_rgba(255,255,255,0.1)];
+  }
+  
+  .neo-button {
+    @apply neo-morphism hover:shadow-[6px_6px_12px_0px_rgba(0,0,0,0.1),-6px_-6px_12px_0px_rgba(255,255,255,0.95)] active:neo-inset transition-all duration-200;
+  }
+  
+  /* Interactive Effects */
   .hover-lift {
-    @apply transform transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
+    @apply transform transition-all duration-500 ease-spring hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary/20;
+  }
+  
+  .hover-glow {
+    @apply transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 hover:ring-2 hover:ring-primary/20;
+  }
+  
+  .micro-interaction {
+    @apply transition-all duration-150 active:scale-95 hover:scale-105;
   }
   
   .subtle-border {
@@ -131,12 +154,25 @@
     @apply w-full;
   }
   
+  /* Enhanced Gradients */
   .gradient-text {
-    @apply bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-200 dark:to-gray-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary via-purple-600 to-blue-600 dark:from-primary dark:via-purple-400 dark:to-blue-400 bg-clip-text text-transparent;
+  }
+  
+  .gradient-bg {
+    @apply bg-gradient-to-br from-primary/10 via-purple-500/10 to-blue-500/10 dark:from-primary/20 dark:via-purple-500/20 dark:to-blue-500/20;
+  }
+  
+  .gradient-border {
+    @apply bg-gradient-to-r from-primary via-purple-500 to-blue-500 p-[2px] rounded-lg;
   }
   
   .instrument-card {
-    @apply flex flex-col items-center justify-center relative overflow-hidden rounded-xl glass-card p-4 transition-all duration-300 ease-spring hover:scale-[1.02];
+    @apply flex flex-col items-center justify-center relative overflow-hidden rounded-xl glass-card p-6 transition-all duration-500 ease-spring hover:scale-[1.03] hover:shadow-2xl hover:shadow-primary/20 group;
+  }
+  
+  .instrument-card::before {
+    @apply content-[''] absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-purple-500/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100;
   }
   
   .folder-tab {
