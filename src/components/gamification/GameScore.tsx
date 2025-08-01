@@ -14,7 +14,7 @@ export interface GameStats {
 
 interface GameScoreProps {
   stats: GameStats;
-  gameMode?: 'freeplay' | 'challenge' | 'rhythm';
+  gameMode?: 'freeplay' | 'challenge' | 'rhythm' | 'educational';
   showTimer?: boolean;
   onLevelUp?: (newLevel: number) => void;
   className?: string;

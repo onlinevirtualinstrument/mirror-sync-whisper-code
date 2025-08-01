@@ -3,6 +3,7 @@ import React, { useState, useCallback } from 'react';
 import { lazy, Suspense } from "react";
 import { useRoom } from './RoomContext';
 import { playInstrumentNote } from '@/utils/instruments/instrumentUtils';
+import { PianoTilesGame, GuitarRhythmGame, DrumBeatGame, ViolinBowGame, FluteBreathGame } from '@/components/gamification/InstrumentGameModes';
 
 // Instrument Pages - grouped by instrument type for better code splitting
 const AllInstruments: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {
@@ -33,9 +34,17 @@ const getInstrumentComponent = (instrumentType: string) => {
 
 interface SimpleInstrumentProps {
   type: string;
+  showGameMode?: boolean;
+  gameMode?: 'tiles' | 'rhythm' | 'normal';
+  difficulty?: 'easy' | 'medium' | 'hard';
 }
 
-const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({ type }) => {
+const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({ 
+  type, 
+  showGameMode = false, 
+  gameMode = 'normal',
+  difficulty = 'medium' 
+}) => {
   const [isPlaying, setIsPlaying] = useState<{ [key: string]: boolean }>({});
   const { userInfo } = useRoom();
 
@@ -70,13 +79,57 @@ const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({ type }) => {
     }, 500);
   }, [type]);
 
+  const handleGameNoteHit = useCallback((note: string, accuracy: number) => {
+    // Convert accuracy to velocity
+    const velocity = Math.max(0.3, accuracy);
+    const octave = 4;
+    
+    try {
+      playInstrumentNote(type, note, octave, 300, velocity);
+      setIsPlaying(prev => ({ ...prev, [note]: true }));
+      
+      setTimeout(() => {
+        setIsPlaying(prev => ({ ...prev, [note]: false }));
+      }, 300);
+    } catch (error) {
+      console.error('SimpleInstrument: Game note error:', error);
+    }
+  }, [type]);
+
+  const renderGameMode = () => {
+    const gameProps = {
+      instrument: type,
+      onNoteHit: handleGameNoteHit,
+      isActive: true,
+      difficulty
+    };
+
+    switch (type.toLowerCase()) {
+      case 'piano':
+        return <PianoTilesGame {...gameProps} />;
+      case 'guitar':
+        return <GuitarRhythmGame {...gameProps} />;
+      case 'drums':
+      case 'drum':
+        return <DrumBeatGame {...gameProps} />;
+      case 'violin':
+        return <ViolinBowGame {...gameProps} />;
+      case 'flute':
+        return <FluteBreathGame {...gameProps} />;
+      default:
+        return <PianoTilesGame {...gameProps} />; // Fallback to piano tiles
+    }
+  };
+
   return (
     <div className="flex flex-col items-center w-full">
       <div className="mb-4">
         <span className="font-medium">Playing: {type.charAt(0).toUpperCase() + type.slice(1)}</span>
       </div>
 
-      {InstrumentComponent ? (
+      {showGameMode && gameMode === 'tiles' ? (
+        renderGameMode()
+      ) : InstrumentComponent ? (
         <Suspense fallback={<div>Loading {type}...</div>}> 
           <InstrumentComponent 
             onPlayNote={handlePlayNote} 
