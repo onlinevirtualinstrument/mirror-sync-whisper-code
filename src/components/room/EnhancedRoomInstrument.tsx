@@ -138,6 +138,7 @@ const EnhancedRoomInstrument: React.FC<EnhancedRoomInstrumentProps> = ({ classNa
                 showGameMode={gameMode !== 'normal'}
                 gameMode={gameMode}
                 difficulty={difficulty}
+                enableGameModeToggle={true}
               />
             </div>
             
@@ -148,6 +149,12 @@ const EnhancedRoomInstrument: React.FC<EnhancedRoomInstrumentProps> = ({ classNa
                 userId={userInfo.id}
                 onToggleMute={(muted) => console.log('Mute toggled:', muted)}
                 onVolumeChange={(volume) => console.log('Volume changed:', volume)}
+                isDisabled={room.isVoiceChatDisabled}
+                isAdmin={userInfo.isHost}
+                onToggleVoiceChat={(enabled) => {
+                  // This would call room settings API
+                  console.log('Voice chat toggled:', enabled);
+                }}
               />
               
               <SessionRecording

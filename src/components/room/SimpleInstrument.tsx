@@ -37,15 +37,18 @@ interface SimpleInstrumentProps {
   showGameMode?: boolean;
   gameMode?: 'tiles' | 'rhythm' | 'normal';
   difficulty?: 'easy' | 'medium' | 'hard';
+  enableGameModeToggle?: boolean;
 }
 
 const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({ 
   type, 
   showGameMode = false, 
   gameMode = 'normal',
-  difficulty = 'medium' 
+  difficulty = 'medium',
+  enableGameModeToggle = false
 }) => {
   const [isPlaying, setIsPlaying] = useState<{ [key: string]: boolean }>({});
+  const [localGameMode, setLocalGameMode] = useState<'tiles' | 'rhythm' | 'normal'>('normal');
   const { userInfo } = useRoom();
 
   const InstrumentComponent = getInstrumentComponent(type);
@@ -121,13 +124,36 @@ const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({
     }
   };
 
+  const currentGameMode = showGameMode ? gameMode : localGameMode;
+
   return (
     <div className="flex flex-col items-center w-full">
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between w-full">
         <span className="font-medium">Playing: {type.charAt(0).toUpperCase() + type.slice(1)}</span>
+        
+        {enableGameModeToggle && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Game Mode:</span>
+            <div className="flex gap-1">
+              {['normal', 'tiles', 'rhythm'].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setLocalGameMode(mode as any)}
+                  className={`px-2 py-1 text-xs rounded capitalize transition-colors ${
+                    localGameMode === mode 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'bg-secondary hover:bg-secondary/80'
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {showGameMode && gameMode === 'tiles' ? (
+      {(showGameMode && gameMode === 'tiles') || (currentGameMode === 'tiles') ? (
         renderGameMode()
       ) : InstrumentComponent ? (
         <Suspense fallback={<div>Loading {type}...</div>}> 

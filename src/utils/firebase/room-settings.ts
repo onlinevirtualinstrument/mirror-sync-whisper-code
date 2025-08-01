@@ -23,6 +23,24 @@ export const toggleRoomChat = async (roomId: string, disabled: boolean): Promise
 };
 
 /**
+ * Toggle voice chat functionality in a room
+ * @param roomId Room ID
+ * @param disabled Whether voice chat should be disabled
+ */
+export const toggleRoomVoiceChat = async (roomId: string, disabled: boolean): Promise<void> => {
+  try {
+    const roomRef = doc(db, 'musicRooms', roomId);
+    await updateDoc(roomRef, {
+      isVoiceChatDisabled: disabled,
+      lastActivity: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error toggling room voice chat:', error);
+    throw error;
+  }
+};
+
+/**
  * Toggle auto-close after inactivity for a room
  * @param roomId Room ID
  * @param enabled Whether auto-close should be enabled

@@ -11,6 +11,9 @@ interface VoiceChatProps {
   onToggleMute: (isMuted: boolean) => void;
   onVolumeChange: (volume: number) => void;
   className?: string;
+  isDisabled?: boolean;
+  isAdmin?: boolean;
+  onToggleVoiceChat?: (enabled: boolean) => void;
 }
 
 const VoiceChat: React.FC<VoiceChatProps> = ({
@@ -18,7 +21,10 @@ const VoiceChat: React.FC<VoiceChatProps> = ({
   userId,
   onToggleMute,
   onVolumeChange,
-  className
+  className,
+  isDisabled = false,
+  isAdmin = false,
+  onToggleVoiceChat
 }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(80);
@@ -118,36 +124,52 @@ const VoiceChat: React.FC<VoiceChatProps> = ({
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4" />
           <span className="font-medium">Voice Chat</span>
-          <Badge variant={isConnected ? "default" : "secondary"}>
-            {isConnected ? "Connected" : "Connecting..."}
-          </Badge>
+          {isDisabled ? (
+            <Badge variant="destructive">Disabled by Admin</Badge>
+          ) : (
+            <Badge variant={isConnected ? "default" : "secondary"}>
+              {isConnected ? "Connected" : "Connecting..."}
+            </Badge>
+          )}
         </div>
         
-        <Button variant="ghost" size="sm">
-          <Settings className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && onToggleVoiceChat && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => onToggleVoiceChat(!isDisabled)}
+            >
+              {isDisabled ? "Enable" : "Disable"}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm">
+            <Settings className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-3">
-        <Button
-          onClick={handleMuteToggle}
-          variant={isMuted ? "destructive" : "default"}
-          size="sm"
-          className="flex-1"
-        >
-          {isMuted ? (
-            <>
-              <MicOff className="h-4 w-4 mr-2" />
-              Unmute
-            </>
-          ) : (
-            <>
-              <Mic className="h-4 w-4 mr-2" />
-              Mute
-            </>
-          )}
-        </Button>
+      {!isDisabled && (
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleMuteToggle}
+            variant={isMuted ? "destructive" : "default"}
+            size="sm"
+            className="flex-1"
+          >
+            {isMuted ? (
+              <>
+                <MicOff className="h-4 w-4 mr-2" />
+                Unmute
+              </>
+            ) : (
+              <>
+                <Mic className="h-4 w-4 mr-2" />
+                Mute
+              </>
+            )}
+          </Button>
         
         <div className="flex items-center gap-2 flex-1">
           <VolumeX className="h-4 w-4" />
@@ -163,6 +185,7 @@ const VoiceChat: React.FC<VoiceChatProps> = ({
           <span className="text-sm w-8">{volume}</span>
         </div>
       </div>
+      )}
 
       {/* Audio Level Indicator */}
       <div className="space-y-2">
