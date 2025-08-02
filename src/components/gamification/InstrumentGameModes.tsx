@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 interface GameModeProps {
   instrument?: string;
-  onNoteHit: (note: string, accuracy: number) => void;
+  onNoteHit: (timing: 'perfect' | 'good' | 'miss', note?: string) => void;
   isActive: boolean;
   difficulty?: 'easy' | 'medium' | 'hard';
 }
@@ -37,7 +37,8 @@ const PianoTilesGame: React.FC<GameModeProps> = ({ onNoteHit, isActive, difficul
 
   const handleTileHit = (tile: any) => {
     const accuracy = Math.random() * 0.4 + 0.6; // 60-100%
-    onNoteHit(tile.note, accuracy);
+    const timing = accuracy > 0.8 ? 'perfect' : accuracy > 0.5 ? 'good' : 'miss';
+    onNoteHit(timing, tile.note);
     setScore(prev => prev + Math.floor(accuracy * 100));
     setCombo(prev => prev + 1);
     setFallingTiles(prev => prev.filter(t => t.id !== tile.id));
@@ -108,7 +109,8 @@ const GuitarRhythmGame: React.FC<GameModeProps> = ({ onNoteHit, isActive, diffic
   
   const handleStrum = () => {
     const accuracy = strumPower / 100;
-    onNoteHit(chordPattern[currentChord], accuracy);
+    const timing = accuracy > 0.8 ? 'perfect' : accuracy > 0.5 ? 'good' : 'miss';
+    onNoteHit(timing, chordPattern[currentChord]);
     setCurrentChord(prev => (prev + 1) % chordPattern.length);
     setStrumPower(0);
   };
@@ -174,7 +176,8 @@ const DrumBeatGame: React.FC<GameModeProps> = ({ onNoteHit, isActive, difficulty
     }, 200);
     
     const accuracy = 0.8 + Math.random() * 0.2;
-    onNoteHit(drumName, accuracy);
+    const timing = accuracy > 0.8 ? 'perfect' : 'good';
+    onNoteHit(timing, drumName);
   };
 
   return (
@@ -269,8 +272,10 @@ const ViolinBowGame: React.FC<GameModeProps> = ({ onNoteHit, isActive }) => {
           value={bowPosition}
           onChange={(e) => {
             setBowPosition(Number(e.target.value));
-            setPitchAccuracy(Math.random() * 40 + 60);
-            onNoteHit('A', pitchAccuracy / 100);
+            const newAccuracy = Math.random() * 40 + 60;
+            setPitchAccuracy(newAccuracy);
+            const timing = newAccuracy > 80 ? 'perfect' : newAccuracy > 50 ? 'good' : 'miss';
+            onNoteHit(timing, 'A');
           }}
           className="w-full"
         />
@@ -289,7 +294,8 @@ const FluteBreathGame: React.FC<GameModeProps> = ({ onNoteHit, isActive }) => {
     setBreathPower(prev => Math.min(100, prev + 5));
     setAirFlow(breathPower);
     if (breathPower > 30) {
-      onNoteHit(note, breathPower / 100);
+      const timing = breathPower > 80 ? 'perfect' : breathPower > 50 ? 'good' : 'miss';
+      onNoteHit(timing, note);
     }
   };
 

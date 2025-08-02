@@ -3,7 +3,7 @@
  * Advanced audio management with WebRTC, MIDI, and visual effects integration
  */
 
-import WebRTCManager from '../webrtc/WebRTCManager';
+import WebRTCManager from '../webrtc/webrtcManager';
 import MIDIManager, { MIDINoteEvent } from '../midi/MIDIManager';
 
 export interface NoteEvent {
@@ -37,7 +37,7 @@ class UnifiedAudioEngine {
   };
   private noteEventListeners: ((event: NoteEvent) => void)[] = [];
   private scheduledCleanup: number | null = null;
-  private webrtcManager: WebRTCManager | null = null;
+  private webrtcManager: any = null;
   private midiManager: MIDIManager | null = null;
   private isWebRTCEnabled: boolean = false;
   private isMIDIEnabled: boolean = false;
@@ -331,7 +331,7 @@ class UnifiedAudioEngine {
   private async initializeAdvancedFeatures(): Promise<void> {
     // Initialize WebRTC for real-time audio sharing
     try {
-      this.webrtcManager = WebRTCManager.getInstance();
+      this.webrtcManager = new WebRTCManager('user', 'room');
       await this.webrtcManager.initialize();
       this.isWebRTCEnabled = true;
       console.log('UnifiedAudioEngine: WebRTC initialized');

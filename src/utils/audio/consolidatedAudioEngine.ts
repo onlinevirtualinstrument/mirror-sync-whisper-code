@@ -5,7 +5,7 @@
 
 import * as Tone from 'tone';
 import AudioContextManager from '../music/AudioContextManager';
-import WebRTCManager from '../webrtc/WebRTCManager';
+import WebRTCManager from '../webrtc/webrtcManager';
 
 export interface AudioEngineConfig {
   enableWebRTC: boolean;
@@ -38,7 +38,7 @@ export interface SpatialAudioConfig {
 class ConsolidatedAudioEngine {
   private static instance: ConsolidatedAudioEngine;
   private audioContextManager: AudioContextManager;
-  private webRTCManager: WebRTCManager;
+  private webRTCManager: any;
   private toneInitialized: boolean = false;
   private midiAccess: MIDIAccess | null = null;
   private config: AudioEngineConfig;
@@ -67,7 +67,7 @@ class ConsolidatedAudioEngine {
 
   private constructor() {
     this.audioContextManager = AudioContextManager.getInstance();
-    this.webRTCManager = WebRTCManager.getInstance();
+    this.webRTCManager = new WebRTCManager('user', 'room');
     
     this.config = {
       enableWebRTC: false,

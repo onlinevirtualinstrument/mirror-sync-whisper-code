@@ -82,17 +82,18 @@ const SimpleInstrument: React.FC<SimpleInstrumentProps> = ({
     }, 500);
   }, [type]);
 
-  const handleGameNoteHit = useCallback((note: string, accuracy: number) => {
-    // Convert accuracy to velocity
-    const velocity = Math.max(0.3, accuracy);
+  const handleGameNoteHit = useCallback((timing: 'perfect' | 'good' | 'miss', note?: string) => {
+    // Convert timing to velocity
+    const velocity = timing === 'perfect' ? 0.8 : timing === 'good' ? 0.6 : 0.3;
     const octave = 4;
+    const noteName = note || 'C';
     
     try {
-      playInstrumentNote(type, note, octave, 300, velocity);
-      setIsPlaying(prev => ({ ...prev, [note]: true }));
+      playInstrumentNote(type, noteName, octave, 300, velocity);
+      setIsPlaying(prev => ({ ...prev, [noteName]: true }));
       
       setTimeout(() => {
-        setIsPlaying(prev => ({ ...prev, [note]: false }));
+        setIsPlaying(prev => ({ ...prev, [noteName]: false }));
       }, 300);
     } catch (error) {
       console.error('SimpleInstrument: Game note error:', error);

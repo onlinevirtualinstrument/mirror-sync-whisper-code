@@ -82,10 +82,8 @@ export const UniversalGameModeWrapper: React.FC<UniversalGameModeWrapperProps> =
   const renderSpecificGameMode = () => {
     if (config.gameMode === 'normal' || !isGameActive) return null;
 
-    const handleGameNoteHit = (note: string, accuracy: number) => {
-      // Convert accuracy to timing for the gamification system
-      const timing = accuracy > 0.8 ? 'perfect' : accuracy > 0.5 ? 'good' : 'miss';
-      handleNoteHit(timing as any, note);
+    const handleGameNoteHit = (timing: 'perfect' | 'good' | 'miss', note?: string) => {
+      handleNoteHit(timing, note);
     };
 
     const commonProps = {
