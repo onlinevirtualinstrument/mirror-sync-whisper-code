@@ -7,10 +7,10 @@ import ParticleSystem from '@/components/effects/ParticleSystem';
 import { cn } from '@/lib/utils';
 
 interface GameModeProps {
-  instrument: string;
-  onNoteHit: (note: string, accuracy: number) => void;
+  instrument?: string;
+  onNoteHit: (timing?: 'perfect' | 'good' | 'miss', note?: string) => void;
   isActive: boolean;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty?: 'easy' | 'medium' | 'hard';
 }
 
 // Piano Tiles Game
@@ -37,7 +37,7 @@ const PianoTilesGame: React.FC<GameModeProps> = ({ onNoteHit, isActive, difficul
 
   const handleTileHit = (tile: any) => {
     const accuracy = Math.random() * 0.4 + 0.6; // 60-100%
-    onNoteHit(tile.note, accuracy);
+    onNoteHit(accuracy > 0.8 ? 'perfect' : accuracy > 0.5 ? 'good' : 'miss', tile.note);
     setScore(prev => prev + Math.floor(accuracy * 100));
     setCombo(prev => prev + 1);
     setFallingTiles(prev => prev.filter(t => t.id !== tile.id));
@@ -108,7 +108,7 @@ const GuitarRhythmGame: React.FC<GameModeProps> = ({ onNoteHit, isActive, diffic
   
   const handleStrum = () => {
     const accuracy = strumPower / 100;
-    onNoteHit(chordPattern[currentChord], accuracy);
+    onNoteHit(accuracy > 0.8 ? 'perfect' : accuracy > 0.5 ? 'good' : 'miss', chordPattern[currentChord]);
     setCurrentChord(prev => (prev + 1) % chordPattern.length);
     setStrumPower(0);
   };
@@ -174,7 +174,7 @@ const DrumBeatGame: React.FC<GameModeProps> = ({ onNoteHit, isActive, difficulty
     }, 200);
     
     const accuracy = 0.8 + Math.random() * 0.2;
-    onNoteHit(drumName, accuracy);
+    onNoteHit(accuracy > 0.8 ? 'perfect' : accuracy > 0.5 ? 'good' : 'miss', drumName);
   };
 
   return (
