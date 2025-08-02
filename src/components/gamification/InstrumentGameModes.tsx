@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 interface GameModeProps {
   instrument?: string;
-  onNoteHit: (timing?: 'perfect' | 'good' | 'miss', note?: string) => void;
+  onNoteHit: (note: string, accuracy: number) => void;
   isActive: boolean;
   difficulty?: 'easy' | 'medium' | 'hard';
 }
@@ -37,7 +37,7 @@ const PianoTilesGame: React.FC<GameModeProps> = ({ onNoteHit, isActive, difficul
 
   const handleTileHit = (tile: any) => {
     const accuracy = Math.random() * 0.4 + 0.6; // 60-100%
-    onNoteHit(accuracy > 0.8 ? 'perfect' : accuracy > 0.5 ? 'good' : 'miss', tile.note);
+    onNoteHit(tile.note, accuracy);
     setScore(prev => prev + Math.floor(accuracy * 100));
     setCombo(prev => prev + 1);
     setFallingTiles(prev => prev.filter(t => t.id !== tile.id));
@@ -108,7 +108,7 @@ const GuitarRhythmGame: React.FC<GameModeProps> = ({ onNoteHit, isActive, diffic
   
   const handleStrum = () => {
     const accuracy = strumPower / 100;
-    onNoteHit(accuracy > 0.8 ? 'perfect' : accuracy > 0.5 ? 'good' : 'miss', chordPattern[currentChord]);
+    onNoteHit(chordPattern[currentChord], accuracy);
     setCurrentChord(prev => (prev + 1) % chordPattern.length);
     setStrumPower(0);
   };
@@ -174,7 +174,7 @@ const DrumBeatGame: React.FC<GameModeProps> = ({ onNoteHit, isActive, difficulty
     }, 200);
     
     const accuracy = 0.8 + Math.random() * 0.2;
-    onNoteHit(accuracy > 0.8 ? 'perfect' : accuracy > 0.5 ? 'good' : 'miss', drumName);
+    onNoteHit(drumName, accuracy);
   };
 
   return (
